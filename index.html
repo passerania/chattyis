@@ -1537,7 +1537,8 @@
                 <div class="redpacket-card-bottom" style="text-align:left;padding:8px;">
                     <div @click="menuAction('add')" class="px-3 py-3 rounded-lg text-[13px] text-text cursor-pointer hover:bg-bg border-b border-border/40 last:border-0">增加好友</div>
                     <div @click="menuAction('zhuxuan')" class="px-3 py-3 rounded-lg text-[13px] text-text cursor-pointer hover:bg-bg border-b border-border/40 last:border-0">新建群聊</div>
-                    <!-- 移除了云笺册和送别 -->
+                    <div @click="menuAction('delete')" class="px-3 py-3 rounded-lg text-[13px] text-red-500 cursor-pointer hover:bg-bg">送别</div>
+                    <!-- 移除了云笺册 -->
                 </div>
             </div>
         </div>
@@ -4889,7 +4890,9 @@ const exportAllData = () => {
       sessionMenuOpen.value = false;
       if (action === 'add') addNewSession();
       else if (action === 'zhuxuan') openGroupPicker();
-      // 移除了 addressbook 和 delete
+      else if (action === 'delete') deleteSession();
+
+      // 移除了 addressbook 
     };
 
     // ===== 列表定位：滚动到指定会话卡片 + 短暂高亮 =====
@@ -5024,6 +5027,20 @@ const exportAllData = () => {
       debouncedSave();
       showToast(`已创建「${g.name}」`);
       startGroupRoleTimer(g); // 启动角色抢红包定时器
+    };
+       // 送别
+const deleteSession = async () => {
+      if (sessions.value.length === 0) {
+        await appAlert('暂无会话');
+        return;
+      }
+      const list = sessions.value.map((s, i) => `${i + 1}. ${s.name}`).join('\n');
+      const idx = parseInt(await appPrompt({ message: '送别对象是谁？\n' + list, defaultValue: '' }));
+      if (idx >= 1 && idx <= sessions.value.length) {
+        if (await appConfirm(`确定送别「${sessions.value[idx - 1].name}」？此操作不可撤销。`)) {
+          sessions.value.splice(idx - 1, 1);
+        }
+      }
     };
 
     // 取代原生 prompt：自带样式的「重命名」弹窗（私聊/群聊标题自动区分，避免中文乱码）
