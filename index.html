@@ -5028,21 +5028,7 @@ const exportAllData = () => {
       showToast(`已创建「${g.name}」`);
       startGroupRoleTimer(g); // 启动角色抢红包定时器
     };
-       // 送别
-const deleteSession = async () => {
-      if (sessions.value.length === 0) {
-        await appAlert('暂无会话');
-        return;
-      }
-      const list = sessions.value.map((s, i) => `${i + 1}. ${s.name}`).join('\n');
-      const idx = parseInt(await appPrompt({ message: '送别对象是谁？\n' + list, defaultValue: '' }));
-      if (idx >= 1 && idx <= sessions.value.length) {
-        if (await appConfirm(`确定送别「${sessions.value[idx - 1].name}」？此操作不可撤销。`)) {
-          sessions.value.splice(idx - 1, 1);
-        }
-      }
-    };
-
+      
     // 取代原生 prompt：自带样式的「重命名」弹窗（私聊/群聊标题自动区分，避免中文乱码）
     const renameModal = reactive({ show: false, name: '' });
     const openRenameModal = () => {
