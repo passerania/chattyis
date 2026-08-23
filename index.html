@@ -476,20 +476,29 @@
                 </div>
             </div>
             
-            <!-- 交谈视图 -->
+            <!-- 交谈视图 --><!-- 群组抬头在header的class里面 -->
             <div v-else-if="currentView === 'chat'" key="chat" class="absolute inset-0 flex flex-col z-20" :style="chatBgStyle">
                 <header class="h-14 flex items-center justify-between px-3 border-b border-border/40 shrink-0 bg-surface/60 backdrop-blur-md">
                     <div class="flex items-center gap-2">
                         <button @click="switchView('home')" class="p-2 -ml-1 hover:opacity-60" :class="chatBgDark ? 'text-white/90' : 'text-text'"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <div class="flex items-center gap-2 group cursor-pointer">
+                        <div class="flex items-center gap-2 group cursor-pointer mt-5" >
                             <div v-if="settings.showAvatar" @click.stop="editAvatar('them')" class="w-8 h-8 bg-surface border border-border/50 flex items-center justify-center overflow-hidden shadow-sm" :style="{ borderRadius: settings.avatarRadius + '%' }">
                                 <img v-if="currentSession.avatar" :src="currentSession.avatar" class="w-full h-full object-cover">
                                 <span v-else class="text-xs text-muted serif-text">{{ currentSession.name.charAt(0) }}</span>
                             </div>
                             <div class="flex flex-col" @click.stop="editSessionName()">
-                                <span class="text-[14px] font-medium tracking-widest hover:underline underline-offset-4" :class="chatBgDark ? 'text-white' : 'text-text'">{{ currentSession.name }}</span>
-                                <span v-if="currentSession.type !== 'group'" class="text-[9px] tracking-widest max-w-[120px] truncate" :class="chatBgDark ? 'text-white/70' : 'text-muted'">{{ currentSession.statusText || '在线' }}</span>
-                            </div>
+    <span class="text-[14px] font-medium tracking-widest hover:underline underline-offset-4" :class="chatBgDark ? 'text-white' : 'text-text'">
+        {{ currentSession.name }}
+    </span>
+    <!-- 群聊时：在线人数显示在群名下方 -->
+    <span v-if="currentSession.type === 'group'" class="text-[10px] tracking-wider -mt-1" :class="chatBgDark ? 'text-white/60' : 'text-muted'">
+        {{ groupOnlineInfo.online }}人在线 · 共{{ groupOnlineInfo.total }}人
+    </span>
+    <!-- 私聊时：显示状态文字 -->
+    <span v-if="currentSession.type !== 'group'" class="text-[9px] tracking-widest max-w-[120px] truncate" :class="chatBgDark ? 'text-white/70' : 'text-muted'">
+        {{ currentSession.statusText || '在线' }}
+    </span>
+</div>
                         </div>
                     </div>
                     <div class="flex items-center gap-1">
@@ -573,6 +582,47 @@
                                             <div v-else class="text-[10px] text-muted/60 mt-0.5">这道题TA没有回答</div>
                                         </div>
                                         <div v-if="msg.answers && !msg.answers.some(a => a.picked)" class="text-[10px] text-muted/60 pt-1.5 border-t border-border/30">（这一轮TA全都未作答）</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 投票卡片 -->
+                            <div v-else-if="msg.type === 'poll'" class="flex justify-center mb-4">
+                                <div class="w-72 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
+                                    <div class="px-4 py-2.5 text-[11px] tracking-widest border-b border-border/40 flex justify-between items-center">
+                                        <span class="text-muted">📊 投票</span>
+                                        <span v-if="pollData = getPollById(msg.pollId)">
+                                            <span v-if="pollData.isClosed" class="text-red-400 text-[10px]">已结束</span>
+                                            <span v-else class="text-green-400 text-[10px]">进行中</span>
+                                        </span>
+                                    </div>
+                                    <div class="px-4 py-3" v-if="pollData = getPollById(msg.pollId)">
+                                        <div class="text-[14px] font-medium text-text">{{ pollData.title }}</div>
+                                        <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-3">
+                                            <div class="text-[12px] text-text">{{ qi+1 }}. {{ q.text }}</div>
+                                            <div class="flex flex-wrap gap-2 mt-1">
+                                                <button v-for="(op, oi) in q.options" :key="oi"
+                                                        @click="castVote(pollData.id, qi, oi)"
+                                                        :disabled="pollData.isClosed"
+                                                        class="px-3 py-1 rounded-full text-[11px] border transition"
+                                                        :class="(function() {
+                                                            const vote = pollData.votes['me'];
+                                                            if (!vote) return 'border-border text-muted';
+                                                            const val = vote[qi];
+                                                            if (Array.isArray(val) && val.includes(oi)) return 'border-text bg-bg text-text';
+                                                            if (val === oi) return 'border-text bg-bg text-text';
+                                                            return 'border-border text-muted';
+                                                        })()">
+                                                    {{ op }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 text-[10px] text-muted">
+                                            已投票: {{ Object.keys(pollData.votes).length }} 人
+                                            <span v-if="pollData.participants.length">(共 {{ pollData.participants.length }} 人参与)</span>
+                                            <span v-else>(所有人均可参与)</span>
+                                        </div>
+                                        <button v-if="pollData.creator === 'me' && !pollData.isClosed" @click="closePoll(pollData.id)" class="mt-2 px-3 py-1 rounded text-[11px] bg-red-500/10 text-red-500 border border-red-500/30">结束投票</button>
+                                        <button v-if="pollData.isClosed" @click="viewPollResult(pollData.id)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">查看结果</button>
                                     </div>
                                 </div>
                             </div>
@@ -696,6 +746,7 @@
                         <button @click="plusOpen = false; currentSession.type === 'group' ? openGrabPacket() : openSendRp()" class="p-2 text-muted hover:text-text" title="发红包"><i data-lucide="gift" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <label @click="plusOpen = false" class="p-2 text-muted hover:text-text cursor-pointer" title="上传图片"><i data-lucide="image" class="w-5 h-5 stroke-[1.5]"></i><input type="file" accept="image/*" class="hidden" @change="handleImageSend"></label>
                         <button v-if="currentSession.type === 'group'" @click="plusOpen = false; openMentionPicker()" class="p-2 text-muted hover:text-text" title="提及"><i data-lucide="at-sign" class="w-5 h-5 stroke-[1.5]"></i></button>
+<button v-if="currentSession.type === 'group'" @click="plusOpen = false; openPollCreator()" class="p-2 text-muted hover:text-text" title="发起投票"><i data-lucide="vote" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <button v-if="currentSession.type !== 'group'" @click="plusOpen = false; patPickerOpen = true" class="p-2 text-muted hover:text-text" title="拍一拍"><i data-lucide="hand" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <button v-if="currentSession.type !== 'group'" @click="plusOpen = false; openSurveyEditor()" class="p-2 text-muted hover:text-text" title="问卷"><i data-lucide="clipboard-list" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <button @click="plusOpen = false; forceReply()" :disabled="currentSession && typingSessions[currentSession.id]" class="p-2 -ml-1 text-muted hover:text-text disabled:opacity-30" title="让TA主动发消息"><i data-lucide="radio" class="w-5 h-5 stroke-[1.5]"></i></button>
@@ -1591,6 +1642,61 @@
                         <button @click="sendSurvey" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">发出</button>
                     </div>
                 </div>
+
+            </div>
+        </div>
+        <!-- 创建投票弹窗 -->
+        <div v-if="pollCreator.show" class="redpacket-overlay" @click.self="pollCreator.show = false">
+            <div class="redpacket-card" style="width:360px;max-height:80vh;overflow-y:auto;">
+                <div class="redpacket-card-top" style="padding-bottom:12px;">
+                    <div class="text-white text-sm font-medium tracking-wider">发起群投票</div>
+                </div>
+                <div class="redpacket-card-bottom" style="text-align:left;padding:12px;">
+                    <div class="text-[10px] text-muted mb-1">投票标题</div>
+                    <input v-model="pollCreator.title" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3" placeholder="输入投票标题">
+
+                    <div v-for="(q, qi) in pollCreator.questions" :key="qi" class="mb-4 border border-border/40 rounded-lg p-3">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[11px] text-muted tracking-widest">第 {{ qi + 1 }} 题</span>
+                            <button v-if="pollCreator.questions.length > 1" @click="pollCreator.questions.splice(qi, 1)" class="text-red-400 text-[11px]">删题</button>
+                        </div>
+                        <input v-model="q.text" placeholder="问题内容" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] mb-2">
+                        <div class="text-[10px] text-muted mb-1">选项</div>
+                        <div v-for="(op, oi) in q.options" :key="oi" class="flex items-center gap-2 mb-1.5">
+                            <input v-model="q.options[oi]" :placeholder="'选项 ' + (oi+1)" class="flex-1 bg-bg border border-border rounded-lg px-3 py-1.5 text-[12px]">
+                            <button v-if="q.options.length > 1" @click="q.options.splice(oi, 1)" class="text-red-400 text-[11px] px-1">×</button>
+                        </div>
+                        <button @click="q.options.push('')" class="text-[11px] text-text hover:underline">+ 添加选项</button>
+                        <!-- 多选开关 -->
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="checkbox" v-model="q.multiple" :id="'multi_' + qi" class="accent-text">
+                            <label :for="'multi_' + qi" class="text-[11px] text-muted">允许多选</label>
+                        </div>
+                    </div>
+                    <button @click="pollCreator.questions.push({ text: '', options: [''], multiple: false })" class="w-full py-2.5 rounded-lg border border-dashed border-border text-[12px] text-muted hover:text-text tracking-widest">+ 加一道题</button>
+
+                    <div class="mt-4">
+                        <div class="text-[10px] text-muted mb-1">选择参与者</div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="flex items-center gap-1 text-[12px]">
+                                <input type="checkbox" v-model="pollCreator.participantsAll" /> 所有人
+                            </label>
+                            <label v-for="m in groupMembers" :key="m.id" class="flex items-center gap-1 text-[12px]" v-if="!pollCreator.participantsAll">
+                                <input type="checkbox" :value="m.id" v-model="pollCreator.participants" /> {{ m.name }}
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="text-[10px] text-muted mb-1">截止时间（选填）</div>
+                        <input type="datetime-local" v-model="pollCreator.expireAt" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm">
+                    </div>
+
+                    <div class="flex gap-2 mt-4">
+                        <button @click="pollCreator.show = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                        <button @click="sendPoll" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">发起投票</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1665,6 +1771,7 @@
                     <div v-for="mid in currentSession.members" :key="mid" @click="pickMention(mid)"
                          class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2"
                          :class="mentionTarget === mid ? 'border-text bg-bg' : ''">
+                      
                         <span class="text-[13px] text-text">{{ mentionNameOf(mid) }}</span>
                     </div>
                 </div>
@@ -1682,16 +1789,49 @@
                 </div>
                 <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
                     <div v-for="mid in currentSession.members" :key="mid"
-                         class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 mb-2">
-                        <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text">{{ mentionNameOf(mid).charAt(0) }}</span>
-                        <span class="text-[13px] text-text">{{ mentionNameOf(mid) }}</span>
-                    </div>
+     class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2">
+    <div class="flex items-center gap-2">
+        <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text">{{ mentionNameOf(mid).charAt(0) }}</span>
+        <span class="text-[13px] text-text">{{ mentionNameOf(mid) }}</span>
+        <!-- 在线状态点 -->
+        <span v-if="isMemberOnline(currentSession.id, mid)" 
+              class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block ml-1.5" 
+              title="在线"></span>
+        <span v-else 
+              class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block ml-1.5" 
+              title="离线"></span>
+    </div>
+    <button @click="removeGroupMember(mid)" class="text-red-400 hover:text-red-600 text-sm font-light px-2" title="移出群聊">×</button>
+</div>
                 </div>
                 <div class="px-4 pb-4">
-                    <button @click="groupMembersOpen = false" class="w-full py-2.5 rounded-lg text-[13px] border border-border text-muted">关闭</button>
+                    <div class="px-4 pb-4 flex gap-2">
+    <button @click="openAddGroupMember" class="flex-1 py-2.5 rounded-lg text-[13px] text-white" style="background:var(--nav-icon-color);">+ 添加成员</button>
+    <button @click="groupMembersOpen = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">关闭</button>
+                    </div>
                 </div>
             </div>
         </div>
+
+<!-- 添加群成员弹窗 -->
+<div v-if="addGroupMemberOpen" class="redpacket-overlay" @click.self="addGroupMemberOpen = false">
+    <div class="redpacket-card" style="width:300px;">
+        <div class="redpacket-card-top" style="padding-bottom:14px;">
+            <div class="text-white text-sm font-medium tracking-wider">选择要添加的好友</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
+            <div v-if="!availableMembers.length" class="text-center text-xs text-muted/60 py-6">没有可添加的好友</div>
+            <div v-for="s in availableMembers" :key="s.id" @click="addMemberToGroup(s.id)"
+                 class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2 hover:border-muted">
+                <span class="text-[13px] text-text">{{ s.name }}</span>
+                <span class="text-xs text-muted">+ 添加</span>
+            </div>
+        </div>
+        <div class="px-4 pb-4">
+            <button @click="addGroupMemberOpen = false" class="w-full py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+        </div>
+    </div>
+</div>
 
         <!-- 上传表情包弹窗 -->
         <div v-if="exprForm.show" class="redpacket-overlay" @click.self="exprForm.show = false">
@@ -1829,7 +1969,50 @@
             </button>
             <img :src="lightboxImage" class="max-w-[95vw] max-h-[95vh] object-contain rounded-lg">
         </div>
-
+        <!-- 投票结果弹窗 -->
+        <div v-if="pollResult.show" class="redpacket-overlay" @click.self="pollResult.show = false">
+            <div class="redpacket-card" style="width:380px;max-height:80vh;overflow-y:auto;">
+                <div class="redpacket-card-top" style="padding-bottom:12px;">
+                    <div class="text-white text-sm font-medium tracking-wider">📊 投票结果</div>
+                </div>
+                <div class="redpacket-card-bottom" style="text-align:left;padding:16px;">
+                    <div v-if="pollData = getPollById(pollResult.pollId)">
+                        <div class="text-[16px] font-medium text-text">{{ pollData.title }}</div>
+                        <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-4">
+                            <div class="text-[13px] text-text mb-1">{{ qi+1 }}. {{ q.text }}</div>
+                            <!-- 条形图 -->
+                            <div class="space-y-1">
+                                <div v-for="(op, oi) in q.options" :key="oi">
+                                    <div class="flex items-center gap-2 text-[11px]">
+                                        <span class="w-20 truncate">{{ op }}</span>
+                                        <div class="flex-1 h-2 bg-bg rounded overflow-hidden">
+                                            <div class="h-full bg-accent rounded" :style="{ width: getOptionPercent(pollData, qi, oi) + '%' }"></div>
+                                        </div>
+                                        <span class="w-12 text-right text-muted">{{ getOptionPercent(pollData, qi, oi).toFixed(0) }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 各成员选择 -->
+                            <div class="mt-3 border-t border-border/40 pt-2">
+                                <div class="text-[11px] text-muted mb-1">各成员选择</div>
+                                <div v-for="(vote, mid) in pollData.votes" :key="mid" class="text-[12px] flex items-start gap-1">
+                                    <span class="font-medium">{{ getMemberName(mid) }}</span>
+                                    <span>→</span>
+                                    <span v-if="Array.isArray(vote[qi]) && vote[qi].length">
+                                        {{ vote[qi].map(idx => q.options[idx]).join('、') }}
+                                    </span>
+                                    <span v-else-if="typeof vote[qi] === 'number' && vote[qi] !== undefined">
+                                        {{ q.options[vote[qi]] }}
+                                    </span>
+                                    <span v-else>未选</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button @click="pollResult.show = false" class="w-full mt-4 py-2.5 rounded-lg text-white text-sm" style="background:var(--nav-icon-color);">关闭</button>
+                </div>
+            </div>
+        </div>
         <!-- 应用内颜色选择弹窗（含历史颜色合集；滚动鼠标/点遮罩关闭） -->
         <div v-if="colorPicker.open" class="redpacket-overlay" style="z-index:320;" @click.self="closeColorPicker()">
             <div class="redpacket-card" style="width:320px;">
@@ -4111,7 +4294,13 @@ const exportAllData = () => {
     };
 
     const sendMessage = async (sender, contentRaw, opts = {}) => {
-      if (contentRaw == null && !opts.image) return;
+// ===== 群成员消息强制锁定会话，防止串话 =====
+if (sender !== 'me' && sender !== 'them' && !opts.session) {
+  console.warn('[空境] 群成员消息缺少目标会话，已丢弃', sender);
+  return;
+}      
+
+if (contentRaw == null && !opts.image) return;
       // 支持指定目标会话（回复类消息锁定触发时的会话，切会话也不串）
       const target = opts.session || currentSession.value;
       if (!target) return;
@@ -4254,7 +4443,175 @@ const exportAllData = () => {
         window.__surveyTimer = setInterval(() => { try { checkSurveyArrival(); } catch (e) {} }, 30 * 1000);
       }
     };
+    // ===== 群聊投票功能（含多选） =====
+    const pollCreator = reactive({
+        show: false,
+        title: '',
+        questions: [{ text: '', options: [''], multiple: false }],
+        participants: [],
+        participantsAll: true,
+        expireAt: '',
+    });
 
+    const pollResult = reactive({ show: false, pollId: null });
+
+    const groupMembers = computed(() => {
+        const g = currentSession.value;
+        if (!g || g.type !== 'group') return [];
+        return sessions.value.filter(s => g.members.includes(s.id));
+    });
+
+    const openPollCreator = () => {
+        pollCreator.title = '';
+        pollCreator.questions = [{ text: '', options: [''], multiple: false }];
+        pollCreator.participants = [];
+        pollCreator.participantsAll = true;
+        pollCreator.expireAt = '';
+        pollCreator.show = true;
+    };
+
+    const sendPoll = () => {
+        const g = currentSession.value;
+        if (!g || g.type !== 'group') return;
+        const title = pollCreator.title.trim();
+        if (!title) { showToast('请填写标题'); return; }
+        const questions = pollCreator.questions
+            .map(q => ({ text: q.text.trim(), options: q.options.map(o => o.trim()).filter(Boolean), multiple: !!q.multiple }))
+            .filter(q => q.text && q.options.length >= 2);
+        if (!questions.length) { showToast('至少一道题且每题至少两个选项'); return; }
+
+        const poll = {
+            id: genId(),
+            title,
+            questions,
+            creator: 'me',
+            participants: pollCreator.participantsAll ? [] : pollCreator.participants,
+            createdAt: Date.now(),
+            expireAt: pollCreator.expireAt ? new Date(pollCreator.expireAt).getTime() : null,
+            isClosed: false,
+            votes: {},
+        };
+        if (!g.polls) g.polls = [];
+        g.polls.push(poll);
+
+        g.messages.push({
+            id: genId(),
+            sender: 'me',
+            type: 'poll',
+            pollId: poll.id,
+            timestamp: Date.now(),
+            isTyping: false,
+            isReadFlag: true,
+        });
+
+        pollCreator.show = false;
+        debouncedSave();
+        scrollToBottom();
+        showToast('投票已发起');
+
+        // ===== AI 自动投票（多选/单选支持） =====
+        const otherMembers = g.members.filter(m => m !== 'me');
+        if (otherMembers.length > 0) {
+            otherMembers.forEach((memberId) => {
+                const delay = 2000 + Math.random() * 10000;
+                setTimeout(() => {
+                    const pollNow = (g.polls || []).find(p => p.id === poll.id);
+                    if (!pollNow || pollNow.isClosed) return;
+                    if (pollNow.votes[memberId] !== undefined) return;
+                    const voteResult = [];
+                    pollNow.questions.forEach((q, qi) => {
+                        const count = q.options.length;
+                        if (q.multiple) {
+                            const num = 1 + Math.floor(Math.random() * count);
+                            const shuffled = [...Array(count).keys()].sort(() => Math.random() - 0.5);
+                            voteResult[qi] = shuffled.slice(0, num);
+                        } else {
+                            voteResult[qi] = Math.floor(Math.random() * count);
+                        }
+                    });
+                    pollNow.votes[memberId] = voteResult;
+                    debouncedSave();
+                    const memberName = getMemberName(memberId);
+                    g.messages.push({
+                        id: genId(),
+                        sender: 'system',
+                        content: `${memberName} 已投票`,
+                        timestamp: Date.now(),
+                        isTyping: false,
+                    });
+                    scrollToBottom();
+                }, delay);
+            });
+        }
+    };
+
+    const getPollById = (pollId) => {
+        const g = currentSession.value;
+        if (!g) return null;
+        return (g.polls || []).find(p => p.id === pollId) || null;
+    };
+
+    // 多选投票逻辑
+    const castVote = (pollId, questionIdx, optionIdx) => {
+        const g = currentSession.value;
+        if (!g || g.type !== 'group') return;
+        const poll = (g.polls || []).find(p => p.id === pollId);
+        if (!poll || poll.isClosed) return;
+        if (poll.participants.length && !poll.participants.includes('me')) {
+            showToast('你没有参与该投票的资格');
+            return;
+        }
+        if (!poll.votes['me']) poll.votes['me'] = [];
+        const q = poll.questions[questionIdx];
+        if (!q) return;
+        if (q.multiple) {
+            if (!Array.isArray(poll.votes['me'][questionIdx])) {
+                poll.votes['me'][questionIdx] = [];
+            }
+            const selected = poll.votes['me'][questionIdx];
+            const idx = selected.indexOf(optionIdx);
+            if (idx > -1) selected.splice(idx, 1);
+            else selected.push(optionIdx);
+        } else {
+            poll.votes['me'][questionIdx] = optionIdx;
+        }
+        debouncedSave();
+        showToast('投票已更新');
+    };
+
+    const closePoll = (pollId) => {
+        const g = currentSession.value;
+        if (!g) return;
+        const poll = (g.polls || []).find(p => p.id === pollId);
+        if (!poll) return;
+        if (poll.creator !== 'me') { showToast('只有发起人可以结束投票'); return; }
+        poll.isClosed = true;
+        debouncedSave();
+        showToast('投票已结束');
+    };
+
+    const viewPollResult = (pollId) => {
+        pollResult.pollId = pollId;
+        pollResult.show = true;
+    };
+
+    const getOptionPercent = (poll, qIdx, oIdx) => {
+        const totalVoters = Object.keys(poll.votes).length;
+        if (!totalVoters) return 0;
+        let count = 0;
+        Object.values(poll.votes).forEach(vote => {
+            const val = vote[qIdx];
+            if (Array.isArray(val) && val.includes(oIdx)) count++;
+            else if (val === oIdx) count++;
+        });
+        return (count / totalVoters) * 100;
+    };
+
+    const getMemberName = (mid) => {
+        if (mid === 'me') return profiles.me.name;
+        const m = sessions.value.find(s => s.id === mid);
+        return m ? m.name : '未知';
+    };
     // ===== 表情包 + 上传图片（仅我使用，面板与语料互不同步） =====
     const emotePickerOpen = ref(false);
     let emoteLongPressTimer = null;
@@ -4603,7 +4960,14 @@ const exportAllData = () => {
       setTimeout(() => {
         // 被标记的@无意义（0%回复）：由当前消息是否被标记决定——简化：@时若触发标记则全0%
         const mentionedMarked = mention && group.groupMarkEnabled && Math.random() < 0.15;
-        memberIds.forEach((mid, i) => {
+        // 过滤掉离线的成员（除非是被@的）
+           const onlineMembers = memberIds.filter(mid => {
+               if (mention && mid === mention) return true; // 被@的人即使离线也回复
+               return isMemberOnline(group.id, mid);
+            });
+            if (!onlineMembers.length) return;
+          
+          onlineMembers.forEach((mid, i) => {
           const member = sessions.value.find((s) => s.id === mid);
           if (!member) return;
           let pool = envelopeCardItems(member, '群聊', group.id);
@@ -4615,7 +4979,7 @@ const exportAllData = () => {
             if (mentionedMarked) return; // 被标记的@：0% 回复
             prob = (mid === mention) ? 0.9 : 0.3; // 被@者90%，其他30%
           } else {
-            prob = 0.8; // 普通消息各角色80%
+            prob = 0.6; // 普通消息各角色60%，已读不回
           }
           if (Math.random() >= prob) return;
 
@@ -4629,7 +4993,7 @@ const exportAllData = () => {
               const q = pickQuote(group);
               if (q) opts.quote = q;
             }
-            sendMessage(mid, pick.text, opts);
+            sendMessage(mid, pick.text, { ...opts, session: group });
           }, offset);
         });
       }, delay);
@@ -4659,11 +5023,20 @@ const exportAllData = () => {
       manageActiveTimer();
       debouncedSave();
     };
-    const scrollToBottom = () =>
-      nextTick(() => {
-        const el = document.getElementById('chat-container');
-        if (el) el.scrollTop = el.scrollHeight;
-      });
+    const scrollToBottom = () => {
+  const el = document.getElementById('chat-container');
+  if (!el) return;
+  // 使用双重 nextTick + 延迟，确保 DOM 完全更新
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+      // 二次修正：有时渲染还没完，再补一次
+      setTimeout(() => {
+        el.scrollTop = el.scrollHeight;
+      }, 50);
+    });
+  });
+};
     // 是否已滚动到聊天底部（用于「到达最新消息」按钮的显隐）
     const chatAtBottom = ref(true);
     const onChatScroll = () => {
@@ -4969,6 +5342,65 @@ const exportAllData = () => {
     const groupPickSelected = ref([]);
     // 查看群成员弹窗状态
     const groupMembersOpen = ref(false);
+
+/// ===== 群成员在线状态 =====
+const groupMemberStatus = reactive({});
+
+// 初始化或更新某个群的成员状态
+const initGroupMemberStatus = (group) => {
+  if (!group || group.type !== 'group') return;
+  if (!groupMemberStatus[group.id]) {
+    groupMemberStatus[group.id] = {};
+  }
+  const statusMap = groupMemberStatus[group.id];
+  (group.members || []).forEach(mid => {
+    if (statusMap[mid] === undefined) {
+      statusMap[mid] = Math.random() < 0.7; // 70% 概率初始在线
+    }
+  });
+  // 清理已不存在的成员
+  const memberSet = new Set(group.members || []);
+  Object.keys(statusMap).forEach(mid => {
+    if (!memberSet.has(mid)) delete statusMap[mid];
+  });
+};
+
+// 检查某个群成员是否在线
+const isMemberOnline = (groupId, memberId) => {
+  const statusMap = groupMemberStatus[groupId];
+  if (!statusMap) return true; // 默认在线
+  return statusMap[memberId] !== false;
+};
+
+// 随机切换群成员状态（每5秒调用一次）
+const toggleMemberStatus = () => {
+  sessions.value.forEach(s => {
+    if (s.type !== 'group') return;
+    initGroupMemberStatus(s);
+    const statusMap = groupMemberStatus[s.id];
+    if (!statusMap) return;
+    Object.keys(statusMap).forEach(mid => {
+      // 每个成员 30% 概率翻转状态
+      if (Math.random() < 0.3) {
+        statusMap[mid] = !statusMap[mid];
+      }
+    });
+  });
+};
+
+// 计算群聊在线人数
+const groupOnlineInfo = computed(() => {
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return { online: 0, total: 0 };
+  const members = g.members || [];
+  const total = members.length;
+  if (!total) return { online: 0, total: 0 };
+  const online = members.filter(mid => isMemberOnline(g.id, mid)).length;
+  return { online, total };
+});
+
+
+    const addGroupMemberOpen = ref(false);
     const openGroupPicker = () => {
       groupPickSelected.value = [];
       groupPickerOpen.value = true;
@@ -4976,6 +5408,56 @@ const exportAllData = () => {
     const closeGroupPicker = () => {
       groupPickerOpen.value = false;
     };
+// 打开添加成员弹窗
+const openAddGroupMember = () => {
+  addGroupMemberOpen.value = true;
+};
+
+// 可添加的好友 = 所有私聊 - 当前群成员
+const availableMembers = computed(() => {
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return [];
+  const members = new Set(g.members || []);
+  return sessions.value.filter(s => s.type === 'private' && !members.has(s.id));
+});
+
+// 添加成员到群聊
+const addMemberToGroup = (sessionId) => {
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return;
+  if (!g.members) g.members = [];
+  if (g.members.includes(sessionId)) {
+    showToast('该成员已在群中');
+    return;
+  }
+  g.members.push(sessionId);
+  addGroupMemberOpen.value = false;
+  debouncedSave();
+  showToast('已添加');
+  // 为新成员启动群聊角色定时器
+  startGroupRoleTimer(g);
+};
+
+// 移除群成员
+const removeGroupMember = (mid) => {
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return;
+  if (!g.members) g.members = [];
+  // 不能移除自己（'me' 是特殊标识，不在 members 里，但以防万一）
+  if (mid === 'me') { showToast('你不能移除自己'); return; }
+  const member = sessions.value.find(s => s.id === mid);
+  const name = member ? member.name : '该成员';
+  if (confirm(`确定将「${name}」移出群聊吗？`)) {
+    g.members = g.members.filter(m => m !== mid);
+    debouncedSave();
+    showToast(`已移出「${name}」`);
+    // 清理该成员在群聊中的定时器
+    if (g._grabTimers && g._grabTimers[mid]) {
+      clearTimeout(g._grabTimers[mid]);
+      delete g._grabTimers[mid];
+    }
+  }
+};
     const toggleGroupPick = (sessionId) => {
       const i = groupPickSelected.value.indexOf(sessionId);
       if (i >= 0) groupPickSelected.value.splice(i, 1);
@@ -5001,6 +5483,7 @@ const exportAllData = () => {
         type: 'group',
         members,
         messages: [],
+        polls: [],
         draft: '',
         avatar: '',
         navIcons: { library: '', insight: '', yiqu: '' }, // 顶部图标（跟随会话）
@@ -6239,7 +6722,7 @@ const exportAllData = () => {
           const q = pickQuote(g);
           if (q) opts.quote = q;
         }
-        sendMessage(memberId, pick.text, opts);
+        sendMessage(memberId, pick.text, { ...opts, session: g });
         // 角色发出@后：被@者(若角色)90%回复、其他角色30%回复
         if (mention && mention !== 'me') {
           setTimeout(() => respondToMention(g, mention), randomMs(800, 2000));
@@ -6377,18 +6860,21 @@ const exportAllData = () => {
       loop();
     };
     // 主动会话：随机一角色发起对话，其他角色 70% 回复
-    const triggerGroupChat = (group) => {
-      const members = group.members || [];
-      if (!members.length) return;
-      const starter = members[Math.floor(Math.random() * members.length)];
-      // 发起者说话
-      groupMemberReply(group, starter, 'group');
-      // 其他角色 70% 概率回复
-      members.forEach((m) => {
-        if (m === starter) return;
-        if (Math.random() < 0.7) groupMemberReply(group, m, 'group');
-      });
-    };
+const triggerGroupChat = (group) => {
+  const members = group.members || [];
+  if (!members.length) return;
+  // 只从在线成员中选发起者
+  const onlineMembers = members.filter(mid => isMemberOnline(group.id, mid));
+  if (!onlineMembers.length) return;
+  const starter = onlineMembers[Math.floor(Math.random() * onlineMembers.length)];
+  groupMemberReply(group, starter, 'group');
+  // 其他在线成员 70% 回复
+  onlineMembers.forEach((m) => {
+    if (m === starter) return;
+    if (Math.random() < 0.7) groupMemberReply(group, m, 'group');
+  });
+};
+
     // 切换主动会话开关并启停定时器
     const toggleGroupChat = () => {
       const g = currentSession.value;
@@ -7377,173 +7863,154 @@ const exportAllData = () => {
       return { myRatio: Math.round((myCount / total) * 100), firstTime: first, hotWords: hot };
     });
 
-    onMounted(async () => {
-      try {
-        let stored = await localforage.getItem('liubai_v2_db');
-        // 兜底：主存档（IndexedDB）为空时，尝试从 localStorage 镜像恢复
-        if (!stored) stored = loadLocalStorageMirror('__kj_mirror');
-        if (stored) {
-          if (stored.sessions && stored.sessions.length > 0) {
-            // 恢复 sessions，并为每个 session 重建 call 默认值
-            sessions.value = stored.sessions.map((s) => ({
-              ...s,
-              messages: Array.isArray(s.messages)
-                ? s.messages.map((m) => ({ ...m, isReadFlag: m.isReadFlag === false ? false : true }))
-                : [],
-              corpus: normalizeCorpus(s),
-              call: makeDefaultCall(),
-              bgImage: s.bgImage || '',
-              bgLibrary: s.bgLibrary || [],
-              callBgImages: s.callBgImages || [],
-              customCSS: s.customCSS || '',
-              avatar: s.avatar || '',
-              navIcons: s.navIcons && typeof s.navIcons === 'object'
-                ? { library: s.navIcons.library || '', insight: s.navIcons.insight || '', yiqu: s.navIcons.yiqu || '' }
-                : { library: '', insight: '', yiqu: '' },
-              hidden: !!s.hidden,
-              unread: typeof s.unread === 'number' ? s.unread : 0,
-              myPatList: Array.isArray(s.myPatList) ? s.myPatList : [],
-              statusText: typeof s.statusText === 'string' ? s.statusText : '',
-              myEmotes: Array.isArray(s.myEmotes) ? s.myEmotes : [],
-              type: s.type || 'private',
-              members: s.members || [],
-              groupPackets: s.groupPackets || [],
-              roleGrabRedpacketEnabled: !!s.roleGrabRedpacketEnabled,
-              groupChatEnabled: !!s.groupChatEnabled,
-              groupChatInterval: s.groupChatInterval || 30,
-              groupMarkEnabled: !!s.groupMarkEnabled,
-              roleAtRoleEnabled: !!s.roleAtRoleEnabled,
-              redPacket: {
-                ...makeDefaultRedPacket(),
-                tiers: s.redPacket?.tiers && s.redPacket.tiers.length ? s.redPacket.tiers : DEFAULT_TIERS.map((t) => ({ ...t })),
-                usedThisYear: s.redPacket?.usedThisYear ?? 0,
-                year: s.redPacket?.year ?? new Date().getFullYear(),
-                dailyCount: s.redPacket?.dailyCount ?? 0,
-                dailyDate: s.redPacket?.dailyDate ?? null,
-              },
-            }));
-            migrateSessions(sessions.value); // 旧档兼容：把旧版本问卷 status('read' 等) 归一为新版本 pending/answered
-          }
-          if (stored.profiles) Object.assign(profiles, stored.profiles);
-          if (stored.settings) Object.assign(settings, stored.settings);
-          // 旧档兼容：补全局回廊字段默认值
-          if (!settings.homeBgLibrary) settings.homeBgLibrary = [];
-          if (settings.homeBgImage === undefined) settings.homeBgImage = '';
-          if (!settings.checkBgLibrary) settings.checkBgLibrary = [];
-          if (settings.checkBgImage === undefined) settings.checkBgImage = '';
-          if (!settings.allowanceBg) settings.allowanceBg = { spring: '', summer: '', autumn: '', winter: '' };
-          if (settings.accentColor === undefined) settings.accentColor = null;
-          if (stored.money) {
-            if (stored.money.check) Object.assign(money.check, stored.money.check);
-            // 用清空+push 而非直接赋值，保持响应式数组引用稳定
-            if (Array.isArray(stored.money.history)) {
-              money.history.splice(0, money.history.length, ...stored.money.history);
+       onMounted(async () => {
+        colorPicker.open = false; // 强制关闭颜色选择器
+        try {
+            let stored = await localforage.getItem('liubai_v2_db');
+            if (!stored) stored = loadLocalStorageMirror('__kj_mirror');
+            if (stored) {
+                if (stored.sessions && stored.sessions.length > 0) {
+                    sessions.value = stored.sessions.map((s) => ({
+                        ...s,
+                        messages: Array.isArray(s.messages)
+                            ? s.messages.map((m) => ({ ...m, isReadFlag: m.isReadFlag === false ? false : true }))
+                            : [],
+                        corpus: normalizeCorpus(s),
+                        call: makeDefaultCall(),
+                        bgImage: s.bgImage || '',
+                        bgLibrary: s.bgLibrary || [],
+                        callBgImages: s.callBgImages || [],
+                        customCSS: s.customCSS || '',
+                        avatar: s.avatar || '',
+                        navIcons: s.navIcons && typeof s.navIcons === 'object'
+                            ? { library: s.navIcons.library || '', insight: s.navIcons.insight || '', yiqu: s.navIcons.yiqu || '' }
+                            : { library: '', insight: '', yiqu: '' },
+                        hidden: !!s.hidden,
+                        unread: typeof s.unread === 'number' ? s.unread : 0,
+                        myPatList: Array.isArray(s.myPatList) ? s.myPatList : [],
+                        statusText: typeof s.statusText === 'string' ? s.statusText : '',
+                        myEmotes: Array.isArray(s.myEmotes) ? s.myEmotes : [],
+                        type: s.type || 'private',
+                        members: s.members || [],
+                        groupPackets: s.groupPackets || [],
+                        roleGrabRedpacketEnabled: !!s.roleGrabRedpacketEnabled,
+                        groupChatEnabled: !!s.groupChatEnabled,
+                        groupChatInterval: s.groupChatInterval || 30,
+                        groupMarkEnabled: !!s.groupMarkEnabled,
+                        roleAtRoleEnabled: !!s.roleAtRoleEnabled,
+                        redPacket: {
+                            ...makeDefaultRedPacket(),
+                            tiers: s.redPacket?.tiers && s.redPacket.tiers.length ? s.redPacket.tiers : DEFAULT_TIERS.map((t) => ({ ...t })),
+                            usedThisYear: s.redPacket?.usedThisYear ?? 0,
+                            year: s.redPacket?.year ?? new Date().getFullYear(),
+                            dailyCount: s.redPacket?.dailyCount ?? 0,
+                            dailyDate: s.redPacket?.dailyDate ?? null,
+                        },
+                    }));
+                    migrateSessions(sessions.value);
+                }
+                if (stored.profiles) Object.assign(profiles, stored.profiles);
+                if (stored.settings) Object.assign(settings, stored.settings);
+                if (!settings.homeBgLibrary) settings.homeBgLibrary = [];
+                if (settings.homeBgImage === undefined) settings.homeBgImage = '';
+                if (!settings.checkBgLibrary) settings.checkBgLibrary = [];
+                if (settings.checkBgImage === undefined) settings.checkBgImage = '';
+                if (!settings.allowanceBg) settings.allowanceBg = { spring: '', summer: '', autumn: '', winter: '' };
+                if (settings.accentColor === undefined) settings.accentColor = null;
+                if (stored.money) {
+                    if (stored.money.check) Object.assign(money.check, stored.money.check);
+                    if (Array.isArray(stored.money.history)) {
+                        money.history.splice(0, money.history.length, ...stored.money.history);
+                    }
+                    if (stored.money.allowance) Object.assign(money.allowance, stored.money.allowance);
+                }
+                runDailyCheck();
+                processPendingRedpacketAttempts();
+                if (stored.boardMessages) boardMessages.value = stored.boardMessages;
+                if (stored.boardPeriod) boardPeriod.value = stored.boardPeriod;
+                else if (sessions.value[0]?.period) boardPeriod.value = sessions.value[0].period;
+                if (stored.boardMoodMarks) boardMoodMarks.value = stored.boardMoodMarks;
+                else if (sessions.value[0]?.calendarMarks) boardMoodMarks.value = sessions.value[0].calendarMarks;
+                if (stored.boardPeriodNotes) boardPeriodNotes.value = stored.boardPeriodNotes;
+                if (stored.boardPeriodDeleted) boardPeriodDeleted.value = stored.boardPeriodDeleted;
+                if (stored.boardPersonalDays) boardPersonalDays.value = stored.boardPersonalDays;
+                if (settings.darkMode) document.documentElement.classList.add('dark');
             }
-            if (stored.money.allowance) Object.assign(money.allowance, stored.money.allowance);
-          }
-          // 登录补查：按现实时间核查「今天凌晨5点」是否已检查（每日凌晨五点检查支票，消费到零不立即触发）
-          runDailyCheck();
-          processPendingRedpacketAttempts(); // 上线补掷：离线期间每半小时 20% 收下的机会
-            if (stored.boardMessages) boardMessages.value = stored.boardMessages;
-            // 日历个人数据（全局）：优先用存档，否则从首个梦角的旧数据迁移一次
-            if (stored.boardPeriod) boardPeriod.value = stored.boardPeriod;
-            else if (sessions.value[0]?.period) boardPeriod.value = sessions.value[0].period;
-            if (stored.boardMoodMarks) boardMoodMarks.value = stored.boardMoodMarks;
-            else if (sessions.value[0]?.calendarMarks) boardMoodMarks.value = sessions.value[0].calendarMarks;
-            if (stored.boardPeriodNotes) boardPeriodNotes.value = stored.boardPeriodNotes;
-            if (stored.boardPeriodDeleted) boardPeriodDeleted.value = stored.boardPeriodDeleted;
-            if (stored.boardPersonalDays) boardPersonalDays.value = stored.boardPersonalDays;
-          if (settings.darkMode) document.documentElement.classList.add('dark');
-        }
-        // 每次上线：自动从云笺册（会话卡片列表）抓一个可见会话作为顶部显示（名称 + 字卡/意趣图标跟随）
-        if (!currentSessionId.value) {
-          const vis = visibleSessions.value;
-          if (vis.length) currentSessionId.value = vis[Math.floor(Math.random() * vis.length)].id;
-        }
-        // 草稿已改为 per-session（存于各会话 .draft，随 localforage 恢复），不再用全局 localStorage 单键
-        updateUnread();
-        applyCSS();
-        if (settings.soundEnabled)
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        manageActiveTimer();
-        setTimeout(() => {
-          showIntro.value = false;
-        }, 2800);
-        // 提醒覆盖屏：intro 淡出后触发（纪念日前3天/月经前1天/当天）
-        // 不再限制只能 home 视图——这类全局提醒在任意页面打开时都应补查一次
-        setTimeout(() => {
-          maybeShowRemind();
-        }, 3000);
-        document.addEventListener(
-          'click',
-          () => {
-            if (settings.soundEnabled && audioCtx?.state === 'suspended') audioCtx.resume();
-          },
-          { once: true },
-        );
-        archiveAllowance();
-        // 支票卡闲置态随机句（你原本那5句之一），保证首屏与旧档都有值
-        if (!money.check.idleQuote) {
-          money.check.idleQuote = wealthQuotes[Math.floor(Math.random() * wealthQuotes.length)];
-        }
-        // 信封/问卷/状态：先处理"离线期间已到点"，再启动周期检查。
-        // 放在会话定时器之前、且各自独立 try/catch——某一项初始化异常不会连坐跳过其它检查（问卷/信封绝不悬挂）
-        try { checkEnvelopeArrival(); } catch (e) {}
-        try { startEnvelopeTimer(); } catch (e) {}
-        try { startStatusTimer(); } catch (e) {}
-        try { checkSurveyArrival(); } catch (e) {}
-        try { startSurveyTimer(); } catch (e) {}
-        // 启动所有会话的来电定时器
-        sessions.value.forEach((s) => {
-          if (s.type !== 'group') startIncomingTimer(s);
-          startRedpacketTimer(s);
-          if (s.type === 'group') {
-            startGroupRoleTimer(s); // 群聊角色抢红包定时器
-            if (s.groupChatEnabled) startGroupChatTimer(s); // 主动会话定时器
-          }
-        });
+            if (!currentSessionId.value) {
+                const vis = visibleSessions.value;
+                if (vis.length) currentSessionId.value = vis[Math.floor(Math.random() * vis.length)].id;
+            }
+            updateUnread();
+            applyCSS();
+            if (settings.soundEnabled)
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            manageActiveTimer();
+            setTimeout(() => { showIntro.value = false; }, 2800);
+            setTimeout(() => { maybeShowRemind(); }, 3000);
+            document.addEventListener('click', () => {
+                if (settings.soundEnabled && audioCtx?.state === 'suspended') audioCtx.resume();
+            }, { once: true });
+            archiveAllowance();
+            if (!money.check.idleQuote) {
+                money.check.idleQuote = wealthQuotes[Math.floor(Math.random() * wealthQuotes.length)];
+            }
 
-        // ===== 切后台/退出时：关闭所有弹窗遮罩 + 强制存盘 =====
-        // 安卓 Edge 的「添加到主屏幕」应用冷启动时，会把上一次退出时的画面缓存成启动快照。
-        // 若退出时正开着半透明黑色遮罩的弹窗（通话/写信/标记等），下次点图标就会先闪一下那张
-        // 脏快照（黑罩+内容），再进「见字如面」。这里在切后台瞬间统一关闭所有弹窗，让快照永远
-        // 是干净的主屏。
-        const closeAllOverlays = () => {
-          const off = (obj) => { if (obj && typeof obj === 'object') obj.show = false; };
-          [sessionMenuOpen, groupPickerOpen, surveyEditOpen, patPickerOpen, emotePickerOpen,
-           mentionPickerOpen, groupMembersOpen, boardMarkOpen, calViewOpen, sharePickOpen,
-           boardWriteShow, envelopeShow, addressBookOpen, sessionSwitchOpen]
-            .forEach((r) => { if (r && typeof r === 'object' && 'value' in r) r.value = false; });
-          [exprForm, bulkForm, checkShareForm, shareViewState, redpacketState, checkSetup,
-           purchaseForm, incomeDetail, tierEdit, rangeEdit, anniversaryAdd, anniversaryView,
-           personalDayAdd, personalDayView, sendRp, grabPacketForm, expenseForm, markState,
-           settleFlow].forEach(off);
-          if (lightboxImage && 'value' in lightboxImage) lightboxImage.value = '';
-          if (remind && 'show' in remind) remind.show = false;
-          if (callMinimized && 'value' in callMinimized) callMinimized.value = false;
-          debouncedSave();
-        };
-        const handleHide = () => {
-          if (document.hidden) closeAllOverlays();
-          else { try { checkSurveyArrival(); } catch (e) {} } // 从后台切回前台，立刻补查到点问卷（防节流悬挂）
-        };
-        document.addEventListener('visibilitychange', handleHide);
-        window.addEventListener('pagehide', closeAllOverlays);
-        onUnmounted(() => {
-          document.removeEventListener('visibilitychange', handleHide);
-          window.removeEventListener('pagehide', closeAllOverlays);
-        });
+            // ===== 各类定时器 =====
+            try { checkEnvelopeArrival(); } catch (e) {}
+            try { startEnvelopeTimer(); } catch (e) {}
+            try { startStatusTimer(); } catch (e) {}
+            try { checkSurveyArrival(); } catch (e) {}
+            try { startSurveyTimer(); } catch (e) {}
 
-        nextTick(() => {
-          if (window.lucide) lucide.createIcons();
-        });
+            sessions.value.forEach((s) => {
+                if (s.type !== 'group') startIncomingTimer(s);
+                startRedpacketTimer(s);
+                if (s.type === 'group') {
+                    startGroupRoleTimer(s);
+                    if (s.groupChatEnabled) startGroupChatTimer(s);
+                }
+            });
 
-        // 每日凌晨5点系统检查：打开时先按现实时间补查一次（离线跨过5点也能补上），之后每分钟轮询（覆盖挂机跨5点）
-        runDailyCheck();
-        setInterval(runDailyCheck, 60 * 1000);
-        // 红包「半小时 20% 收下」掷点：每分钟轮询，到达 nextTryAt 即掷一次
-        setInterval(processPendingRedpacketAttempts, 60 * 1000);
-      } catch (e) { console.error('[空境] 初始化失败：', e); }
+            // ===== 每日系统检查 =====
+            try { runDailyCheck(); } catch (e) {}
+            try { setInterval(runDailyCheck, 60 * 1000); } catch (e) {}
+
+// ===== 群成员在线状态定时器（每5秒更新） =====
+try {
+  // 先初始化所有群的成员状态
+  sessions.value.forEach(s => { if (s.type === 'group') initGroupMemberStatus(s); });
+  setInterval(() => {
+    try { toggleMemberStatus(); } catch (e) {}
+  }, 5000);
+} catch (e) {}
+
+            // ===== 投票过期检查（每分钟） =====
+            try {
+                setInterval(() => {
+                    sessions.value.forEach(g => {
+                        if (g.type === 'group' && g.polls) {
+                            g.polls.forEach(p => {
+                                if (!p.isClosed && p.expireAt && Date.now() > p.expireAt) {
+                                    p.isClosed = true;
+                                }
+                            });
+                        }
+                    });
+                }, 60 * 1000);
+            } catch (e) {}
+
+            // ===== 红包重试检查 =====
+            try {
+                setInterval(processPendingRedpacketAttempts, 60 * 1000);
+            } catch (e) {}
+
+            // ===== 强制关闭所有弹窗（防止颜色选择器残留） =====
+            colorPicker.open = false;
+            document.querySelectorAll('.redpacket-overlay').forEach(el => el.style.display = 'none');
+
+        } catch (e) {
+            console.error('[空境] 初始化失败：', e);
+        }
     });
 
     onUnmounted(() => {
@@ -7571,6 +8038,11 @@ const exportAllData = () => {
       switchSessionToHome,
       groupPickerOpen,
       groupMembersOpen,
+addGroupMemberOpen,
+openAddGroupMember,
+availableMembers,
+addMemberToGroup,
+removeGroupMember,
       groupPickSelected,
       openGroupPicker,
       closeGroupPicker,
@@ -7936,6 +8408,22 @@ const exportAllData = () => {
       confirmPersonalDayEdit,
       closePersonalDayView,
       deletePersonalDay,
+        pollCreator,
+        pollResult,
+        groupMembers,
+        openPollCreator,
+        sendPoll,
+        getPollById,
+        castVote,
+        closePoll,
+        viewPollResult,
+        getOptionPercent,
+        getMemberName,
+groupMemberStatus,
+initGroupMemberStatus,
+isMemberOnline,
+toggleMemberStatus,
+groupOnlineInfo,
       deleteEnvelope
     };
   },
