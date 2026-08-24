@@ -779,11 +779,7 @@
                 </header>
 
                 <!-- 群聊会话：字卡库不展示，提示先切到私聊 -->
-                <div v-if="currentSession?.type === 'group'" class="flex-1 flex flex-col items-center justify-center text-center px-8 gap-2">
-                    <div class="text-text text-sm tracking-widest">字卡库仅对私聊开放</div>
-                    <div class="text-xs text-muted tracking-widest mt-1">请先进入一个私聊</div>
-                </div>
-                <template v-else>
+                
 
                 <!-- 红包备注混合开关 -->
                 <div v-if="activeBox === '红包备注'" class="px-4 py-2 bg-surface border-b border-border flex items-center justify-between text-xs shrink-0 gap-3">
@@ -1762,56 +1758,72 @@
         </div>
 
         <!-- 群聊 @ 提及弹窗 -->
-        <div v-if="mentionPickerOpen" class="redpacket-overlay" @click.self="closeMentionPicker">
-            <div class="redpacket-card" style="width:280px;">
-                <div class="redpacket-card-top" style="padding-bottom:14px;">
-                    <div class="text-white text-sm font-medium tracking-wider">提及一位好友</div>
-                </div>
-                <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
-                    <div v-for="mid in currentSession.members" :key="mid" @click="pickMention(mid)"
-                         class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2"
-                         :class="mentionTarget === mid ? 'border-text bg-bg' : ''">
-                      
-                        <span class="text-[13px] text-text">{{ mentionNameOf(mid) }}</span>
-                    </div>
-                </div>
-                <div class="px-4 pb-4">
-                    <button @click="clearMention; closeMentionPicker()" class="w-full py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+<div v-if="mentionPickerOpen" class="redpacket-overlay" @click.self="closeMentionPicker">
+    <div class="redpacket-card" style="width:280px;">
+        <div class="redpacket-card-top" style="padding-bottom:14px;">
+            <div class="text-white text-sm font-medium tracking-wider">提及一位好友</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
+            <div v-for="mid in currentSession.members" :key="mid"
+                 @click="pickMention(mid)"
+                 class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2"
+                 :class="mentionTarget === mid ? 'border-text bg-bg' : ''">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text shrink-0">{{ mentionNameOf(mid).charAt(0) }}</span>
+                    <span class="text-[13px] text-text truncate">{{ mentionNameOf(mid) }}</span>
+                    <span v-if="isMemberOnline(currentSession.id, mid)" 
+                          class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block shrink-0" 
+                          title="在线"></span>
+                    <span v-else 
+                          class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block shrink-0" 
+                          title="离线"></span>
                 </div>
             </div>
         </div>
+        <div class="px-4 pb-4">
+            <button @click="clearMention; closeMentionPicker()" class="w-full py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+        </div>
+    </div>
+</div>
 
         <!-- 群成员查看弹窗 -->
-        <div v-if="groupMembersOpen" class="redpacket-overlay" @click.self="groupMembersOpen = false">
-            <div class="redpacket-card" style="width:280px;">
-                <div class="redpacket-card-top" style="padding-bottom:14px;">
-                    <div class="text-white text-sm font-medium tracking-wider">群成员 · {{ (currentSession.members || []).length }} 位</div>
+<div v-if="groupMembersOpen" class="redpacket-overlay" @click.self="groupMembersOpen = false">
+    <div class="redpacket-card" style="width:320px;">
+        <div class="redpacket-card-top" style="padding-bottom:14px;">
+            <div class="text-white text-sm font-medium tracking-wider">群成员 · {{ (currentSession.members || []).length }} 位</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
+            <div v-for="mid in currentSession.members" :key="mid"
+                 class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text shrink-0">{{ mentionNameOf(mid).charAt(0) }}</span>
+                    <span class="text-[13px] text-text truncate">{{ mentionNameOf(mid) }}</span>
+                    <span v-if="isMemberOnline(currentSession.id, mid)" 
+                          class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block shrink-0" 
+                          title="在线"></span>
+                    <span v-else 
+                          class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block shrink-0" 
+                          title="离线"></span>
                 </div>
-                <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
-                    <div v-for="mid in currentSession.members" :key="mid"
-     class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2">
-    <div class="flex items-center gap-2">
-        <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text">{{ mentionNameOf(mid).charAt(0) }}</span>
-        <span class="text-[13px] text-text">{{ mentionNameOf(mid) }}</span>
-        <!-- 在线状态点 -->
-        <span v-if="isMemberOnline(currentSession.id, mid)" 
-              class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block ml-1.5" 
-              title="在线"></span>
-        <span v-else 
-              class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block ml-1.5" 
-              title="离线"></span>
-    </div>
-    <button @click="removeGroupMember(mid)" class="text-red-400 hover:text-red-600 text-sm font-light px-2" title="移出群聊">×</button>
-</div>
-                </div>
-                <div class="px-4 pb-4">
-                    <div class="px-4 pb-4 flex gap-2">
-    <button @click="openAddGroupMember" class="flex-1 py-2.5 rounded-lg text-[13px] text-white" style="background:var(--nav-icon-color);">+ 添加成员</button>
-    <button @click="groupMembersOpen = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">关闭</button>
-                    </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <!-- 🔥 拍一拍按钮 -->
+                    <button @click="openGroupPat(mid)" 
+                            class="text-[10px] px-2 py-0.5 rounded-full border border-border/60 text-muted hover:text-text hover:border-text transition-colors whitespace-nowrap"
+                            title="拍一拍TA">
+                        拍一拍
+                    </button>
+                    <button @click="removeGroupMember(mid)" 
+                            class="text-red-400 hover:text-red-600 text-sm font-light px-1.5" 
+                            title="移出群聊">×</button>
                 </div>
             </div>
         </div>
+        <div class="px-4 pb-4 flex gap-2">
+            <button @click="openAddGroupMember" class="flex-1 py-2.5 rounded-lg text-[13px] text-white" style="background:var(--nav-icon-color);">+ 添加成员</button>
+            <button @click="groupMembersOpen = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">关闭</button>
+        </div>
+    </div>
+</div>
 
 <!-- 添加群成员弹窗 -->
 <div v-if="addGroupMemberOpen" class="redpacket-overlay" @click.self="addGroupMemberOpen = false">
@@ -3063,7 +3075,27 @@ createApp({
         // 红包备注箱子：固定三档隔板(一/二/三)；situation==='红包备注' 且传入 tierId 且 box.mix===false 时只抽对应档，否则混抽全部
         // 其余情境（私聊/信封回复/分享回复等）接入群聊或红包备注箱子时一律混抽（后台默认混合，不受该箱混合开关影响）
         const envelopeCardItems = (session, situation = '群聊', groupId = null, tierId = null) => {
-          const s = session || currentSession.value;
+        
+// ===== 群聊共享池：直接从群聊的「私语」箱子读取 =====
+if (situation === '群聊' && session && session.type === 'group') {
+  const privateBox = session.corpus?.boxes?.['私聊'];
+  if (privateBox) {
+    const items = [];
+    (privateBox.groups || []).forEach((g) =>
+      (g.replies || []).forEach((r) => {
+        const t = (r.text || '').trim();
+        if (r.enabled !== false && (t || r.image)) items.push({ text: t, image: r.image || null });
+      })
+    );
+    // 不管有没有内容，都返回 items（可能为空数组），不再往下走
+    return items;
+  }
+  // 如果连 privateBox 都没有，也返回空数组
+  return [];
+}
+// 非群聊情况继续原逻辑
+ 
+	 const s = session || currentSession.value;
           const roots = (s?.corpus?.routes?.[situation]) || [];
           const items = [];
           const pushCard = (r) => {
@@ -4126,7 +4158,7 @@ createApp({
           // localStorage 单域名约 5MB，超限时静默降级为"只存轻量元数据"，不打断主流程
           mirrorToLocalStorage('__kj_mirror', fullData);
         } catch (e) { console.error('[空境] 保存数据失败：', e); }
-      }, 400);
+      }, 1200);
     };
 //留言删除
 const deleteEnvelope = (id) => {
@@ -4731,39 +4763,112 @@ if (contentRaw == null && !opts.image) return;
         else setTimeout(() => triggerReply(undefined, cur), 200);
       }
     };
-    // ===== 拍一拍（仅私聊）：我拍他 =====
-    const patPickerOpen = ref(false);
-    const patNewText = ref('');
-    let patLongPressTimer = null;
-    const doPat = (text) => {
-      const cur = currentSession.value;
-      if (!cur || cur.type === 'group') return;
-      pushPat(cur, text); // 灰字直接显示所选短语；列表空时走默认「我拍了拍他」
-      patPickerOpen.value = false;
-      patNewText.value = '';
-    };
-    const addPatItem = () => {
-      const cur = currentSession.value;
-      const t = (patNewText.value || '').trim();
-      if (!cur || !t) return;
-      if (!Array.isArray(cur.myPatList)) cur.myPatList = [];
-      cur.myPatList.push(t);
-      patNewText.value = '';
-      debouncedSave();
-    };
-    const patLongPressStart = (pi) => {
-      patLongPressTimer = setTimeout(async () => {
+
+
+    // ===== 拍一拍：私聊 + 群聊（用户主动） =====
+const patPickerOpen = ref(false);
+const patNewText = ref('');
+let patLongPressTimer = null;
+
+// 群聊拍一拍的目标（临时存储）
+const patTarget = ref(null);
+
+// 打开群聊拍一拍（从群成员列表点击触发）
+const openGroupPat = async (mid) => {
+    const cur = currentSession.value;
+    if (!cur || cur.type !== 'group') return;
+    patTarget.value = mid;
+    
+    // 弹出一个输入框，让用户自定义拍法
+    const input = await appPrompt({
+        message: '输入拍法（留空则使用默认）',
+        defaultValue: '拍了拍',
+        placeholder: '例如：拍了拍肩膀'
+    });
+    
+    // 如果用户取消或输入为空，则使用默认值
+    const text = (input && input.trim()) ? input.trim() : '拍了拍';
+    doPat(text);
+};
+
+// 执行拍一拍（私聊或群聊）
+const doPat = (text) => {
+    const cur = currentSession.value;
+    if (!cur) return;
+
+    // ----- 群聊拍一拍（用户主动拍别人）-----
+    if (cur.type === 'group' && patTarget.value) {
+        const targetId = patTarget.value;
+        const targetName = senderName(targetId);
+        
+        // 1. 发送拍一拍消息（显示“我拍了拍 XXX：拍法”）
+        pushGroupPat(cur, 'me', targetId, text);
+        
+        // 2. 检查目标是否在线
+        if (!isMemberOnline(cur.id, targetId)) {
+            // 如果不在线，1.5~2.5 秒后让它上线
+            const delay = 1500 + Math.random() * 1000;
+            setTimeout(() => {
+                // 更新状态为在线
+                if (groupMemberStatus[cur.id]) {
+                    groupMemberStatus[cur.id][targetId] = true;
+                }
+                // 发一条系统消息：“XXX 上线了”
+                cur.messages.push({
+                    id: genId(),
+                    sender: 'system',
+                    content: `${targetName} 上线了`,
+                    timestamp: Date.now(),
+                    isTyping: false,
+                    isReadFlag: currentView.value === 'chat' && currentSessionId.value === cur.id,
+                });
+                scrollToBottom();
+                debouncedSave();
+            }, delay);
+        }
+        
+        // 清空目标，关闭面板
+        patTarget.value = null;
+        patPickerOpen.value = false;
+        return;
+    }
+
+    // ----- 私聊拍一拍（原有逻辑）-----
+    if (cur.type === 'private') {
+        pushPat(cur, text);
+    }
+    
+    patPickerOpen.value = false;
+    patNewText.value = '';
+};
+
+// 添加自定义拍法（私聊/群聊通用）
+const addPatItem = () => {
+    const cur = currentSession.value;
+    const t = (patNewText.value || '').trim();
+    if (!cur || !t) return;
+    if (!Array.isArray(cur.myPatList)) cur.myPatList = [];
+    cur.myPatList.push(t);
+    patNewText.value = '';
+    debouncedSave();
+};
+
+// 长按删除拍法（私聊/群聊通用）
+const patLongPressStart = (pi) => {
+    patLongPressTimer = setTimeout(async () => {
         const cur = currentSession.value;
         if (!cur || !Array.isArray(cur.myPatList)) return;
         if (await appConfirm('删除这个拍法？')) {
-          cur.myPatList.splice(pi, 1);
-          debouncedSave();
+            cur.myPatList.splice(pi, 1);
+            debouncedSave();
         }
-      }, 600);
-    };
-    const patLongPressEnd = () => {
-      if (patLongPressTimer) { clearTimeout(patLongPressTimer); patLongPressTimer = null; }
-    };
+    }, 600);
+};
+const patLongPressEnd = () => {
+    if (patLongPressTimer) { clearTimeout(patLongPressTimer); patLongPressTimer = null; }
+};
+
+
     // 从当前会话历史里挑一条"可引用"的消息（排除系统小字/抢红包卡/分享卡等特殊类型，排除纯空白）
     const pickQuote = (session) => {
       const s = session || currentSession.value;
@@ -4800,6 +4905,41 @@ if (contentRaw == null && !opts.image) return;
     };
     // 从专属书册（拍一拍/问号/状态）抽一条启用的字卡文本；书册空返回 null
     const drawFromSpecialBox = (session, boxName) => {
+
+// ===== 群聊拍一拍字卡池：合并群聊共享库 + 成员自己的库 =====
+const drawGroupPat = (group, memberId) => {
+  if (!group || group.type !== 'group') return null;
+  const pool = [];
+
+  // 1) 从群聊自己的「拍一拍」书册收集
+  const groupPatBox = group.corpus?.boxes?.['拍一拍'];
+  if (groupPatBox) {
+    (groupPatBox.groups || []).forEach(g => {
+      (g.replies || []).forEach(r => {
+        const t = (r.text || '').trim();
+        if (r.enabled !== false && t) pool.push(t);
+      });
+    });
+  }
+
+  // 2) 从成员自己的「拍一拍」书册收集
+  const member = sessions.value.find(s => s.id === memberId);
+  if (member) {
+    const memberPatBox = member.corpus?.boxes?.['拍一拍'];
+    if (memberPatBox) {
+      (memberPatBox.groups || []).forEach(g => {
+        (g.replies || []).forEach(r => {
+          const t = (r.text || '').trim();
+          if (r.enabled !== false && t) pool.push(t);
+        });
+      });
+    }
+  }
+
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
       const box = session.corpus?.boxes?.[boxName];
       if (!box) return null;
       const pool = [];
@@ -4830,6 +4970,27 @@ if (contentRaw == null && !opts.image) return;
       updateUnread();
       debouncedSave();
     };
+
+// ===== 群聊拍一拍：发送一条拍一拍消息（居中灰字） =====
+const pushGroupPat = (group, fromId, targetId, text) => {
+    const fromName = senderName(fromId);
+    const targetName = senderName(targetId);
+    // 组装显示文案，例如：“小A 拍了拍 小B：拍了拍肩膀”
+    const content = `${fromName} 拍了拍 ${targetName}：${text}`;
+    group.messages.push({
+        id: genId(),
+        sender: 'system',          // 作为系统消息，不显示头像
+        type: 'pat',               // 拍一拍类型，会使用居中灰字样式
+        content: content,
+        timestamp: Date.now(),
+        status: 'read',
+        isReadFlag: currentView.value === 'chat' && currentSessionId.value === group.id,
+        isTyping: false,
+    });
+    scrollToBottom();      // 滚动到最新消息
+    debouncedSave();       // 自动保存
+};
+
     // TA 发言前的专属书册骰子：8% 拍一拍 → 10% 问句 → 否则返回 false 走普通回复
     const trySpecialSpeak = () => {
       const cur = currentSession.value;
@@ -4953,51 +5114,65 @@ if (contentRaw == null && !opts.image) return;
       }, d);
     };
     // 群聊回复：用户发消息后按场景回复（@矩阵 / 普通80%）
-    const triggerGroupReply = (delay, mention = null, groupArg = null) => {
-      const group = groupArg || currentSession.value;
-      if (!group || group.type !== 'group') return;
-      const memberIds = group.members || [];
-      setTimeout(() => {
-        // 被标记的@无意义（0%回复）：由当前消息是否被标记决定——简化：@时若触发标记则全0%
-        const mentionedMarked = mention && group.groupMarkEnabled && Math.random() < 0.15;
-        // 过滤掉离线的成员（除非是被@的）
-           const onlineMembers = memberIds.filter(mid => {
-               if (mention && mid === mention) return true; // 被@的人即使离线也回复
-               return isMemberOnline(group.id, mid);
-            });
-            if (!onlineMembers.length) return;
+   const triggerGroupReply = (delay, mention = null, groupArg = null) => {
+  const group = groupArg || currentSession.value;
+  if (!group || group.type !== 'group') return;
+  const memberIds = group.members || [];
+  setTimeout(() => {
+    const onlineMembers = memberIds.filter(mid => {
+      if (mention && mid === mention) return true;
+      return isMemberOnline(group.id, mid);
+    });
+    if (!onlineMembers.length) return;
+
+    onlineMembers.forEach((mid, i) => {
+      const member = sessions.value.find((s) => s.id === mid);
+      if (!member) return;
+
+      // ===== 5% 概率触发拍一拍（使用群聊共享库 + 成员自己的库）=====
+      if (Math.random() < 0.05) {
+        const patText = drawGroupPat(group, mid); // 用新的函数
+        if (patText) {
+          const otherOnline = onlineMembers.filter(m => m !== mid);
+          if (otherOnline.length > 0) {
+            const targetId = otherOnline[Math.floor(Math.random() * otherOnline.length)];
+            pushGroupPat(group, mid, targetId, patText);
           
-          onlineMembers.forEach((mid, i) => {
-          const member = sessions.value.find((s) => s.id === mid);
-          if (!member) return;
-          let pool = envelopeCardItems(member, '群聊', group.id);
-          if (!pool.length) pool = envelopeCardItems(member, '私聊');
-          if (!pool.length) return;
-
-          let prob;
-          if (mention) {
-            if (mentionedMarked) return; // 被标记的@：0% 回复
-            prob = (mid === mention) ? 0.9 : 0.3; // 被@者90%，其他30%
-          } else {
-            prob = 0.6; // 普通消息各角色60%，已读不回
           }
-          if (Math.random() >= prob) return;
+        }
+      }
+      // ===== 拍一拍逻辑结束 =====
 
-          const offset = i * randomMs(600, 1600);
-          setTimeout(() => {
-            const marked = !mention && group.groupMarkEnabled && Math.random() < 0.15;
-            const pick = pool[Math.floor(Math.random() * pool.length)];
-            const opts = { marked };
-            if (pick.image) opts.image = pick.image;
-            if (Math.random() < 0.1) {
-              const q = pickQuote(group);
-              if (q) opts.quote = q;
-            }
-            sendMessage(mid, pick.text, { ...opts, session: group });
-          }, offset);
-        });
-      }, delay);
-    };
+      const groupPool = envelopeCardItems(group, '群聊', group.id);
+      const privatePool = envelopeCardItems(member, '私聊');
+      const pool = [...groupPool, ...privatePool];
+      if (!pool.length) return;
+
+      let prob;
+      if (mention) {
+        const mentionedMarked = group.groupMarkEnabled && Math.random() < 0.15;
+        if (mentionedMarked) return;
+        prob = (mid === mention) ? 0.9 : 0.3;
+      } else {
+        prob = 0.6;
+      }
+      if (Math.random() >= prob) return;
+
+      const offset = i * randomMs(600, 1600);
+      setTimeout(() => {
+        const marked = !mention && group.groupMarkEnabled && Math.random() < 0.15;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const opts = { marked };
+        if (pick.image) opts.image = pick.image;
+        if (Math.random() < 0.1) {
+          const q = pickQuote(group);
+          if (q) opts.quote = q;
+        }
+        sendMessage(mid, pick.text, { ...opts, session: group });
+      }, offset);
+    });
+  }, delay);
+};
     const forceReply = () => {
       if (currentSession.value && typingSessions[currentSession.value.id]) return;
       const cur = currentSession.value;
@@ -5355,7 +5530,14 @@ const initGroupMemberStatus = (group) => {
   const statusMap = groupMemberStatus[group.id];
   (group.members || []).forEach(mid => {
     if (statusMap[mid] === undefined) {
-      statusMap[mid] = Math.random() < 0.7; // 70% 概率初始在线
+      const memberCount = (group.members || []).length;
+let onlineProb = 0.85; // 默认 85%
+if (memberCount < 10) {
+  onlineProb = 1; // 10人以下全部在线
+} else {
+  onlineProb = 0.90 + Math.random() * 0.1; // 90%~95% 随机
+}
+statusMap[mid] = Math.random() < onlineProb;
     }
   });
   // 清理已不存在的成员
@@ -5380,8 +5562,8 @@ const toggleMemberStatus = () => {
     const statusMap = groupMemberStatus[s.id];
     if (!statusMap) return;
     Object.keys(statusMap).forEach(mid => {
-      // 每个成员 30% 概率翻转状态
-      if (Math.random() < 0.3) {
+      // 每个成员 5% 概率翻转状态
+      if (Math.random() < 0.15) {
         statusMap[mid] = !statusMap[mid];
       }
     });
@@ -5695,152 +5877,182 @@ const removeGroupMember = (mid) => {
 
     // ===== 导出三合一备份（字卡 + 状态 + 表情） =====
     const exportTriple = () => {
-      const s = currentSession.value;
-      if (!s) { showToast('请先进入一个会话'); return; }
+  const s = currentSession.value;
+  if (!s) { showToast('请先进入一个会话'); return; }
 
-      // 1) 收集所有字卡（从「私聊」箱子的所有卷宗中取启用的文本，去重）
-      const replyBox = s.corpus?.boxes?.['私聊'];
-      const repliesSet = new Set();
-      (replyBox?.groups || []).forEach(g => {
-        (g.replies || []).forEach(r => {
-          if (r.enabled !== false && r.text && r.text.trim()) {
-            repliesSet.add(r.text.trim());
-          }
-        });
-      });
+  const replyBox = s.corpus?.boxes?.['私聊'];
+  const repliesSet = new Set();
+  (replyBox?.groups || []).forEach(g => {
+    (g.replies || []).forEach(r => {
+      if (r.enabled !== false && r.text && r.text.trim()) {
+        repliesSet.add(r.text.trim());
+      }
+    });
+  });
 
-      // 2) 收集状态（从「状态」书册的所有卷宗中取启用的文本）
-      const statusBox = s.corpus?.boxes?.['状态'];
-      const statusesSet = new Set();
-      (statusBox?.groups || []).forEach(g => {
-        (g.replies || []).forEach(r => {
-          if (r.enabled !== false && r.text && r.text.trim()) {
-            statusesSet.add(r.text.trim());
-          }
-        });
-      });
+  const statusBox = s.corpus?.boxes?.['状态'];
+  const statusesSet = new Set();
+  (statusBox?.groups || []).forEach(g => {
+    (g.replies || []).forEach(r => {
+      if (r.enabled !== false && r.text && r.text.trim()) {
+        statusesSet.add(r.text.trim());
+      }
+    });
+  });
 
-      // 3) 收集表情（从「私聊」箱子的一个固定卷宗 "导入表情" 中取文本，或者你也可以从 myEmotes 中取，但 myEmotes 存图片，这里只取文本）
-      // 我们简单从「私聊」箱子的所有卷宗里找包含表情符号的文本？但为了明确，我们只从名为 "导入表情" 的卷宗取
-      let emojisSet = new Set();
-      const emojiGroup = (replyBox?.groups || []).find(g => g.name === '导入表情');
-      if (emojiGroup) {
-        (emojiGroup.replies || []).forEach(r => {
-          if (r.enabled !== false && r.text && r.text.trim()) {
-            emojisSet.add(r.text.trim());
+  let emojisSet = new Set();
+  const emojiGroup = (replyBox?.groups || []).find(g => g.name === '导入表情');
+  if (emojiGroup) {
+    (emojiGroup.replies || []).forEach(r => {
+      if (r.enabled !== false && r.text && r.text.trim()) {
+        emojisSet.add(r.text.trim());
+      }
+    });
+  }
+
+  // 收集拍一拍（从「拍一拍」书册）
+  const patBox = s.corpus?.boxes?.['拍一拍'];
+  const pokesSet = new Set();
+  (patBox?.groups || []).forEach(g => {
+    (g.replies || []).forEach(r => {
+      if (r.enabled !== false && r.text && r.text.trim()) {
+        pokesSet.add(r.text.trim());
+      }
+    });
+  });
+
+  const data = {
+    exportDate: new Date().toISOString(),
+    modules: ['replies', 'statuses', 'emojis', 'pokes'],
+    customReplies: Array.from(repliesSet),
+    customStatuses: Array.from(statusesSet),
+    customEmojis: Array.from(emojisSet),
+    customPokes: Array.from(pokesSet), // 字段名改为 customPokes
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `三组备份_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('三合一备份已导出（含拍一拍）');
+};
+
+    // ===== 导入三合一备份 =====
+    const importTriple = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const s = currentSession.value;
+  if (!s) { showToast('请先进入一个会话'); return; }
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      // 检查必要字段（拍一拍兼容 customPokes 和 customPats）
+      const hasReplies = data.customReplies && Array.isArray(data.customReplies);
+      const hasStatuses = data.customStatuses && Array.isArray(data.customStatuses);
+      const hasEmojis = data.customEmojis && Array.isArray(data.customEmojis);
+      const hasPokes = (data.customPokes && Array.isArray(data.customPokes)) || (data.customPats && Array.isArray(data.customPats));
+      if (!hasReplies && !hasStatuses && !hasEmojis && !hasPokes) {
+        await appAlert('未找到 customReplies / customStatuses / customEmojis / customPokes(或customPats) 字段，格式不匹配');
+        return;
+      }
+
+      const mode = await appConfirm('导入方式：选择「确定」覆盖已有内容，取消则合并追加到现有数据中。');
+      const overwrite = mode === true;
+
+      // 确保拍一拍书册存在
+      if (!s.corpus.boxes['拍一拍']) {
+        s.corpus.boxes['拍一拍'] = { groups: [] };
+      }
+
+      // ===== 处理字卡 =====
+      const replyBox = s.corpus.boxes['私聊'];
+      let replyGroup = replyBox.groups.find(g => g.name === '导入字卡');
+      if (!replyGroup) {
+        replyGroup = { id: genId(), name: '导入字卡', replies: [] };
+        replyBox.groups.push(replyGroup);
+      }
+      if (overwrite) replyGroup.replies = [];
+      if (data.customReplies) {
+        data.customReplies.forEach(text => {
+          if (text && typeof text === 'string' && text.trim()) {
+            if (!replyGroup.replies.some(r => r.text === text.trim() && !r.image)) {
+              replyGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
+            }
           }
         });
       }
 
-      const data = {
-        exportDate: new Date().toISOString(),
-        modules: ['replies', 'statuses', 'emojis'],
-        customReplies: Array.from(repliesSet),
-        customStatuses: Array.from(statusesSet),
-        customEmojis: Array.from(emojisSet),
-      };
+      // ===== 处理状态 =====
+      const statusBox = s.corpus.boxes['状态'];
+      let statusGroup = statusBox.groups.find(g => g.name === '导入状态');
+      if (!statusGroup) {
+        statusGroup = { id: genId(), name: '导入状态', replies: [] };
+        statusBox.groups.push(statusGroup);
+      }
+      if (overwrite) statusGroup.replies = [];
+      if (data.customStatuses) {
+        data.customStatuses.forEach(text => {
+          if (text && typeof text === 'string' && text.trim()) {
+            if (!statusGroup.replies.some(r => r.text === text.trim())) {
+              statusGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
+            }
+          }
+        });
+      }
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      const d = new Date();
-      a.download = `三组备份_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      showToast('三合一备份已导出');
-    };
+      // ===== 处理表情 =====
+      let emojiGroup = replyBox.groups.find(g => g.name === '导入表情');
+      if (!emojiGroup) {
+        emojiGroup = { id: genId(), name: '导入表情', replies: [] };
+        replyBox.groups.push(emojiGroup);
+      }
+      if (overwrite) emojiGroup.replies = [];
+      if (data.customEmojis) {
+        data.customEmojis.forEach(text => {
+          if (text && typeof text === 'string' && text.trim()) {
+            if (!emojiGroup.replies.some(r => r.text === text.trim())) {
+              emojiGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
+            }
+          }
+        });
+      }
 
-    // ===== 导入三合一备份 =====
-    const importTriple = (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const s = currentSession.value;
-      if (!s) { showToast('请先进入一个会话'); return; }
+      // ===== 处理拍一拍（优先使用 customPokes，兼容 customPats）=====
+      const patBox = s.corpus.boxes['拍一拍'];
+      let patGroup = patBox.groups.find(g => g.name === '导入拍一拍');
+      if (!patGroup) {
+        patGroup = { id: genId(), name: '导入拍一拍', replies: [] };
+        patBox.groups.push(patGroup);
+      }
+      if (overwrite) patGroup.replies = [];
+      const pokes = data.customPokes || data.customPats || [];
+      if (Array.isArray(pokes)) {
+        pokes.forEach(text => {
+          if (text && typeof text === 'string' && text.trim()) {
+            if (!patGroup.replies.some(r => r.text === text.trim())) {
+              patGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
+            }
+          }
+        });
+      }
 
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          if (!data.customReplies && !data.customStatuses && !data.customEmojis) {
-            await appAlert('未找到 customReplies / customStatuses / customEmojis 字段，格式不匹配');
-            return;
-          }
-
-          // 确认导入方式：覆盖还是合并？
-          const mode = await appConfirm('导入方式：选择「确定」覆盖已有内容，取消则合并追加到现有数据中。');
-          const overwrite = mode === true;
-
-          // 处理字卡（私聊箱子的卷宗）
-          const replyBox = s.corpus.boxes['私聊'];
-          let replyGroup = replyBox.groups.find(g => g.name === '导入字卡');
-          if (!replyGroup) {
-            replyGroup = { id: genId(), name: '导入字卡', replies: [] };
-            replyBox.groups.push(replyGroup);
-          }
-          if (overwrite) {
-            replyGroup.replies = [];
-          }
-          if (data.customReplies && Array.isArray(data.customReplies)) {
-            data.customReplies.forEach(text => {
-              if (text && typeof text === 'string' && text.trim()) {
-                // 去重：如果已存在相同的文本（且不是图片），则跳过
-                if (!replyGroup.replies.some(r => r.text === text.trim() && !r.image)) {
-                  replyGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
-                }
-              }
-            });
-          }
-
-          // 处理状态（状态书册）
-          const statusBox = s.corpus.boxes['状态'];
-          let statusGroup = statusBox.groups.find(g => g.name === '导入状态');
-          if (!statusGroup) {
-            statusGroup = { id: genId(), name: '导入状态', replies: [] };
-            statusBox.groups.push(statusGroup);
-          }
-          if (overwrite) {
-            statusGroup.replies = [];
-          }
-          if (data.customStatuses && Array.isArray(data.customStatuses)) {
-            data.customStatuses.forEach(text => {
-              if (text && typeof text === 'string' && text.trim()) {
-                if (!statusGroup.replies.some(r => r.text === text.trim())) {
-                  statusGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
-                }
-              }
-            });
-          }
-
-          // 处理表情（私聊箱子的另一个卷宗 "导入表情"）
-          let emojiGroup = replyBox.groups.find(g => g.name === '导入表情');
-          if (!emojiGroup) {
-            emojiGroup = { id: genId(), name: '导入表情', replies: [] };
-            replyBox.groups.push(emojiGroup);
-          }
-          if (overwrite) {
-            emojiGroup.replies = [];
-          }
-          if (data.customEmojis && Array.isArray(data.customEmojis)) {
-            data.customEmojis.forEach(text => {
-              if (text && typeof text === 'string' && text.trim()) {
-                if (!emojiGroup.replies.some(r => r.text === text.trim())) {
-                  emojiGroup.replies.push({ id: genId(), text: text.trim(), enabled: true, image: null });
-                }
-              }
-            });
-          }
-
-          debouncedSave();
-          nextTick(initSortable);
-          showToast(`导入完成：字卡 ${data.customReplies?.length || 0} 条，状态 ${data.customStatuses?.length || 0} 条，表情 ${data.customEmojis?.length || 0} 条`);
-        } catch (err) {
-          console.error('[导入三合一]', err);
-          await appAlert('导入失败：' + err.message);
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = ''; // 清空
-    };
+      debouncedSave();
+      nextTick(initSortable);
+      const pokeCount = (data.customPokes || data.customPats || []).length;
+      showToast(`导入完成：字卡 ${data.customReplies?.length || 0} 条，状态 ${data.customStatuses?.length || 0} 条，表情 ${data.customEmojis?.length || 0} 条，拍一拍 ${pokeCount} 条`);
+    } catch (err) {
+      console.error('[导入三合一]', err);
+      await appAlert('导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
 
     // ============ 通话功能 ============
 
@@ -6700,9 +6912,10 @@ const removeGroupMember = (mid) => {
     const groupMemberReply = (g, memberId, scene) => {
       const member = sessions.value.find((s) => s.id === memberId);
       if (!member) return;
-      let pool = envelopeCardItems(member, '群聊', g.id);
-      if (!pool.length) pool = envelopeCardItems(member, '私聊');
-      if (!pool.length) return;
+ const groupPool = envelopeCardItems(g, '群聊', g.id);
+const privatePool = envelopeCardItems(member, '私聊');
+const pool = [...groupPool, ...privatePool];
+if (!pool.length) return;
       setTimeout(() => {
         const marked = g.groupMarkEnabled && Math.random() < 0.15;
         // 30% 概率 @：开启「TA可@任意一位」则可@其他成员或用户；否则只能@用户
@@ -8424,6 +8637,8 @@ initGroupMemberStatus,
 isMemberOnline,
 toggleMemberStatus,
 groupOnlineInfo,
+openGroupPat,
+patTarget,
       deleteEnvelope
     };
   },
