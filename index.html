@@ -621,8 +621,9 @@
                                             <span v-if="pollData.participants.length">(共 {{ pollData.participants.length }} 人参与)</span>
                                             <span v-else>(所有人均可参与)</span>
                                         </div>
-                                        <button v-if="pollData.creator === 'me' && !pollData.isClosed" @click="closePoll(pollData.id)" class="mt-2 px-3 py-1 rounded text-[11px] bg-red-500/10 text-red-500 border border-red-500/30">结束投票</button>
-                                        <button v-if="pollData.isClosed" @click="viewPollResult(pollData.id)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">查看结果</button>
+                                        <button v-if="pollData.creator === 'me' && !pollData.isClosed" @click="closePoll(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">>结束投票</button>
+					<button v-if="pollData.isClosed" @click="viewPollResult(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">查看结果</button>
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -1982,49 +1983,131 @@
             <img :src="lightboxImage" class="max-w-[95vw] max-h-[95vh] object-contain rounded-lg">
         </div>
         <!-- 投票结果弹窗 -->
-        <div v-if="pollResult.show" class="redpacket-overlay" @click.self="pollResult.show = false">
-            <div class="redpacket-card" style="width:380px;max-height:80vh;overflow-y:auto;">
-                <div class="redpacket-card-top" style="padding-bottom:12px;">
-                    <div class="text-white text-sm font-medium tracking-wider">📊 投票结果</div>
+<div v-if="pollResult.show" class="redpacket-overlay" @click.self="pollResult.show = false">
+    <div class="redpacket-card" style="width:420px;max-height:85vh;overflow-y:auto;">
+        <div class="redpacket-card-top" style="padding-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div class="text-white text-sm font-medium tracking-wider">📊 投票结果</div>
+            <button @click="resetPollFilter; pollResult.show = false" class="text-white/80 text-xs underline underline-offset-2">关闭</button>
+        </div>
+        
+        <div class="redpacket-card-bottom" style="text-align:left;padding:16px;">
+            <!-- 如果 pollData 存在 -->
+            <div v-if="pollData = getPollById(pollResult.pollId)">
+                <div class="text-[16px] font-medium text-text">{{ pollData.title }}</div>
+                
+                <!-- ===== 🔥 新增：筛选器 ===== -->
+                <div class="mt-3 p-3 bg-bg/50 rounded-lg border border-border/40 space-y-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[11px] text-muted shrink-0">筛选：</span>
+                        <!-- 选择题目 -->
+                        <select v-model="pollFilter.questionIdx" 
+                                @change="pollFilter.optionIdx = null; pollFilter.expandedMember = null"
+                                class="bg-surface border border-border rounded px-2 py-1 text-[12px] text-text flex-1 min-w-[100px]">
+                            <option :value="null">全部题目</option>
+                            <option v-for="(q, qi) in pollData.questions" :key="qi" :value="qi">
+                                第 {{ qi+1 }} 题：{{ q.text.slice(0, 20) }}{{ q.text.length > 20 ? '...' : '' }}
+                            </option>
+                        </select>
+                        <!-- 选择选项（联动） -->
+                        <select v-model="pollFilter.optionIdx"
+                                @change="pollFilter.expandedMember = null"
+                                class="bg-surface border border-border rounded px-2 py-1 text-[12px] text-text flex-1 min-w-[80px]"
+                                :disabled="pollFilter.questionIdx === null">
+                            <option :value="null">全部选项</option>
+                            <option v-for="(op, oi) in getQuestionOptions(pollData, pollFilter.questionIdx)" :key="oi" :value="oi">
+                                {{ op }}
+                            </option>
+                        </select>
+                        <button v-if="pollFilter.questionIdx !== null || pollFilter.optionIdx !== null" 
+                                @click="resetPollFilter()"
+                                class="text-[11px] text-red-400 hover:text-red-600 underline shrink-0">
+                            清除
+                        </button>
+                    </div>
+                    <!-- 显示当前筛选人数 -->
+                    <div v-if="pollFilter.questionIdx !== null && pollFilter.optionIdx !== null" class="text-[11px] text-muted">
+                        共 <span class="font-semibold text-text">{{ filteredVoters.length }}</span> 人选择了该选项
+                    </div>
                 </div>
-                <div class="redpacket-card-bottom" style="text-align:left;padding:16px;">
-                    <div v-if="pollData = getPollById(pollResult.pollId)">
-                        <div class="text-[16px] font-medium text-text">{{ pollData.title }}</div>
-                        <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-4">
-                            <div class="text-[13px] text-text mb-1">{{ qi+1 }}. {{ q.text }}</div>
-                            <!-- 条形图 -->
-                            <div class="space-y-1">
-                                <div v-for="(op, oi) in q.options" :key="oi">
-                                    <div class="flex items-center gap-2 text-[11px]">
-                                        <span class="w-20 truncate">{{ op }}</span>
-                                        <div class="flex-1 h-2 bg-bg rounded overflow-hidden">
-                                            <div class="h-full bg-accent rounded" :style="{ width: getOptionPercent(pollData, qi, oi) + '%' }"></div>
-                                        </div>
-                                        <span class="w-12 text-right text-muted">{{ getOptionPercent(pollData, qi, oi).toFixed(0) }}%</span>
-                                    </div>
+
+                <!-- ===== 各题条形图（保留原有） ===== -->
+                <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-4">
+                    <div class="text-[13px] text-text mb-1">{{ qi+1 }}. {{ q.text }}</div>
+                    <div class="space-y-1">
+                        <div v-for="(op, oi) in q.options" :key="oi">
+                            <div class="flex items-center gap-2 text-[11px]">
+                                <span class="w-20 truncate">{{ op }}</span>
+                                <div class="flex-1 h-2 bg-bg rounded overflow-hidden">
+                                    <div class="h-full bg-accent rounded" :style="{ width: getOptionPercent(pollData, qi, oi) + '%' }"></div>
                                 </div>
-                            </div>
-                            <!-- 各成员选择 -->
-                            <div class="mt-3 border-t border-border/40 pt-2">
-                                <div class="text-[11px] text-muted mb-1">各成员选择</div>
-                                <div v-for="(vote, mid) in pollData.votes" :key="mid" class="text-[12px] flex items-start gap-1">
-                                    <span class="font-medium">{{ getMemberName(mid) }}</span>
-                                    <span>→</span>
-                                    <span v-if="Array.isArray(vote[qi]) && vote[qi].length">
-                                        {{ vote[qi].map(idx => q.options[idx]).join('、') }}
-                                    </span>
-                                    <span v-else-if="typeof vote[qi] === 'number' && vote[qi] !== undefined">
-                                        {{ q.options[vote[qi]] }}
-                                    </span>
-                                    <span v-else>未选</span>
-                                </div>
+                                <span class="w-12 text-right text-muted">{{ getOptionPercent(pollData, qi, oi).toFixed(0) }}%</span>
                             </div>
                         </div>
                     </div>
-                    <button @click="pollResult.show = false" class="w-full mt-4 py-2.5 rounded-lg text-white text-sm" style="background:var(--nav-icon-color);">关闭</button>
                 </div>
+
+                <!-- ===== 🔥 筛选后的成员列表 ===== -->
+                <div class="mt-4 border-t border-border/40 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] text-muted tracking-widest">
+                            {{ pollFilter.questionIdx !== null && pollFilter.optionIdx !== null ? '选择该选项的成员' : '所有成员（点击展开完整答卷）' }}
+                        </span>
+                        <span class="text-[10px] text-muted">{{ filteredVoters.length }} 人</span>
+                    </div>
+
+                    <!-- 无匹配成员 -->
+                    <div v-if="!filteredVoters.length" class="text-[12px] text-muted/70 text-center py-4">
+                        {{ pollFilter.questionIdx !== null && pollFilter.optionIdx !== null ? '暂无成员选择该选项' : '暂无成员投票' }}
+                    </div>
+
+                    <!-- 成员列表 -->
+                    <div v-for="mid in filteredVoters" :key="mid" class="mb-1">
+                        <div @click="toggleMemberExpand(mid)" 
+                             class="flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer hover:bg-bg/60 transition-colors border border-border/30">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[10px] text-muted serif-text shrink-0">{{ getMemberName(mid).charAt(0) }}</span>
+                                <span class="text-[13px] text-text">{{ getMemberName(mid) }}</span>
+                                <!-- 显示该成员在这道筛选题上的选择 -->
+                                <span v-if="pollFilter.questionIdx !== null && pollFilter.optionIdx !== null" 
+                                      class="text-[11px] text-muted ml-1">
+                                    → 选了“{{ getQuestionOptions(pollData, pollFilter.questionIdx)[pollFilter.optionIdx] }}”
+                                </span>
+                            </div>
+                            <svg class="w-4 h-4 text-muted transition-transform" 
+                                 :class="pollFilter.expandedMember === mid ? 'rotate-180' : ''"
+                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </div>
+                        <!-- 展开的完整答卷 -->
+                        <div v-if="pollFilter.expandedMember === mid" 
+                             class="ml-3 pl-3 py-2 border-l-2 border-border/40 space-y-1 bg-bg/30 rounded-r-lg">
+                            <div class="text-[10px] text-muted tracking-widest px-2">完整答卷</div>
+                            <div v-for="(q, qi) in pollData.questions" :key="qi" class="px-2 py-1 text-[12px]">
+                                <span class="text-muted">Q{{ qi+1 }}：</span>
+                                <span class="text-text">{{ q.text }}</span>
+                                <span class="text-muted ml-2">→</span>
+                                <span v-if="pollData.votes[mid] && pollData.votes[mid][qi] !== undefined" 
+                                      class="text-text font-medium">
+                                    <template v-if="Array.isArray(pollData.votes[mid][qi])">
+                                        {{ pollData.votes[mid][qi].map(idx => q.options[idx]).join('、') }}
+                                    </template>
+                                    <template v-else>
+                                        {{ q.options[pollData.votes[mid][qi]] || '未选' }}
+                                    </template>
+                                </span>
+                                <span v-else class="text-muted/50">未作答</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 原有结束按钮 -->
+                <button @click="pollResult.show = false" class="w-full mt-4 py-2.5 rounded-lg text-white text-sm" style="background:var(--nav-icon-color);">关闭</button>
             </div>
         </div>
+    </div>
+</div>
         <!-- 应用内颜色选择弹窗（含历史颜色合集；滚动鼠标/点遮罩关闭） -->
         <div v-if="colorPicker.open" class="redpacket-overlay" style="z-index:320;" @click.self="closeColorPicker()">
             <div class="redpacket-card" style="width:320px;">
@@ -2585,6 +2668,9 @@
                     <input type="number" v-model.number="grabPacketForm.amount" min="0" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3" placeholder="0">
                     <div class="text-[10px] text-muted mb-1">红包个数（2 ~ {{ grabPacketForm.maxCount }}）</div>
                     <input type="number" v-model.number="grabPacketForm.count" min="2" :max="grabPacketForm.maxCount" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4" placeholder="2">
+<!-- 👇 新增：红包备注 -->
+<div class="text-[10px] text-muted mb-1">备注（选填）</div>
+<input v-model="grabPacketForm.note" type="text" maxlength="30" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3" placeholder="写点什么…">
                     <button @click="sendGrabPacket" class="w-full py-2.5 rounded-lg text-white text-sm font-medium tracking-wider" style="background:linear-gradient(135deg,#f43f5e,#dc2626);">发红包</button>
                 </div>
             </div>
@@ -4053,6 +4139,7 @@ if (situation === '群聊' && session && session.type === 'group') {
       blankReplyEnabled: false,
       navCollapsed: false, // 主屏顶部图标收纳（字卡/意趣 收起）
       playerCSS: '',                // 我的气泡刺绣（全局，群聊私聊通用）    // 空白回复（通用）
+enableCardStitch: false,//拼字卡
     });
     const libSearchQuery = ref('');
     const selectedRepliesArr = ref([]);
@@ -4486,6 +4573,62 @@ if (contentRaw == null && !opts.image) return;
     });
 
     const pollResult = reactive({ show: false, pollId: null });
+// 投票结果筛选状态
+const pollFilter = reactive({
+    show: false,
+    questionIdx: null,  // 选中的题目索引
+    optionIdx: null,    // 选中的选项索引
+    expandedMember: null // 展开查看完整答卷的成员id
+});
+
+// 重置筛选
+const resetPollFilter = () => {
+    pollFilter.questionIdx = null;
+    pollFilter.optionIdx = null;
+    pollFilter.expandedMember = null;
+};
+
+// 获取当前筛选条件下匹配的成员列表
+const filteredVoters = computed(() => {
+    const poll = getPollById(pollResult.pollId);
+    if (!poll) return [];
+    const qIdx = pollFilter.questionIdx;
+    const oIdx = pollFilter.optionIdx;
+    if (qIdx === null || oIdx === null) {
+        // 未筛选：返回所有已投票成员
+        return Object.keys(poll.votes);
+    }
+    // 筛选：只返回选了该选项的成员
+    const members = [];
+    for (const [mid, vote] of Object.entries(poll.votes)) {
+        const val = vote[qIdx];
+        let matched = false;
+        if (Array.isArray(val)) {
+            // 多选：包含该选项即匹配
+            matched = val.includes(oIdx);
+        } else {
+            matched = val === oIdx;
+        }
+        if (matched) members.push(mid);
+    }
+    return members;
+});
+
+// 获取某道题的选项名称列表
+const getQuestionOptions = (poll, qIdx) => {
+    if (!poll || !poll.questions || qIdx === null) return [];
+    return poll.questions[qIdx]?.options || [];
+};
+
+// 切换成员展开
+const toggleMemberExpand = (mid) => {
+    if (pollFilter.expandedMember === mid) {
+        pollFilter.expandedMember = null;
+    } else {
+        pollFilter.expandedMember = mid;
+    }
+};
+
 
     const groupMembers = computed(() => {
         const g = currentSession.value;
@@ -4502,15 +4645,17 @@ if (contentRaw == null && !opts.image) return;
         pollCreator.show = true;
     };
 
-    const sendPoll = () => {
-        const g = currentSession.value;
-        if (!g || g.type !== 'group') return;
+    const sendPoll = async () => {   //  加 async
+    const g = currentSession.value;
+    if (!g || g.type !== 'group') return;
         const title = pollCreator.title.trim();
         if (!title) { showToast('请填写标题'); return; }
         const questions = pollCreator.questions
             .map(q => ({ text: q.text.trim(), options: q.options.map(o => o.trim()).filter(Boolean), multiple: !!q.multiple }))
             .filter(q => q.text && q.options.length >= 2);
         if (!questions.length) { showToast('至少一道题且每题至少两个选项'); return; }
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         const poll = {
             id: genId(),
@@ -4541,41 +4686,50 @@ if (contentRaw == null && !opts.image) return;
         scrollToBottom();
         showToast('投票已发起');
 
-        // ===== AI 自动投票（多选/单选支持） =====
-        const otherMembers = g.members.filter(m => m !== 'me');
-        if (otherMembers.length > 0) {
-            otherMembers.forEach((memberId) => {
-                const delay = 2000 + Math.random() * 10000;
-                setTimeout(() => {
-                    const pollNow = (g.polls || []).find(p => p.id === poll.id);
-                    if (!pollNow || pollNow.isClosed) return;
-                    if (pollNow.votes[memberId] !== undefined) return;
-                    const voteResult = [];
-                    pollNow.questions.forEach((q, qi) => {
-                        const count = q.options.length;
-                        if (q.multiple) {
-                            const num = 1 + Math.floor(Math.random() * count);
-                            const shuffled = [...Array(count).keys()].sort(() => Math.random() - 0.5);
-                            voteResult[qi] = shuffled.slice(0, num);
-                        } else {
-                            voteResult[qi] = Math.floor(Math.random() * count);
-                        }
-                    });
-                    pollNow.votes[memberId] = voteResult;
-                    debouncedSave();
-                    const memberName = getMemberName(memberId);
-                    g.messages.push({
-                        id: genId(),
-                        sender: 'system',
-                        content: `${memberName} 已投票`,
-                        timestamp: Date.now(),
-                        isTyping: false,
-                    });
-                    scrollToBottom();
-                }, delay);
+        // ===== AI 自动投票（改为串行，每个间隔 1~120 秒） =====
+    const otherMembers = g.members.filter(m => m !== 'me');
+    if (otherMembers.length > 0) {
+        // 如果有多人，依次投票
+        for (const memberId of otherMembers) {
+            // 随机间隔 1~60 秒（1000~6000 毫秒）
+            const interval = 1000 + Math.random() * 5900;
+            await sleep(interval);   // 等待间隔
+
+            // 检查投票是否仍然有效
+            const pollNow = (g.polls || []).find(p => p.id === poll.id);
+            if (!pollNow || pollNow.isClosed) {
+                // 如果投票已结束，直接停止后续投票
+                break;
+            }
+            // 防止重复投票（可能在等待过程中有其他人投了，但这里不会重复因为 memberId 唯一）
+            if (pollNow.votes[memberId] !== undefined) continue;
+
+            // 生成投票结果（单选或多选）
+            const voteResult = [];
+            pollNow.questions.forEach((q, qi) => {
+                const count = q.options.length;
+                if (q.multiple) {
+                    const num = 1 + Math.floor(Math.random() * count);
+                    const shuffled = [...Array(count).keys()].sort(() => Math.random() - 0.5);
+                    voteResult[qi] = shuffled.slice(0, num);
+                } else {
+                    voteResult[qi] = Math.floor(Math.random() * count);
+                }
             });
+            pollNow.votes[memberId] = voteResult;
+            debouncedSave();
+            const memberName = getMemberName(memberId);
+            g.messages.push({
+                id: genId(),
+                sender: 'system',
+                content: `${memberName} 已投票`,
+                timestamp: Date.now(),
+                isTyping: false,
+            });
+            scrollToBottom();
         }
-    };
+    }
+};
 
     const getPollById = (pollId) => {
         const g = currentSession.value;
@@ -4779,17 +4933,24 @@ const openGroupPat = async (mid) => {
     if (!cur || cur.type !== 'group') return;
     patTarget.value = mid;
     
-    // 弹出一个输入框，让用户自定义拍法
+    // 弹出输入框
     const input = await appPrompt({
         message: '输入拍法（留空则使用默认）',
         defaultValue: '拍了拍',
         placeholder: '例如：拍了拍肩膀'
     });
     
-    // 如果用户取消或输入为空，则使用默认值
+    // 👇 关键：点击“作罢”或关闭弹窗时，input 为 null，此时取消操作
+    if (input === null) {
+        patTarget.value = null;
+        return;
+    }
+    
+    // 有输入内容（包括空字符串）则使用默认值“拍了拍”
     const text = (input && input.trim()) ? input.trim() : '拍了拍';
     doPat(text);
 };
+
 
 // 执行拍一拍（私聊或群聊）
 const doPat = (text) => {
@@ -4907,6 +5068,7 @@ const patLongPressEnd = () => {
     const drawFromSpecialBox = (session, boxName) => {
 
 // ===== 群聊拍一拍字卡池：合并群聊共享库 + 成员自己的库 =====
+// 群聊拍一拍字卡池：合并群聊共享库 + 成员自己的库
 const drawGroupPat = (group, memberId) => {
   if (!group || group.type !== 'group') return null;
   const pool = [];
@@ -4972,11 +5134,11 @@ const drawGroupPat = (group, memberId) => {
     };
 
 // ===== 群聊拍一拍：发送一条拍一拍消息（居中灰字） =====
-const pushGroupPat = (group, fromId, targetId, text) => {
+    const pushGroupPat = (group, fromId, targetId, text) => {
     const fromName = senderName(fromId);
     const targetName = senderName(targetId);
-    // 组装显示文案，例如：“小A 拍了拍 小B：拍了拍肩膀”
-    const content = `${fromName} 拍了拍 ${targetName}：${text}`;
+    // 新格式：我 揍了揍 某用户（text 就是用户输入的“揍了揍”）
+    const content = `${fromName} ${text} ${targetName}`;
     group.messages.push({
         id: genId(),
         sender: 'system',          // 作为系统消息，不显示头像
@@ -5035,84 +5197,131 @@ const pushGroupPat = (group, fromId, targetId, text) => {
         try { localStorage.setItem('kongjing_status_roll_ts', String(Date.now())); } catch (e) {}
       }, 6 * 60 * 60 * 1000);
     };
-    const triggerReply = (delay, sessArg) => {
-      // 锁定触发会话：优先用调用方在「发送瞬间」捕获的会话，即使延迟期间用户切到别的会话也绝不串
-      const sess = sessArg || currentSession.value;
-      if (!sess || typingSessions[sess.id]) return;
-      typingSessions[sess.id] = true;
-      // 徐徐道来 = 延迟回复：最短/最长回复时间（秒）由滑动条设定，每条消息在范围内随机延迟
-      const minS = Math.max(1, settings.replyDelayMin || 2);
-      const maxS = Math.max(minS, settings.replyDelayMax || 5);
-      const d = settings.typewriter ? 250 : (delay || 600);
-      setTimeout(() => {
+
+
+const getCombinedReply = (pool) => {
+    const textPool = pool.filter(item => item.text && item.text.trim());
+    const imagePool = pool.filter(item => item.image && !item.text);
+    if (textPool.length > 0) {
+        const rand = Math.random();
+        let count = 1;
+        if (rand < 0.45) count = 1;
+        else if (rand < 0.85) count = 2;
+        else count = 3;
+        let selected = [];
+        let copy = [...textPool];
+        for (let i = 0; i < count && copy.length > 0; i++) {
+            const idx = Math.floor(Math.random() * copy.length);
+            selected.push(copy[idx]);
+            copy.splice(idx, 1);
+        }
+        const combinedText = selected.map(item => item.text).filter(t => t).join('    ');
+        return { text: combinedText, image: null };
+    }
+    if (imagePool.length > 0) {
+        const pick = imagePool[Math.floor(Math.random() * imagePool.length)];
+        return { text: null, image: pick.image };
+    }
+    return null;
+};
+
+//private conversation logic
+   const triggerReply = (delay, sessArg) => {
+    const sess = sessArg || currentSession.value;
+    if (!sess || typingSessions[sess.id]) return;
+    typingSessions[sess.id] = true;
+    const minS = Math.max(1, settings.replyDelayMin || 2);
+    const maxS = Math.max(minS, settings.replyDelayMax || 5);
+    const d = settings.typewriter ? 250 : (delay || 600);
+    setTimeout(() => {
         const cur = sess;
-        // ===== 并行概率：拍一拍(2%) / 问句(10%) 各自独立掷骰，可同时发声 =====
         const acts = [];
         let totalChars = 0;
         if (cur.type !== 'group') {
-          if (Math.random() < 0.02) {
-            const pat = drawFromSpecialBox(cur, '拍一拍');
-            if (pat) { acts.push(() => pushPat(cur, pat)); totalChars += (pat || '').length; }
-          }
-          if (Math.random() < 0.1) {
-            const q = drawFromSpecialBox(cur, '问号');
-            if (q) { acts.push(() => sendMessage('them', q, { session: cur })); totalChars += (q || '').length; }
-          }
-        }
-        // ===== 普通回复（必发声）：10% 空白，否则从「本会话」的私聊箱抽字卡（不读当前会话） =====
-        if (settings.blankReplyEnabled && Math.random() < 0.1) {
-          acts.push(() => sendMessage('them', ' ', { blank: true, session: cur }));
-        } else {
-          let pool = [];
-          const box = cur.corpus ? cur.corpus.boxes['私聊'] : null;
-          (box ? (box.groups || []) : []).forEach((g) =>
-            (g.replies || []).forEach((r) => {
-              const t = (r.text || '').trim();
-              if (r.enabled && (t || r.image)) pool.push({ text: t, image: r.image || null });
-            }),
-          );
-          if (pool.length) {
-            const marked = settings.markEnabled && Math.random() < 0.15;
-            const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
-            const pick = pool[Math.floor(Math.random() * pool.length)];
-            const opts = { marked, session: cur };
-            if (pick.image) opts.image = pick.image;
-            if (quote) opts.quote = quote;
-            acts.push(() => sendMessage('them', pick.text, opts));
-            totalChars += (pick.text || '').length;
-            // 多条消息概率：25% 再补一条，5% 再补两条（从同一池再抽，避免连发同一条）
-            const extra = Math.random() < 0.05 ? 2 : (Math.random() < 0.25 ? 1 : 0);
-            for (let i = 0; i < extra; i++) {
-              const p2 = pool[Math.floor(Math.random() * pool.length)];
-              const o2 = { session: cur };
-              if (p2.image) o2.image = p2.image;
-              acts.push(() => sendMessage('them', p2.text, o2));
-              totalChars += (p2.text || '').length;
+            if (Math.random() < 0.02) {
+                const pat = drawFromSpecialBox(cur, '拍一拍');
+                if (pat) { acts.push(() => pushPat(cur, pat)); totalChars += (pat || '').length; }
             }
-          } else {
-            acts.push(() => sendMessage('them', '……', { session: cur }));
-            totalChars += 2;
-          }
+            if (Math.random() < 0.1) {
+                const q = drawFromSpecialBox(cur, '问号');
+                if (q) { acts.push(() => sendMessage('them', q, { session: cur })); totalChars += (q || '').length; }
+            }
         }
-        // ===== 随机顺序：拍一拍/问句/普通消息同时出现时，先后随机 =====
+        // ---- 普通回复 ----
+        if (settings.blankReplyEnabled && Math.random() < 0.1) {
+            acts.push(() => sendMessage('them', ' ', { blank: true, session: cur }));
+        } else {
+            let pool = [];
+            const box = cur.corpus ? cur.corpus.boxes['私聊'] : null;
+            (box ? (box.groups || []) : []).forEach((g) =>
+                (g.replies || []).forEach((r) => {
+                    const t = (r.text || '').trim();
+                    if (r.enabled && (t || r.image)) pool.push({ text: t, image: r.image || null });
+                })
+            );
+            if (pool.length) {
+                const marked = settings.markEnabled && Math.random() < 0.15;
+                const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
+                // ---- 主回复（使用概率拼接） ----
+                const combined = getCombinedReply(pool);
+                const opts = { marked, session: cur };
+                if (quote) opts.quote = quote;
+                if (combined) {
+                    if (combined.image) {
+                        opts.image = combined.image;
+                        acts.push(() => sendMessage('them', '', opts));
+                    } else if (combined.text) {
+                        acts.push(() => sendMessage('them', combined.text, opts));
+                    }
+                } else {
+                    acts.push(() => sendMessage('them', '……', opts));
+                }
+
+                // ===== 额外多条消息（独立于主回复） =====
+                const extraRand = Math.random();
+                let extraCount = 0;
+                if (extraRand < 0.05) extraCount = 2;
+                else if (extraRand < 0.25) extraCount = 1;
+                for (let i = 0; i < extraCount; i++) {
+                    const extraCombined = getCombinedReply(pool);
+                    if (extraCombined) {
+                        const extraOpts = { marked: false, session: cur };
+                        if (Math.random() < 0.1) {
+                            const q2 = pickQuote(cur);
+                            if (q2) extraOpts.quote = q2;
+                        }
+                        if (extraCombined.image) {
+                            extraOpts.image = extraCombined.image;
+                            acts.push(() => sendMessage('them', '', extraOpts));
+                        } else if (extraCombined.text) {
+                            acts.push(() => sendMessage('them', extraCombined.text, extraOpts));
+                        }
+                    }
+                }
+            } else {
+                acts.push(() => sendMessage('them', '……', { session: cur }));
+                totalChars += 2;
+            }
+        }
+        // 随机顺序
         for (let i = acts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [acts[i], acts[j]] = [acts[j], acts[i]];
+            const j = Math.floor(Math.random() * (i + 1));
+            [acts[i], acts[j]] = [acts[j], acts[i]];
         }
-        // ===== 逐条发出：徐徐道来时每条在「最短~最长回复时间」里随机延迟；关掉则快节奏 =====
         let t = 0;
         acts.forEach((fn) => {
-          t += settings.typewriter ? randomMs(minS * 1000, maxS * 1000) : randomMs(600, 1200);
-          setTimeout(fn, t);
+            t += settings.typewriter ? randomMs(minS * 1000, maxS * 1000) : randomMs(600, 1200);
+            setTimeout(fn, t);
         });
-        // 徐徐道来开启时，「输入中…」保持到所有消息发完再收起（按本会话独立）
         if (settings.typewriter && currentView.value === 'chat' && acts.length) {
-          setTimeout(() => { delete typingSessions[cur.id]; }, t + 800);
+            setTimeout(() => { delete typingSessions[cur.id]; }, t + 800);
         } else {
-          delete typingSessions[cur.id];
+            delete typingSessions[cur.id];
         }
-      }, d);
-    };
+    }, d);
+};
+
+
     // 群聊回复：用户发消息后按场景回复（@矩阵 / 普通80%）
    const triggerGroupReply = (delay, mention = null, groupArg = null) => {
   const group = groupArg || currentSession.value;
@@ -5160,15 +5369,32 @@ const pushGroupPat = (group, fromId, targetId, text) => {
 
       const offset = i * randomMs(600, 1600);
       setTimeout(() => {
-        const marked = !mention && group.groupMarkEnabled && Math.random() < 0.15;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        const opts = { marked };
-        if (pick.image) opts.image = pick.image;
-        if (Math.random() < 0.1) {
-          const q = pickQuote(group);
-          if (q) opts.quote = q;
-        }
-        sendMessage(mid, pick.text, { ...opts, session: group });
+                        // ---- 主回复（使用概率拼接） ----
+                const combined = getCombinedReply(pool);
+                // 计算是否标记：没有被@ 且 群聊标记开关开启 且 15%概率
+const shouldMark = !mention && group.groupMarkEnabled && Math.random() < 0.15;
+const opts = { marked: shouldMark, session: group };
+if (mention && mid === mention) opts.mention = mention;
+if (Math.random() < 0.1) {
+    const q = pickQuote(group);
+    if (q) opts.quote = q;
+}
+
+                if (mention && mid === mention) opts.mention = mention;
+                if (Math.random() < 0.1) {
+                    const q = pickQuote(group);
+                    if (q) opts.quote = q;
+                }
+                if (combined) {
+                    if (combined.image) {
+                        opts.image = combined.image;
+                        sendMessage(mid, '', opts);
+                    } else if (combined.text) {
+                        sendMessage(mid, combined.text, opts);
+                    }
+                } else {
+                    sendMessage(mid, '……', opts);
+                }
       }, offset);
     });
   }, delay);
@@ -6378,18 +6604,21 @@ const removeGroupMember = (mid) => {
 
     // 启动红包定时器：每 15-60 分钟掷骰子，8% 概率。仅页面加载时启动，之后自循环
     const startRedpacketTimer = (session) => {
-      if (session.redPacket.isPaused) return;
-      const interval = randomMs(15 * 60 * 1000, 60 * 60 * 1000);
-      session.redPacket._incomingStartTime = Date.now();
-      session.redPacket._incomingInterval = interval;
-      session.redPacket.incomingTimer = setTimeout(() => {
-        if (Math.random() < 0.08) {
-          triggerRedpacket(session);
-        } else {
-          startRedpacketTimer(session);
-        }
-      }, interval);
-    };
+  // 👇 新增：群聊不启动自动红包
+  if (session.type === 'group') return;
+  
+  if (session.redPacket.isPaused) return;
+  const interval = randomMs(15 * 60 * 1000, 60 * 60 * 1000);
+  session.redPacket._incomingStartTime = Date.now();
+  session.redPacket._incomingInterval = interval;
+  session.redPacket.incomingTimer = setTimeout(() => {
+    if (Math.random() < 0.08) {
+      triggerRedpacket(session);
+    } else {
+      startRedpacketTimer(session);
+    }
+  }, interval);
+};
 
     // 触发发红包：生成金额、写入消息、继续定时器
     const triggerRedpacket = (session) => {
@@ -6801,16 +7030,17 @@ const removeGroupMember = (mid) => {
 
     // ===== 群聊抢红包 =====
     // 抢红包面板状态（群聊）
-    const grabPacketForm = reactive({ show: false, amount: 0, count: 2 });
+    const grabPacketForm = reactive({ show: false, amount: 0, count: 2, note: '' });
     const openGrabPacket = () => {
-      const g = currentSession.value;
-      if (!g || g.type !== 'group') return;
-      const n = (g.members || []).length; // N = 群人数-1
-      grabPacketForm.amount = 0;
-      grabPacketForm.count = 2;
-      grabPacketForm.maxCount = Math.max(2, n);
-      grabPacketForm.show = true;
-    };
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return;
+  const n = (g.members || []).length;
+  grabPacketForm.amount = 0;
+  grabPacketForm.count = 2;
+  grabPacketForm.note = '';  // ← 新增这行
+  grabPacketForm.maxCount = Math.max(2, n);
+  grabPacketForm.show = true;
+};
     // 拆份：随机拆成 count 份，和为 amount，每份 ≤2 位小数
     const splitAmount = (amount, count) => {
       const cents = Math.round(amount * 100);
@@ -6825,63 +7055,87 @@ const removeGroupMember = (mid) => {
     };
     // 用户发抢红包
     const sendGrabPacket = () => {
-      const g = currentSession.value;
-      if (!g || g.type !== 'group') return;
-      const amount = Number(grabPacketForm.amount);
-      const count = Math.round(Number(grabPacketForm.count));
-      const memberIds = g.members || [];
-      const N = Math.max(2, memberIds.length);
-      if (!(amount > 0)) { showToast('请输入有效金额'); return; }
-      if (count < 2 || count > N) { showToast(`红包个数需在 2 ~ ${N} 之间`); return; }
-      const rp = money.redpacket.userRange;
-      if (amount < rp.min || amount > rp.max) { showToast(`金额需在 ${rp.min} ~ ${rp.max} 之间`); return; }
-      if (amount > money.check.balance) { showToast('支票余额不足'); return; }
+  const g = currentSession.value;
+  if (!g || g.type !== 'group') return;
+  
+  const amount = Number(grabPacketForm.amount);
+  const count = Math.round(Number(grabPacketForm.count));
+  const note = (grabPacketForm.note || '').trim();
+  const memberIds = g.members || [];
+  const N = Math.max(2, memberIds.length);
+  
+  if (!(amount > 0)) { showToast('请输入有效金额'); return; }
+  if (count < 2 || count > N) { showToast(`红包个数需在 2 ~ ${N} 之间`); return; }
+  
+  const rp = money.redpacket.userRange;
+  if (amount < rp.min || amount > rp.max) { showToast(`金额需在 ${rp.min} ~ ${rp.max} 之间`); return; }
+  if (amount > money.check.balance) { showToast('支票余额不足'); return; }
 
-      // 扣支票（消费到零不立即触发下一笔，由每日凌晨5点系统检查发放）
-      money.check.balance -= amount;
-      money.check.purchases.push({
-        id: genId(), isRedpacket: true, name: `群聊发抢红包${amount}元`,
-        desc: '', amount, dayIndex: money.check.dayIndex, mood: null, fav: false, date: Date.now(),
-      });
+  // 扣支票
+  money.check.balance -= amount;
+  money.check.purchases.push({
+    id: genId(),
+    isRedpacket: true,
+    name: `群聊发抢红包${amount}元`,
+    desc: note,
+    amount,
+    dayIndex: money.check.dayIndex,
+    mood: null,
+    fav: false,
+    date: Date.now(),
+  });
 
-      // 拆份 + 定各角色抢包时刻（1s~1min）
-      const splits = splitAmount(amount, count);
-      const grabTimes = {};
-      memberIds.forEach((mid) => { grabTimes[mid] = Date.now() + randomMs(1000, 60000); });
+  // 拆份
+  const splits = splitAmount(amount, count);
+  const grabTimes = {};
+  memberIds.forEach((mid) => { grabTimes[mid] = Date.now() + randomMs(1000, 60000); });
 
-      const packet = {
-        id: genId(),
-        from: 'me',
-        amount,
-        count,
-        remaining: count,
-        splits: splits.slice(),
-        grabbed: [],
-        grabTimes,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      };
-      g.groupPackets = g.groupPackets || [];
-      g.groupPackets.push(packet);
+  // 创建红包包
+  const packet = {
+    id: genId(),
+    from: 'me',
+    amount,
+    count,
+    remaining: count,
+    splits: splits.slice(),
+    grabbed: [],
+    grabTimes,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+  };
+  
+  if (!g.groupPackets) g.groupPackets = [];
+  g.groupPackets.push(packet);
 
-      // 发一条抢红包消息
-      g.messages.push({
-        id: genId(), sender: 'me', type: 'grabPacket', content: '', amount,
-        packetId: packet.id, status: 'sent', timestamp: Date.now(), isTyping: false, isReadFlag: true,
-      });
+  // 👇 【关键】发一条抢红包消息到群里，带备注
+  g.messages.push({
+    id: genId(),
+    sender: 'me',
+    type: 'grabPacket',
+    content: note,           // ← 备注就在这里
+    amount,
+    packetId: packet.id,
+    status: 'sent',
+    timestamp: Date.now(),
+    isTyping: false,
+    isReadFlag: true,
+  });
 
-      grabPacketForm.show = false;
-      scrollToBottom();
-      debouncedSave();
+  grabPacketForm.show = false;
+  scrollToBottom();
+  debouncedSave();
+  showToast('红包已发出！');
 
-      // 逐个角色按抢包时刻定时判定
-      memberIds.forEach((mid) => {
-        const delay = grabTimes[mid] - Date.now();
-        setTimeout(() => attemptGrab(g, packet.id, mid), Math.max(0, delay));
-      });
-      // 24h 过期检查
-      setTimeout(() => expireGrabPacket(g, packet.id), 24 * 60 * 60 * 1000);
-    };
+  // 逐个角色按抢包时刻定时判定
+  memberIds.forEach((mid) => {
+    const delay = grabTimes[mid] - Date.now();
+    setTimeout(() => attemptGrab(g, packet.id, mid), Math.max(0, delay));
+  });
+  
+  // 24h 过期检查
+  setTimeout(() => expireGrabPacket(g, packet.id), 24 * 60 * 60 * 1000);
+};
+
     // 某角色尝试抢包
     const attemptGrab = (g, packetId, memberId) => {
       const p = (g.groupPackets || []).find((x) => x.id === packetId);
@@ -6910,38 +7164,71 @@ const removeGroupMember = (mid) => {
     };
     // 群聊成员回复（带字卡；trigger 场景：'红包'|'group' 等）
     const groupMemberReply = (g, memberId, scene) => {
-      const member = sessions.value.find((s) => s.id === memberId);
-      if (!member) return;
- const groupPool = envelopeCardItems(g, '群聊', g.id);
-const privatePool = envelopeCardItems(member, '私聊');
-const pool = [...groupPool, ...privatePool];
-if (!pool.length) return;
-      setTimeout(() => {
+    const member = sessions.value.find((s) => s.id === memberId);
+    if (!member) return;
+    const groupPool = envelopeCardItems(g, '群聊', g.id);
+    const privatePool = envelopeCardItems(member, '私聊');
+    const pool = [...groupPool, ...privatePool];
+    if (!pool.length) return;
+    setTimeout(() => {
         const marked = g.groupMarkEnabled && Math.random() < 0.15;
-        // 30% 概率 @：开启「TA可@任意一位」则可@其他成员或用户；否则只能@用户
         let mention = null;
         if (Math.random() < 0.3) {
-          const targets = g.roleAtRoleEnabled
-            ? [...(g.members || []), 'me'].filter((t) => t !== memberId)
-            : ['me'];
-          if (targets.length) mention = targets[Math.floor(Math.random() * targets.length)];
+            const targets = g.roleAtRoleEnabled
+                ? [...(g.members || []), 'me'].filter((t) => t !== memberId)
+                : ['me'];
+            if (targets.length) mention = targets[Math.floor(Math.random() * targets.length)];
         }
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        const opts = { marked };
-        if (mention) opts.mention = mention;
-        if (pick.image) opts.image = pick.image;
-        // 引用：10% 概率引用群里一条历史消息
-        if (Math.random() < 0.1) {
-          const q = pickQuote(g);
-          if (q) opts.quote = q;
+                // ---- 主回复（使用概率拼接） ----
+                const combined = getCombinedReply(pool);
+                const opts = { marked, session: g };
+                if (mention) opts.mention = mention;
+                if (Math.random() < 0.1) {
+                    const q = pickQuote(g);
+                    if (q) opts.quote = q;
+                }
+                if (combined) {
+                    if (combined.image) {
+                        opts.image = combined.image;
+                        sendMessage(memberId, '', opts);
+                    } else if (combined.text) {
+                        sendMessage(memberId, combined.text, opts);
+                    }
+                } else {
+                    sendMessage(memberId, '……', opts);
+                }
+
+
+
+        // ===== 额外多条消息（群聊同样支持） =====
+        const extraRand = Math.random();
+        let extraCount = 0;
+        if (extraRand < 0.05) extraCount = 2;
+        else if (extraRand < 0.25) extraCount = 1;
+        for (let i = 0; i < extraCount; i++) {
+            const extraCombined = getCombinedReply(pool);
+            if (extraCombined) {
+                const extraOpts = { marked: false, session: g };
+                if (mention && i === 0) extraOpts.mention = mention; // 保留提及给第一条额外消息
+                if (Math.random() < 0.1) {
+                    const q2 = pickQuote(g);
+                    if (q2) extraOpts.quote = q2;
+                }
+                if (extraCombined.image) {
+                    extraOpts.image = extraCombined.image;
+                    sendMessage(memberId, '', extraOpts);
+                } else if (extraCombined.text) {
+                    sendMessage(memberId, extraCombined.text, extraOpts);
+                }
+            }
         }
-        sendMessage(memberId, pick.text, { ...opts, session: g });
-        // 角色发出@后：被@者(若角色)90%回复、其他角色30%回复
+
         if (mention && mention !== 'me') {
-          setTimeout(() => respondToMention(g, mention), randomMs(800, 2000));
+            setTimeout(() => respondToMention(g, mention), randomMs(800, 2000));
         }
-      }, randomMs(400, 1200));
-    };
+    }, randomMs(400, 1200));
+};
+
     // 响应角色发出的@：被@者90%，其他角色30%
     const respondToMention = (g, mentionTarget) => {
       (g.members || []).forEach((mid, i) => {
@@ -8639,6 +8926,12 @@ toggleMemberStatus,
 groupOnlineInfo,
 openGroupPat,
 patTarget,
+pollFilter,
+resetPollFilter,
+filteredVoters,
+getQuestionOptions,
+toggleMemberExpand,
+
       deleteEnvelope
     };
   },
