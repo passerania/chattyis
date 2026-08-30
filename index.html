@@ -812,6 +812,17 @@
                     <button v-if="selectedRepliesArr.length" @click="batchToggle" class="text-text hover:underline text-[11px]">启/禁</button>
                 </div>
 
+ <!-- 去重按钮 -->
+    <div class="relative">
+        <button @click="deduplicateMenuOpen = !deduplicateMenuOpen" class="text-text hover:underline text-[11px] flex items-center gap-1">
+            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> 去重
+        </button>
+        <div v-if="deduplicateMenuOpen" class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg p-1 z-10 min-w-[120px]">
+            <div @click="runDeduplicate('exact')" class="px-3 py-2 hover:bg-bg rounded text-[12px] cursor-pointer">精确去重</div>
+            <div @click="runDeduplicate('fuzzy')" class="px-3 py-2 hover:bg-bg rounded text-[12px] cursor-pointer">模糊去重</div>
+        </div>
+    </div>
+
                 <!-- 群聊箱子：隔板(群聊)结构，自动生成、不可删、可折叠 -->
                 <main v-if="activeBox === '群聊' || activeBox === '红包备注'" class="flex-1 overflow-y-auto p-4 space-y-3" id="library-groups">
                     <div v-for="p in filteredGroups" :key="p.id" class="bg-surface border border-border rounded-xl overflow-hidden">
@@ -2861,6 +2872,65 @@ const formatCallDuration = (seconds) => {
 createApp({
   setup() {
     const showIntro = ref(true);
+const deduplicateMenuOpen = ref(false);
+
+const runDeduplicate = (mode) => {
+    deduplicateMenuOpen.value = false;
+    const s = currentSession.value;
+    if (!s) { showToast('请先进入一个会话'); return; }
+    const box = s.corpus.boxes[activeBox.value];
+    if (!box) { showToast('当前书册不存在'); return; }
+
+    let allGroups = [];
+    if (activeBox.value === '群聊' || activeBox.value === '红包备注') {
+        (box.groups || []).forEach(p => {
+            if (p.groups) allGroups.push(...p.groups);
+        });
+    } else {
+        allGroups = box.groups || [];
+    }
+
+    if (!allGroups.length) { showToast('当前书册没有字卡'); return; }
+
+    let removedCount = 0;
+    allGroups.forEach(g => {
+        if (!g.replies || !g.replies.length) return;
+        const seen = new Set();
+        const unique = [];
+        g.replies.forEach(r => {
+            if (r.text === undefined || r.text === null) {
+                unique.push(r);
+                return;
+            }
+            let key;
+            if (mode === 'exact') {
+                key = r.text.trim();
+            } else {
+                key = r.text.trim().replace(/[^\w\u4e00-\u9fa5]/g, '');
+            }
+            if (key === '') {
+                unique.push(r);
+                return;
+            }
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(r);
+            } else {
+                removedCount++;
+            }
+        });
+        g.replies = unique;
+    });
+
+    if (removedCount > 0) {
+        showToast(`已移除 ${removedCount} 条重复字卡`);
+        debouncedSave();
+        nextTick(initSortable);
+    } else {
+        showToast('没有发现重复字卡');
+    }
+};
+
     const currentView = ref('home');
     const unreadCount = ref(0);
     const boardMessages = ref([]);
@@ -4247,6 +4317,7 @@ enableCardStitch: false,//拼字卡
         } catch (e) { console.error('[空境] 保存数据失败：', e); }
       }, 1200);
     };
+
 //留言删除
 const deleteEnvelope = (id) => {
   const s = currentSession.value;
@@ -5067,8 +5138,37 @@ const patLongPressEnd = () => {
     // 从专属书册（拍一拍/问号/状态）抽一条启用的字卡文本；书册空返回 null
     const drawFromSpecialBox = (session, boxName) => {
 
-// ===== 群聊拍一拍字卡池：合并群聊共享库 + 成员自己的库 =====
-// 群聊拍一拍字卡池：合并群聊共享库 + 成员自己的库
+      const box = session.corpus?.boxes?.[boxName];
+      if (!box) return null;
+      const pool = [];
+      (box.groups || []).forEach((g) =>
+        (g.replies || []).forEach((r) => {
+          const t = (r.text || '').trim();
+          if (r.enabled && t) pool.push(t);
+        }),
+      );
+      if (!pool.length) return null;
+      return pool[Math.floor(Math.random() * pool.length)];
+    };
+    // 拍一拍灰字消息（居中浅灰，不做气泡）：他拍我 / 我拍他共用
+    const pushPat = (session, text) => {
+      session.messages.push({
+        id: genId(),
+        sender: 'them',
+        type: 'pat',
+        content: text,
+        timestamp: Date.now(),
+        status: 'read',
+        isReadFlag: currentView.value === 'chat',
+        isTyping: false,
+      });
+      playTone('them');
+      scrollToBottom();
+      manageActiveTimer();
+      updateUnread();
+      debouncedSave();
+    };
+// ===== 群聊拍一拍：获取字卡池（从群聊和成员各自的拍一拍书册收集） ===== 保留
 const drawGroupPat = (group, memberId) => {
   if (!group || group.type !== 'group') return null;
   const pool = [];
@@ -5101,37 +5201,6 @@ const drawGroupPat = (group, memberId) => {
   if (!pool.length) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 };
-
-      const box = session.corpus?.boxes?.[boxName];
-      if (!box) return null;
-      const pool = [];
-      (box.groups || []).forEach((g) =>
-        (g.replies || []).forEach((r) => {
-          const t = (r.text || '').trim();
-          if (r.enabled && t) pool.push(t);
-        }),
-      );
-      if (!pool.length) return null;
-      return pool[Math.floor(Math.random() * pool.length)];
-    };
-    // 拍一拍灰字消息（居中浅灰，不做气泡）：他拍我 / 我拍他共用
-    const pushPat = (session, text) => {
-      session.messages.push({
-        id: genId(),
-        sender: 'them',
-        type: 'pat',
-        content: text,
-        timestamp: Date.now(),
-        status: 'read',
-        isReadFlag: currentView.value === 'chat',
-        isTyping: false,
-      });
-      playTone('them');
-      scrollToBottom();
-      manageActiveTimer();
-      updateUnread();
-      debouncedSave();
-    };
 
 // ===== 群聊拍一拍：发送一条拍一拍消息（居中灰字） =====
     const pushGroupPat = (group, fromId, targetId, text) => {
@@ -8931,7 +9000,8 @@ resetPollFilter,
 filteredVoters,
 getQuestionOptions,
 toggleMemberExpand,
-
+deduplicateMenuOpen,
+runDeduplicate,
       deleteEnvelope
     };
   },
