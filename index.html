@@ -6364,7 +6364,7 @@ const getCombinedReply = (pool) => {
 };
 
 //private conversation logic
-   const triggerReply = (delay, sessArg) => {
+  const triggerReply = (delay, sessArg) => {
     const sess = sessArg || currentSession.value;
     if (!sess || typingSessions[sess.id]) return;
     typingSessions[sess.id] = true;
@@ -6387,7 +6387,7 @@ const getCombinedReply = (pool) => {
         }
 
         // ===== 私聊涂鸦：6% 概率发送涂鸦 =====
-        if (cur.type !== 'group' && Math.random() <0.06) {
+        if (cur.type !== 'group' && Math.random() < 0.06) {
             const modes = ['letters', 'shapes', 'freehand'];
             const mode = modes[Math.floor(Math.random() * modes.length)];
             sendSystemDrawing(cur, mode);
@@ -6410,49 +6410,44 @@ const getCombinedReply = (pool) => {
             if (pool.length) {
                 const marked = settings.markEnabled && Math.random() < 0.15;
                 const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
-                                // ---- 主回复（根据拼接设置） ----
-                const settings = cur ? getSessionSettings(cur.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
+                // ---- 获取拼接设置 ----
+                const concatSettings = cur ? getSessionSettings(cur.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
                 const opts = { marked, session: cur };
                 if (quote) opts.quote = quote;
 
-                if (settings.concatEnabled) {
-                    const count = Math.min(settings.concatCount, pool.length);
+                if (concatSettings.concatEnabled) {
+                    // 拼接模式
+                    const count = Math.min(concatSettings.concatCount, pool.length);
                     let selected = [];
                     let copy = [...pool];
                     for (let i = 0; i < count && copy.length > 0; i++) {
                         const idx = Math.floor(Math.random() * copy.length);
                         const item = copy[idx];
-                        if (!settings.concatEmoji && item.image) continue;
+                        if (!concatSettings.concatEmoji && item.image) continue;
                         selected.push(item);
                         copy.splice(idx, 1);
                     }
                     if (selected.length === 0) {
+                        // 兜底
                         const fallback = pool[Math.floor(Math.random() * pool.length)];
-                        if (fallback.image) opts.image = fallback.image;
-                        else acts.push(() => sendMessage('them', fallback.text || '……', opts));
-                        // 但此处的逻辑不同，我们处理发送的方式也不同，因为后面会统一执行acts
-                        // 为了简单，直接发送（因为triggerReply中acts是延迟执行的）
-                        // 但这里如果直接发送，会和后面的随机顺序冲突。
-                        // 更好的做法是，仿照后面acts的方式，将发送动作加入acts。
-                        // 我们统一放到后面。
-                        // 此处我们简化：直接构建一个acts项。
                         if (fallback.image) {
                             const imgOpts = { ...opts, image: fallback.image };
                             acts.push(() => sendMessage('them', '', imgOpts));
                         } else {
                             acts.push(() => sendMessage('them', fallback.text || '……', opts));
                         }
-                        return;
-                    }
-                    const finalText = selected.map(item => item.text).filter(t => t).join('  ');
-                    const finalImage = selected.find(item => item.image)?.image || null;
-                    if (finalImage) {
-                        const imgOpts = { ...opts, image: finalImage };
-                        acts.push(() => sendMessage('them', '', imgOpts));
                     } else {
-                        acts.push(() => sendMessage('them', finalText || '', opts));
+                        const finalText = selected.map(item => item.text).filter(t => t).join('  ');
+                        const finalImage = selected.find(item => item.image)?.image || null;
+                        if (finalImage) {
+                            const imgOpts = { ...opts, image: finalImage };
+                            acts.push(() => sendMessage('them', '', imgOpts));
+                        } else {
+                            acts.push(() => sendMessage('them', finalText || '', opts));
+                        }
                     }
                 } else {
+                    // 非拼接：单条
                     const pick = pool[Math.floor(Math.random() * pool.length)];
                     if (pick.image) {
                         const imgOpts = { ...opts, image: pick.image };
@@ -6488,7 +6483,8 @@ const getCombinedReply = (pool) => {
                 totalChars += 2;
             }
         }
-        // 随机顺序
+
+        // 随机打乱执行顺序
         for (let i = acts.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [acts[i], acts[j]] = [acts[j], acts[i]];
