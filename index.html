@@ -560,195 +560,228 @@
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
                     <div id="capture-area" class="pb-10">
                         <template v-for="(msg, index) in messages" :key="msg.id">
-                            <!-- 拍一拍灰字（type='pat'，居中浅灰，不做气泡） -->
-                            <div v-if="msg.type === 'pat'" class="flex justify-center mb-4">
-                                <span class="text-[10px] tracking-wider" :class="chatBgDark ? 'text-white/60' : 'text-muted/50'">{{ msg.content }}</span>
-                            </div>
-                            <!-- 未拆且未过期红包 -->
-                            <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer">
-                                <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
-                                    <div class="px-4 py-3 text-white text-center">
-                                        <div class="text-lg mb-1">🧧</div>
-                                        <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
-                                    </div>
-                                    <div class="bg-white/90 py-2 text-center"><span class="text-[10px] text-muted">点击拆开</span></div>
-                                </div>
-                            </div>
-                            <!-- 已过期红包 -->
-                            <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt <= Date.now()" class="flex justify-center mb-4">
-                                <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface opacity-60">
-                                    <div class="px-4 py-3 text-center">
-                                        <div class="text-sm mb-1">🧧</div>
-                                        <div class="text-[13px] font-medium text-muted tracking-wider">{{ msg.content }}</div>
-                                    </div>
-                                    <div class="bg-bg/50 py-1.5 text-center"><span class="text-[10px] text-muted/60">已过期</span></div>
-                                </div>
-                            </div>
-                            <!-- 已拆红包 -->
-                            <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'opened'" class="flex justify-center mb-4">
-                                <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface">
-                                    <div class="px-4 py-3 text-center">
-                                        <div class="text-sm mb-1">🎁</div>
-                                        <div class="text-lg font-bold text-text">¥{{ msg.amount.toFixed(2) }}</div>
-                                        <div class="text-[11px] text-muted mt-0.5">{{ msg.content }}</div>
-                                    </div>
-                                    <div class="bg-bg/50 py-1.5 text-center"><span class="text-[10px] text-muted/60">已领取</span></div>
-                                </div>
-                            </div>
-                            <!-- 问卷卡片（用户发起，待TA作答） -->
-                            <div v-else-if="msg.type === 'survey'" class="flex justify-center mb-4">
-                                <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
-                                    <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷 · {{ msg.status === 'answered' ? (msg.declined ? 'TA未作答' : '已作答') : '待TA作答' }}</div>
-                                    <div class="px-4 py-3 space-y-2">
-                                        <div v-for="(q, qi) in msg.questions" :key="qi" class="text-[12px]">
-                                            <div class="text-text">{{ qi + 1 }}. {{ q.text }}</div>
-                                            <div class="text-[10px] text-muted mt-0.5">{{ (q.options || []).join(' / ') }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- 问卷作答结果卡片 -->
-                            <div v-else-if="msg.type === 'surveyResult'" class="flex justify-center mb-4">
-                                <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
-                                    <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷作答</div>
-                                    <div v-if="msg.declined" class="px-4 py-5 text-center text-[12px] text-muted/70 tracking-wider">TA选择不答</div>
-                                    <div v-else class="px-4 py-3 space-y-2">
-                                        <div v-for="(ans, ai) in msg.answers" :key="ai" class="text-[12px]">
-                                            <div class="text-text">{{ ai + 1 }}. {{ ans.text }}</div>
-                                            <div v-if="ans.picked" class="text-[10px] mt-0.5" style="color:#f59e0b;">TA选了：{{ ans.picked }}</div>
-                                            <div v-else class="text-[10px] text-muted/60 mt-0.5">这道题TA没有回答</div>
-                                        </div>
-                                        <div v-if="msg.answers && !msg.answers.some(a => a.picked)" class="text-[10px] text-muted/60 pt-1.5 border-t border-border/30">（这一轮TA全都未作答）</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- 投票卡片 -->
-                            <div v-else-if="msg.type === 'poll'" class="flex justify-center mb-4">
-                                <div class="w-72 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
-                                    <div class="px-4 py-2.5 text-[11px] tracking-widest border-b border-border/40 flex justify-between items-center">
-                                        <span class="text-muted">📊 投票</span>
-                                        <span v-if="pollData = getPollById(msg.pollId)">
-                                            <span v-if="pollData.isClosed" class="text-red-400 text-[10px]">已结束</span>
-                                            <span v-else class="text-green-400 text-[10px]">进行中</span>
-                                        </span>
-                                    </div>
-                                    <div class="px-4 py-3" v-if="pollData = getPollById(msg.pollId)">
-                                        <div class="text-[14px] font-medium text-text">{{ pollData.title }}</div>
-                                        <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-3">
-                                            <div class="text-[12px] text-text">{{ qi+1 }}. {{ q.text }}</div>
-                                            <div class="flex flex-wrap gap-2 mt-1">
-                                                <button v-for="(op, oi) in q.options" :key="oi"
-                                                        @click="castVote(pollData.id, qi, oi)"
-                                                        :disabled="pollData.isClosed"
-                                                        class="px-3 py-1 rounded-full text-[11px] border transition"
-                                                        :class="(function() {
-                                                            const vote = pollData.votes['me'];
-                                                            if (!vote) return 'border-border text-muted';
-                                                            const val = vote[qi];
-                                                            if (Array.isArray(val) && val.includes(oi)) return 'border-text bg-bg text-text';
-                                                            if (val === oi) return 'border-text bg-bg text-text';
-                                                            return 'border-border text-muted';
-                                                        })()">
-                                                    {{ op }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="mt-3 text-[10px] text-muted">
-                                            已投票: {{ Object.keys(pollData.votes).length }} 人
-                                            <span v-if="pollData.participants.length">(共 {{ pollData.participants.length }} 人参与)</span>
-                                            <span v-else>(所有人均可参与)</span>
-                                        </div>
-                                        <button v-if="pollData.creator === 'me' && !pollData.isClosed" @click="closePoll(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">>结束投票</button>
-					<button v-if="pollData.isClosed" @click="viewPollResult(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">查看结果</button>
-                                        
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- 普通 system 消息 -->
-                            <div v-else-if="msg.sender === 'system'" class="flex justify-center mb-4">
-                                <span class="text-[10px] tracking-wider px-3 py-1 rounded-full" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/60 bg-surface/30'">{{ msg.content }}</span>
-                            </div>
+    <!-- 拍一拍灰字（type='pat'，居中浅灰，不做气泡） -->
+    <div v-if="msg.type === 'pat'" class="flex justify-center mb-4">
+        <span class="text-[10px] tracking-wider" :class="chatBgDark ? 'text-white/60' : 'text-muted/50'">{{ msg.content }}</span>
+    </div>
 
-                            <!-- 我发的红包（靠右） -->
-                            <div v-else-if="msg.sender === 'me' && msg.type === 'redpacket'" class="mb-4 flex justify-end group relative">
-                                <div class="flex items-center gap-2">
-                                    <button @click="deleteMsg(msg.id)" class="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-                                    <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
-                                        <div class="px-4 py-3 text-white">
-                                            <div class="text-lg mb-1">🧧</div>
-                                            <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
-                                        </div>
-                                        <div class="bg-white/90 py-2 text-center">
-                                            <span v-if="msg.status === 'opened'" class="text-[12px] font-semibold text-red-600">对方已收下</span>
-                                            <span v-else-if="msg.status === 'pending'" class="text-[12px] text-muted">等待对方收下…</span>
-                                            <span v-else-if="msg.status === 'expired'" class="text-[12px] text-muted">对方未收下 · 已退回</span>
-                                            <span v-else class="text-[12px] font-semibold text-red-600">¥{{ msg.amount.toLocaleString('zh-CN') }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- 未拆且未过期红包 -->
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer">
+        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
+            <div class="px-4 py-3 text-white text-center">
+                <div class="text-lg mb-1">🧧</div>
+                <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
+            </div>
+            <div class="bg-white/90 py-2 text-center"><span class="text-[10px] text-muted">点击拆开</span></div>
+        </div>
+    </div>
 
-                            <!-- 群聊抢红包（我发/角色发，居中卡片） -->
-                            <div v-else-if="msg.type === 'grabPacket'" class="flex justify-center mb-4">
-                                <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
-                                    <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;">
-                                        <div class="text-lg mb-1">🧧</div>
-                                        <div class="text-[13px] font-medium tracking-wider">抢红包</div>
-                                        <div v-if="msg.sender !== 'me'" class="text-[11px] mt-0.5 opacity-90">{{ senderName(msg.sender) }} 发的</div>
-                                        <div v-if="msg.content" class="text-[11px] mt-0.5 opacity-90 leading-snug">{{ msg.content }}</div>
-                                        <div class="text-[11px] mt-0.5 opacity-90">¥{{ msg.amount.toLocaleString('zh-CN') }} · {{ packetCountOf(msg.packetId) }} 份</div>
-                                    </div>
-                                    <div class="bg-white/90 py-2 text-center">
-                                        <button v-if="msg.sender !== 'me'" @click="userGrabPacket(msg.packetId)" class="px-4 py-1.5 rounded-full text-[12px] font-medium text-white" style="background:#e11d48;">抢</button>
-                                        <span v-else class="text-[11px] text-muted">众人争抢中…</span>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- 已过期红包 -->
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt <= Date.now()" class="flex justify-center mb-4">
+        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface opacity-60">
+            <div class="px-4 py-3 text-center">
+                <div class="text-sm mb-1">🧧</div>
+                <div class="text-[13px] font-medium text-muted tracking-wider">{{ msg.content }}</div>
+            </div>
+            <div class="bg-bg/50 py-1.5 text-center"><span class="text-[10px] text-muted/60">已过期</span></div>
+        </div>
+    </div>
 
-                            <!-- 分享卡片（可点击展开） -->
-                            <div v-else-if="msg.type === 'share'" class="flex justify-center mb-4">
-                                <div @click="openShareView(msg)" class="w-60 rounded-xl overflow-hidden shadow-md border border-[var(--nav-icon-color)] bg-surface cursor-pointer hover:shadow-lg transition">
-                                    <div class="px-4 py-3 text-center" style="background:var(--nav-icon-color);color:#fff;">
-                                        <div class="text-[13px] font-medium tracking-wider">{{ msg.shareTitle }}</div>
-                                    </div>
-                                    <div class="bg-white/90 py-2 text-center">
-                                        <span class="text-[11px] text-muted">点击查看分享内容</span>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- 已拆红包 -->
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'opened'" class="flex justify-center mb-4">
+        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface">
+            <div class="px-4 py-3 text-center">
+                <div class="text-sm mb-1">🎁</div>
+                <div class="text-lg font-bold text-text">¥{{ msg.amount.toFixed(2) }}</div>
+                <div class="text-[11px] text-muted mt-0.5">{{ msg.content }}</div>
+            </div>
+            <div class="bg-bg/50 py-1.5 text-center"><span class="text-[10px] text-muted/60">已领取</span></div>
+        </div>
+    </div>
 
-                            <div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
-                                <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
-                                    <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1" :class="{'opacity-0': !shouldShowAvatar(index)}">
-                                        <div class="w-full h-full bg-surface border border-border/50 flex items-center justify-center overflow-hidden" :style="{ borderRadius: settings.avatarRadius + '%' }">
-                                            <img v-if="senderAvatar(msg.sender)" :src="senderAvatar(msg.sender)" class="w-full h-full object-cover">
-                                            <span v-else class="text-[10px] text-muted serif-text">{{ senderName(msg.sender).charAt(0) }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
-                                        <span v-if="currentSession.type === 'group' && msg.sender !== 'me' && shouldShowAvatar(index)" class="text-[10px] tracking-wider mb-0.5 px-1" :class="msg.sender === 'me' ? 'text-right' : 'text-left'" style="color:var(--color-muted);">{{ senderName(msg.sender) }}</span>
-                                        <span v-if="msg.mention" class="text-[10px] mb-0.5 px-1.5 py-0.5 rounded tracking-wider" style="color:var(--nav-icon-color);background:rgba(24,95,165,0.1);">@{{ mentionNameOf(msg.mention) }}</span>
-                                        <div v-if="msg.quote" class="mb-1 px-2 py-1 rounded-lg border-l-2 text-[11px] cursor-pointer max-w-[220px]" style="border-color:#9aa0a8;background:rgba(0,0,0,0.04);color:var(--color-muted);" @click="jumpToQuote(msg.quote.id)">
-                                            <div class="truncate">{{ quotePreview(msg.quote) }}</div>
-                                        </div>
-                                        <button @click="deleteMsg(msg.id)" class="absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm backdrop-blur" :class="msg.sender === 'me' ? '-left-7' : '-right-7'">
-                                            <i data-lucide="trash-2" class="w-3 h-3 stroke-[1.5]"></i>
-                                        </button>
-                                        <div v-if="msg.image" class="relative">
-                                            <img :src="msg.image" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
-                                            <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
-                                        </div>
-                                        <div v-else class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px' }" v-html="highlightText(msg.content, msg.isTyping)">
-                                            <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
-                                        </div>
-                                        <div class="flex items-center gap-2 mt-1 px-1">
-                                            <span class="text-[9px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
-                                            <span v-if="msg.sender === 'me'" class="text-[9px] tracking-widest px-1 rounded" :class="chatBgDark ? (msg.status === 'read' ? 'text-white bg-black/20' : 'text-white/60 bg-black/20') : (msg.status === 'read' ? 'text-text bg-surface/30' : 'text-muted bg-surface/30')">{{ msg.status === 'read' ? '已读' : '未读' }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+    <!-- 问卷卡片 -->
+    <div v-else-if="msg.type === 'survey'" class="flex justify-center mb-4">
+        <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
+            <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷 · {{ msg.status === 'answered' ? (msg.declined ? 'TA未作答' : '已作答') : '待TA作答' }}</div>
+            <div class="px-4 py-3 space-y-2">
+                <div v-for="(q, qi) in msg.questions" :key="qi" class="text-[12px]">
+                    <div class="text-text">{{ qi + 1 }}. {{ q.text }}</div>
+                    <div class="text-[10px] text-muted mt-0.5">{{ (q.options || []).join(' / ') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 问卷作答结果 -->
+    <div v-else-if="msg.type === 'surveyResult'" class="flex justify-center mb-4">
+        <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
+            <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷作答</div>
+            <div v-if="msg.declined" class="px-4 py-5 text-center text-[12px] text-muted/70 tracking-wider">TA选择不答</div>
+            <div v-else class="px-4 py-3 space-y-2">
+                <div v-for="(ans, ai) in msg.answers" :key="ai" class="text-[12px]">
+                    <div class="text-text">{{ ai + 1 }}. {{ ans.text }}</div>
+                    <div v-if="ans.picked" class="text-[10px] mt-0.5" style="color:#f59e0b;">TA选了：{{ ans.picked }}</div>
+                    <div v-else class="text-[10px] text-muted/60 mt-0.5">这道题TA没有回答</div>
+                </div>
+                <div v-if="msg.answers && !msg.answers.some(a => a.picked)" class="text-[10px] text-muted/60 pt-1.5 border-t border-border/30">（这一轮TA全都未作答）</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 投票卡片 -->
+    <div v-else-if="msg.type === 'poll'" class="flex justify-center mb-4">
+        <div class="w-72 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
+            <div class="px-4 py-2.5 text-[11px] tracking-widest border-b border-border/40 flex justify-between items-center">
+                <span class="text-muted">📊 投票</span>
+                <span v-if="pollData = getPollById(msg.pollId)">
+                    <span v-if="pollData.isClosed" class="text-red-400 text-[10px]">已结束</span>
+                    <span v-else class="text-green-400 text-[10px]">进行中</span>
+                </span>
+            </div>
+            <div class="px-4 py-3" v-if="pollData = getPollById(msg.pollId)">
+                <div class="text-[14px] font-medium text-text">{{ pollData.title }}</div>
+                <div v-for="(q, qi) in pollData.questions" :key="qi" class="mt-3">
+                    <div class="text-[12px] text-text">{{ qi+1 }}. {{ q.text }}</div>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        <button v-for="(op, oi) in q.options" :key="oi"
+                                @click="castVote(pollData.id, qi, oi)"
+                                :disabled="pollData.isClosed"
+                                class="px-3 py-1 rounded-full text-[11px] border transition"
+                                :class="(function() {
+                                    const vote = pollData.votes['me'];
+                                    if (!vote) return 'border-border text-muted';
+                                    const val = vote[qi];
+                                    if (Array.isArray(val) && val.includes(oi)) return 'border-text bg-bg text-text';
+                                    if (val === oi) return 'border-text bg-bg text-text';
+                                    return 'border-border text-muted';
+                                })()">
+                            {{ op }}
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3 text-[10px] text-muted">
+                    已投票: {{ Object.keys(pollData.votes).length }} 人
+                    <span v-if="pollData.participants.length">(共 {{ pollData.participants.length }} 人参与)</span>
+                    <span v-else>(所有人均可参与)</span>
+                </div>
+                <button v-if="pollData.creator === 'me' && !pollData.isClosed" @click="closePoll(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">结束投票</button>
+                <button v-if="pollData.isClosed" @click="viewPollResult(msg.pollId)" class="mt-2 ml-2 px-3 py-1 rounded text-[11px] bg-text text-white">查看结果</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 普通 system 消息 -->
+    <div v-else-if="msg.sender === 'system'" class="flex justify-center mb-4">
+        <span class="text-[10px] tracking-wider px-3 py-1 rounded-full" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/60 bg-surface/30'">{{ msg.content }}</span>
+    </div>
+
+    <!-- 我发的红包（靠右） -->
+    <div v-else-if="msg.sender === 'me' && msg.type === 'redpacket'" class="mb-4 flex justify-end group relative">
+        <div class="flex items-center gap-2">
+            <button @click="deleteMsg(msg.id)" class="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
+                <div class="px-4 py-3 text-white">
+                    <div class="text-lg mb-1">🧧</div>
+                    <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
+                </div>
+                <div class="bg-white/90 py-2 text-center">
+                    <span v-if="msg.status === 'opened'" class="text-[12px] font-semibold text-red-600">对方已收下</span>
+                    <span v-else-if="msg.status === 'pending'" class="text-[12px] text-muted">等待对方收下…</span>
+                    <span v-else-if="msg.status === 'expired'" class="text-[12px] text-muted">对方未收下 · 已退回</span>
+                    <span v-else class="text-[12px] font-semibold text-red-600">¥{{ msg.amount.toLocaleString('zh-CN') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 群聊抢红包 -->
+    <div v-else-if="msg.type === 'grabPacket'" class="flex justify-center mb-4">
+        <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
+            <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;">
+                <div class="text-lg mb-1">🧧</div>
+                <div class="text-[13px] font-medium tracking-wider">抢红包</div>
+                <div v-if="msg.sender !== 'me'" class="text-[11px] mt-0.5 opacity-90">{{ senderName(msg.sender) }} 发的</div>
+                <div v-if="msg.content" class="text-[11px] mt-0.5 opacity-90 leading-snug">{{ msg.content }}</div>
+                <div class="text-[11px] mt-0.5 opacity-90">¥{{ msg.amount.toLocaleString('zh-CN') }} · {{ packetCountOf(msg.packetId) }} 份</div>
+            </div>
+            <div class="bg-white/90 py-2 text-center">
+                <button v-if="msg.sender !== 'me'" @click="userGrabPacket(msg.packetId)" class="px-4 py-1.5 rounded-full text-[12px] font-medium text-white" style="background:#e11d48;">抢</button>
+                <span v-else class="text-[11px] text-muted">众人争抢中…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享卡片 -->
+    <div v-else-if="msg.type === 'share'" class="flex justify-center mb-4">
+        <div @click="openShareView(msg)" class="w-60 rounded-xl overflow-hidden shadow-md border border-[var(--nav-icon-color)] bg-surface cursor-pointer hover:shadow-lg transition">
+            <div class="px-4 py-3 text-center" style="background:var(--nav-icon-color);color:#fff;">
+                <div class="text-[13px] font-medium tracking-wider">{{ msg.shareTitle }}</div>
+            </div>
+            <div class="bg-white/90 py-2 text-center">
+                <span class="text-[11px] text-muted">点击查看分享内容</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 普通消息（含标签、引用、图片、气泡等） -->
+    <div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
+        <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
+            <!-- 头像 -->
+            <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1" :class="{'opacity-0': !shouldShowAvatar(index)}">
+                <div class="w-full h-full bg-surface border border-border/50 flex items-center justify-center overflow-hidden" :style="{ borderRadius: settings.avatarRadius + '%' }">
+                    <img v-if="senderAvatar(msg.sender)" :src="senderAvatar(msg.sender)" class="w-full h-full object-cover">
+                    <span v-else class="text-[10px] text-muted serif-text">{{ senderName(msg.sender).charAt(0) }}</span>
+                </div>
+            </div>
+
+            <!-- 消息内容容器 -->
+            <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
+                <!-- 群聊时显示发送者名称 -->
+                <span v-if="currentSession.type === 'group' && msg.sender !== 'me' && shouldShowAvatar(index)" class="text-[10px] tracking-wider mb-0.5 px-1" :class="msg.sender === 'me' ? 'text-right' : 'text-left'" style="color:var(--color-muted);">{{ senderName(msg.sender) }}</span>
+
+                <!-- @提及 -->
+                <span v-if="msg.mention" class="text-[10px] mb-0.5 px-1.5 py-0.5 rounded tracking-wider" style="color:var(--nav-icon-color);background:rgba(24,95,165,0.1);">@{{ mentionNameOf(msg.mention) }}</span>
+
+                <!-- 引用 -->
+                <div v-if="msg.quote" class="mb-1 px-2 py-1 rounded-lg border-l-2 text-[11px] cursor-pointer max-w-[220px]" style="border-color:#9aa0a8;background:rgba(0,0,0,0.04);color:var(--color-muted);" @click="jumpToQuote(msg.quote.id)">
+                    <div class="truncate">{{ quotePreview(msg.quote) }}</div>
+                </div>
+
+                <!-- 删除按钮（悬停显示） -->
+                <button @click="deleteMsg(msg.id)" class="absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm backdrop-blur" :class="msg.sender === 'me' ? '-left-7' : '-right-7'">
+                    <i data-lucide="trash-2" class="w-3 h-3 stroke-[1.5]"></i>
+                </button>
+
+                <!-- 标签（放在气泡上方，独立于 v-html） -->
+                <div v-if="msg.tag" class="text-[10px] mb-0.5 px-1 flex items-center gap-1">
+    <span class="px-1.5 py-0.5 rounded" style="background:rgba(0,0,0,0.06);color:#555555;">
+        {{ msg.tag.type }} · {{ msg.tag.text }}
+    </span>
+</div>
+
+                <!-- 图片消息 -->
+                <div v-if="msg.image" class="relative">
+                    <img :src="msg.image" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
+                    <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
+                </div>
+
+                <!-- 纯文本气泡（v-html 内部不能有子元素，标记圆点移到外层） -->
+                <div v-else class="relative">
+                    <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px' }" v-html="highlightText(msg.content, msg.isTyping)">
+                    </div>
+                    <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
+                </div>
+
+                <!-- 时间戳 & 状态 -->
+                <div class="flex items-center gap-2 mt-1 px-1">
+                    <span class="text-[9px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
+                    <span v-if="msg.sender === 'me'" class="text-[9px] tracking-widest px-1 rounded" :class="chatBgDark ? (msg.status === 'read' ? 'text-white bg-black/20' : 'text-white/60 bg-black/20') : (msg.status === 'read' ? 'text-text bg-surface/30' : 'text-muted bg-surface/30')">{{ msg.status === 'read' ? '已读' : '未读' }}</span>
+                </div>
+
+            </div> <!-- flex-col -->
+        </div> <!-- flex -->
+    </div> <!-- 普通消息结束 -->
+</template>
 
                         <div v-if="messages.length === 0" class="mt-32 flex flex-col items-center justify-center opacity-30 text-muted">
                             <span class="text-xs font-light tracking-widest serif-text">此处尚无回音</span>
@@ -854,6 +887,12 @@
                                     </div>
                                     <div class="text-[10px] text-muted/60 mt-1.5 px-1">关闭后只发单条字卡；条数控制每次拼接的数量（含表情包）</div>
                                 </div>
+
+  <!-- ===== 补全标签词条 ===== -->
+
+<button @click="fillDefaultTagBoxes" class="w-full py-3 rounded-lg border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors">
+    补全标签词条
+</button>
 
                                 <!-- ===== 3. 群聊专属：禁言 ===== -->
                                 <div v-if="currentSession && currentSession.type === 'group'">
@@ -4799,8 +4838,8 @@ const startMailTimer = () => {
     // ===== 语料库（改造自 replyGroups）：箱子 + 情境 + 线路 =====
     // 5 个固定箱子；箱内用「卷宗(分组)+留白句(字卡)」结构，与旧 replyGroups 一致
     const corpusBoxList = ['私聊', '群聊', '主动写信', '信封回复', '红包备注'];
-    // 3 本专属书册（拍一拍/问号/状态）：固定服务对应功能，不参与书架情境链接，仅书册选择面板可编辑
-    const specialBoxList = ['拍一拍', '问号', '状态'];
+    // 6 本专属书册（拍一拍/问号/状态）：固定服务对应功能，不参与书架情境链接，仅书册选择面板可编辑
+const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图'];
     // 书册选择面板显示全部书册（含专属）；书架情境链接只用 corpusBoxList
     const corpusBoxListAll = [...corpusBoxList, ...specialBoxList];
     // 5 个情境；默认每个情境连接与其同名的箱子
@@ -4815,6 +4854,9 @@ const startMailTimer = () => {
       '拍一拍': '拍一拍',
       '问号': '问号',
       '状态': '状态',
+'情绪': '情绪',
+    '心意': '心意',
+    '交流意图': '交流意图',
     };
     // 红包备注箱固定三档隔板：小红包=高概率 / 红包=中概率 / 转账=低概率，不可删
     const RP_TIERS = ['小红包', '红包', '转账'];
@@ -4843,18 +4885,67 @@ const startMailTimer = () => {
       box.groups = RP_TIERS.map((t) => ({ id: t, name: t, groups: map[t] || [] }));
     };
     // 新建会话时的默认语料库：私聊箱塞一条「初相识」，红包备注箱带三档隔板与 mix 开关，拍一拍箱默认一条「TA拍了拍我」
-    const defaultCorpus = () => {
-      const boxes = {};
-      corpusBoxListAll.forEach((b) => {
+const defaultCorpus = () => {
+    const boxes = {};
+    // 所有书册列表（包含新增的三个）
+    const allBoxNames = ['私聊', '群聊', '主动写信', '信封回复', '红包备注', '拍一拍', '问号', '状态', '情绪', '心意', '交流意图'];
+    allBoxNames.forEach((b) => {
         boxes[b] = { groups: [], mix: b === '红包备注' ? false : (b === '群聊' ? true : undefined) };
-      });
-      boxes['私聊'].groups = [{ id: genId(), name: '初相识', replies: [{ id: genId(), text: '……', enabled: true }] }];
-      boxes['拍一拍'].groups = [{ id: genId(), name: '默认', replies: [{ id: genId(), text: 'TA拍了拍我', enabled: true }] }];
-      ensureRedpacketPartitions(boxes['红包备注']);
-      const routes = {};
-      corpusSitList.forEach((s) => (routes[s] = [s]));
-      return { activeBox: '私聊', boxes, routes };
-    };
+    });
+    // 默认私聊词条
+    boxes['私聊'].groups = [{ id: genId(), name: '初相识', replies: [{ id: genId(), text: '……', enabled: true }] }];
+    // 默认拍一拍
+    boxes['拍一拍'].groups = [{ id: genId(), name: '默认', replies: [{ id: genId(), text: 'TA拍了拍我', enabled: true }] }];
+    // 默认情绪
+    boxes['情绪'].groups = [{ 
+        id: genId(), 
+        name: '心情词库', 
+        replies: [
+            { id: genId(), text: '开心', enabled: true },
+            { id: genId(), text: '幸福', enabled: true },
+            { id: genId(), text: '激动', enabled: true },
+            { id: genId(), text: '平静', enabled: true },
+            { id: genId(), text: '想你了', enabled: true },
+            { id: genId(), text: '有点累', enabled: true },
+            { id: genId(), text: '充满希望', enabled: true },
+            { id: genId(), text: '需要你', enabled: true },
+        ] 
+    }];
+    // 默认心意
+    boxes['心意'].groups = [{ 
+        id: genId(), 
+        name: '心意词库', 
+        replies: [
+            { id: genId(), text: '关心你', enabled: true },
+            { id: genId(), text: '想陪你', enabled: true },
+            { id: genId(), text: '感谢你', enabled: true },
+            { id: genId(), text: '支持你', enabled: true },
+            { id: genId(), text: '信任你', enabled: true },
+            { id: genId(), text: '理解你', enabled: true },
+            { id: genId(), text: '心疼你', enabled: true },
+        ] 
+    }];
+    // 默认交流意图
+    boxes['交流意图'].groups = [{ 
+        id: genId(), 
+        name: '意图词库', 
+        replies: [
+            { id: genId(), text: '想听你说', enabled: true },
+            { id: genId(), text: '等你回应', enabled: true },
+            { id: genId(), text: '想分享', enabled: true },
+            { id: genId(), text: '求安慰', enabled: true },
+            { id: genId(), text: '想聊聊天', enabled: true },
+            { id: genId(), text: '在你身边', enabled: true },
+            { id: genId(), text: '想知道你在做什么', enabled: true },
+        ] 
+    }];
+    // 确保红包备注有标准三档隔板
+    ensureRedpacketPartitions(boxes['红包备注']);
+    const routes = {};
+    corpusSitList.forEach((s) => (routes[s] = [s]));
+    return { activeBox: '私聊', boxes, routes };
+};
+
     // 读取旧档时归一化：补齐缺失箱子/情境/路由，并把旧 replyGroups 迁进「私聊」箱
     const normalizeCorpus = (s) => {
       const corp = s.corpus || {};
@@ -5572,6 +5663,7 @@ if (contentRaw == null && !opts.image) return;
         mention: opts.mention || null,
         image: opts.image || null,
         quote: opts.quote || null,
+tag: opts.tag || null,        // 👈 新增
       };
       target.messages.push(newMsg);
       playTone(sender);
@@ -5930,6 +6022,37 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const m = sessions.value.find(s => s.id === mid);
         return m ? m.name : '未知';
     };
+
+// ===== 标签系统 =====
+const tagPickerOpen = ref(false);
+const selectedTag = ref(null); // { type: '情绪', text: '开心' }
+
+// 获取指定类型的标签列表（从语料库读取）
+const getTagsForType = (type, session) => {
+    const s = session || currentSession.value;
+    if (!s) return [];
+    const box = s.corpus?.boxes?.[type];
+    if (!box) return [];
+    const tags = [];
+    box.groups.forEach(g => {
+        g.replies.forEach(r => {
+            if (r.enabled !== false && r.text && r.text.trim()) {
+                tags.push(r.text.trim());
+            }
+        });
+    });
+    return tags;
+};
+// 选择标签
+const selectTag = (type, text) => {
+    if (selectedTag.value && selectedTag.value.type === type && selectedTag.value.text === text) {
+        selectedTag.value = null; // 点击已选中的取消
+    } else {
+        selectedTag.value = { type, text };
+    }
+};
+
+
     // ===== 表情包 + 上传图片（仅我使用，面板与语料互不同步） =====
     const emotePickerOpen = ref(false);
     let emoteLongPressTimer = null;
@@ -6412,9 +6535,21 @@ const getCombinedReply = (pool) => {
                 const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
                 // ---- 获取拼接设置 ----
                 const concatSettings = cur ? getSessionSettings(cur.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
-                const opts = { marked, session: cur };
-                if (quote) opts.quote = quote;
 
+// ---- 生成随机标签（30% 概率） ----
+let tag = null;
+if (Math.random() < 0.3) {
+    const types = ['情绪', '心意', '交流意图'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const tags = getTagsForType(type, cur);
+    if (tags.length) {
+        tag = { type, text: tags[Math.floor(Math.random() * tags.length)] };
+    }
+}                
+
+const opts = { marked, session: cur };
+                if (quote) opts.quote = quote;
+                if (tag) opts.tag = tag;
                 if (concatSettings.concatEnabled) {
                     // 拼接模式
                     const count = Math.min(concatSettings.concatCount, pool.length);
@@ -9639,6 +9774,58 @@ const clearCurrentChat = async () => {
         switchView('home');
       }
     };
+
+// ===== 补全所有会话的情绪/心意/交流意图书册默认词条 =====
+const fillDefaultTagBoxes = async () => {
+    const count = await appPrompt({
+        message: '将为所有会话补充「情绪」「心意」「交流意图」的默认词条（不会覆盖已有词条）。确定继续吗？',
+        defaultValue: '是',
+        placeholder: '输入"是"确认'
+    });
+    if (count !== '是') return;
+
+    let totalAdded = 0;
+    sessions.value.forEach(s => {
+        if (s.type === 'group') return; // 只对私聊补充
+        const defaultTags = {
+            '情绪': ['开心', '幸福', '激动', '平静', '想你了', '有点累', '充满希望', '需要你'],
+            '心意': ['关心你', '想陪你', '感谢你', '支持你', '信任你', '理解你', '心疼你'],
+            '交流意图': ['想听你说', '等你回应', '想分享', '求安慰', '想聊聊天', '在你身边', '想知道你在做什么']
+        };
+        ['情绪', '心意', '交流意图'].forEach(boxName => {
+            if (!s.corpus) s.corpus = defaultCorpus();
+            if (!s.corpus.boxes) s.corpus.boxes = {};
+            if (!s.corpus.boxes[boxName]) {
+                s.corpus.boxes[boxName] = { groups: [] };
+            }
+            const box = s.corpus.boxes[boxName];
+            // 如果书册为空，创建默认分组
+            if (!box.groups || box.groups.length === 0) {
+                box.groups = [{ id: genId(), name: '默认词库', replies: [] }];
+            }
+            // 添加缺失的词条
+            const existing = new Set();
+            box.groups.forEach(g => g.replies.forEach(r => existing.add(r.text)));
+            const added = [];
+            defaultTags[boxName].forEach(text => {
+                if (!existing.has(text)) {
+                    box.groups[0].replies.push({ id: genId(), text, enabled: true });
+                    added.push(text);
+                }
+            });
+            if (added.length) totalAdded += added.length;
+        });
+    });
+    if (totalAdded > 0) {
+        debouncedSave();
+        showToast(`已补充 ${totalAdded} 条标签词条`);
+        // 刷新页面以更新界面
+        setTimeout(() => location.reload(), 800);
+    } else {
+        showToast('所有会话已拥有默认词条，无需补充');
+    }
+};
+
     const filteredGroups = computed(() => {
       const q = libSearchQuery.value.trim().toLowerCase();
       const list = activeGroups.value;
@@ -10298,6 +10485,11 @@ isMuted,
 openMuteDialog,
 muteMember,
 unmuteMember,
+tagPickerOpen,
+selectedTag,
+getTagsForType,
+selectTag,
+fillDefaultTagBoxes,
       deleteEnvelope
     };
   },
