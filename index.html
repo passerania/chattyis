@@ -1793,7 +1793,6 @@
             </select>
         </div>
         <button @click="markAllMailRead" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors">全部已读</button>
-        <button @click="checkMailArrival" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors">收信</button>
     </div>
     <main class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <div v-if="!filteredMailList.length" class="mt-20 text-center text-xs text-muted/60">暂无留言</div>
@@ -4975,6 +4974,40 @@ const defaultCorpus = () => {
       if (s.replyGroups && (!boxes['私聊'].groups || boxes['私聊'].groups.length === 0)) {
         boxes['私聊'].groups = s.replyGroups;
       }
+
+    // ===== 补全情绪/心意/交流意图三个书册的默认词条 =====
+    const tagBoxes = ['情绪', '心意', '交流意图'];
+    const defaultTagDict = {
+        '情绪': ['开心', '幸福', '激动', '平静', '想你了', '有点累', '充满希望', '需要你'],
+        '心意': ['关心你', '想陪你', '感谢你', '支持你', '信任你', '理解你', '心疼你'],
+        '交流意图': ['想听你说', '等你回应', '想分享', '求安慰', '想聊聊天', '在你身边', '想知道你在做什么']
+    };
+    tagBoxes.forEach(boxName => {
+        // 确保书册存在
+        if (!boxes[boxName]) {
+            boxes[boxName] = { groups: [] };
+        }
+        const box = boxes[boxName];
+        // 确保有分组
+        if (!box.groups || box.groups.length === 0) {
+            box.groups = [{ id: genId(), name: '默认词库', replies: [] }];
+        }
+        // 收集现有词条
+        const existing = new Set();
+        box.groups.forEach(g => g.replies.forEach(r => existing.add(r.text)));
+        // 补充缺失的词条
+        const defaultTexts = defaultTagDict[boxName] || [];
+        defaultTexts.forEach(text => {
+            if (!existing.has(text)) {
+                // 如果第一个分组不存在，则创建
+                if (box.groups.length === 0) {
+                    box.groups = [{ id: genId(), name: '默认词库', replies: [] }];
+                }
+                box.groups[0].replies.push({ id: genId(), text, enabled: true });
+            }
+        });
+    });
+
       return {
         activeBox: corpusBoxListAll.includes(corp.activeBox) ? corp.activeBox : '私聊',
         boxes,
@@ -5461,6 +5494,7 @@ const checkMailArrival = () => {
             boardPersonalDays: JSON.parse(JSON.stringify(boardPersonalDays.value)),
 sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),
     mutedMembers: JSON.parse(JSON.stringify(mutedMembers)),
+mailReadStatus: JSON.parse(JSON.stringify(mailReadStatus)),
           };
           await localforage.setItem('liubai_v2_db', fullData);
           // ===== localStorage 双保险镜像：localforage 之外再存一份，防止 IndexedDB 被清而丢档 =====
@@ -9775,56 +9809,104 @@ const clearCurrentChat = async () => {
       }
     };
 
-// ===== 补全所有会话的情绪/心意/交流意图书册默认词条 =====
+// ===== 同步所有会话的情绪/心意/交流意图书册（取并集去重） =====
 const fillDefaultTagBoxes = async () => {
-    const count = await appPrompt({
-        message: '将为所有会话补充「情绪」「心意」「交流意图」的默认词条（不会覆盖已有词条）。确定继续吗？',
+    const confirm = await appPrompt({
+        message: '将把所有私聊会话的「情绪」「心意」「交流意图」书册同步为并集（合并所有词条去重）。确定继续吗？',
         defaultValue: '是',
         placeholder: '输入"是"确认'
     });
-    if (count !== '是') return;
+    if (confirm !== '是') return;
 
-    let totalAdded = 0;
+    // 1. 收集所有会话的并集
+    const union = {
+        '情绪': new Set(),
+        '心意': new Set(),
+        '交流意图': new Set()
+    };
+
     sessions.value.forEach(s => {
-        if (s.type === 'group') return; // 只对私聊补充
-        const defaultTags = {
-            '情绪': ['开心', '幸福', '激动', '平静', '想你了', '有点累', '充满希望', '需要你'],
-            '心意': ['关心你', '想陪你', '感谢你', '支持你', '信任你', '理解你', '心疼你'],
-            '交流意图': ['想听你说', '等你回应', '想分享', '求安慰', '想聊聊天', '在你身边', '想知道你在做什么']
-        };
+        if (s.type === 'group') return;
         ['情绪', '心意', '交流意图'].forEach(boxName => {
-            if (!s.corpus) s.corpus = defaultCorpus();
+            const box = s.corpus?.boxes?.[boxName];
+            if (box) {
+                (box.groups || []).forEach(g => {
+                    (g.replies || []).forEach(r => {
+                        if (r.text && r.text.trim()) {
+                            union[boxName].add(r.text.trim());
+                        }
+                    });
+                });
+            }
+        });
+    });
+
+    const total = Object.values(union).reduce((sum, set) => sum + set.size, 0);
+    if (total === 0) {
+        showToast('没有找到任何词条，请先在某个会话中添加词条');
+        return;
+    }
+
+    // 2. 写入每个会话
+    let updatedCount = 0;
+    sessions.value.forEach(s => {
+        if (s.type === 'group') return;
+        ['情绪', '心意', '交流意图'].forEach(boxName => {
+            // 确保语料库和书册存在
+            if (!s.corpus) {
+                s.corpus = { activeBox: '私聊', boxes: {}, routes: {} };
+            }
             if (!s.corpus.boxes) s.corpus.boxes = {};
             if (!s.corpus.boxes[boxName]) {
                 s.corpus.boxes[boxName] = { groups: [] };
             }
             const box = s.corpus.boxes[boxName];
-            // 如果书册为空，创建默认分组
             if (!box.groups || box.groups.length === 0) {
-                box.groups = [{ id: genId(), name: '默认词库', replies: [] }];
+                box.groups = [{ id: genId(), name: '同步词库', replies: [] }];
             }
-            // 添加缺失的词条
-            const existing = new Set();
-            box.groups.forEach(g => g.replies.forEach(r => existing.add(r.text)));
-            const added = [];
-            defaultTags[boxName].forEach(text => {
-                if (!existing.has(text)) {
-                    box.groups[0].replies.push({ id: genId(), text, enabled: true });
-                    added.push(text);
-                }
-            });
-            if (added.length) totalAdded += added.length;
+            // 用并集替换现有词条
+            const group = box.groups[0];
+            group.replies = Array.from(union[boxName]).map(text => ({
+                id: genId(),
+                text: text,
+                enabled: true
+            }));
+            updatedCount++;
         });
     });
-    if (totalAdded > 0) {
-        debouncedSave();
-        showToast(`已补充 ${totalAdded} 条标签词条`);
-        // 刷新页面以更新界面
-        setTimeout(() => location.reload(), 800);
+
+    if (updatedCount > 0) {
+        // 显式保存到 localStorage
+        try {
+            // 深拷贝当前数据
+            const toSave = sessions.value.map(s => JSON.parse(JSON.stringify(s)));
+            const fullData = {
+                sessions: toSave,
+                profiles: JSON.parse(JSON.stringify(profiles)),
+                settings: JSON.parse(JSON.stringify(settings)),
+                money: JSON.parse(JSON.stringify(money)),
+                boardMessages: JSON.parse(JSON.stringify(boardMessages.value)),
+                boardPeriod: JSON.parse(JSON.stringify(boardPeriod.value)),
+                boardMoodMarks: JSON.parse(JSON.stringify(boardMoodMarks.value)),
+                boardPeriodNotes: JSON.parse(JSON.stringify(boardPeriodNotes.value)),
+                boardPeriodDeleted: JSON.parse(JSON.stringify(boardPeriodDeleted.value)),
+                boardPersonalDays: JSON.parse(JSON.stringify(boardPersonalDays.value)),
+                sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),
+                mutedMembers: JSON.parse(JSON.stringify(mutedMembers)),
+            };
+            await localforage.setItem('liubai_v2_db', fullData);
+            console.log('✅ 数据已保存，并集词条：', union);
+            showToast(`已同步 ${total} 条词条到所有会话，即将刷新...`);
+            setTimeout(() => location.reload(), 800);
+        } catch (e) {
+            console.error('保存失败：', e);
+            showToast('保存失败，请查看控制台错误');
+        }
     } else {
-        showToast('所有会话已拥有默认词条，无需补充');
+        showToast('没有会话需要同步');
     }
 };
+
 
     const filteredGroups = computed(() => {
       const q = libSearchQuery.value.trim().toLowerCase();
@@ -9865,6 +9947,9 @@ const fillDefaultTagBoxes = async () => {
             let stored = await localforage.getItem('liubai_v2_db');
             if (!stored) stored = loadLocalStorageMirror('__kj_mirror');
             if (stored) {
+if (stored.mailReadStatus) {
+    Object.assign(mailReadStatus, stored.mailReadStatus);
+}
                 if (stored.sessions && stored.sessions.length > 0) {
                     sessions.value = stored.sessions.map((s) => ({
                         ...s,
