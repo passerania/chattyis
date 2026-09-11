@@ -723,6 +723,33 @@
         </div>
     </div>
 
+<!-- 吐槽卡片 -->
+<div v-else-if="msg.type === 'tease'" class="flex justify-center mb-4">
+    <div @click="openTeaseReply(msg)" 
+         class="w-72 rounded-2xl overflow-hidden shadow-md border border-border/60 bg-surface cursor-pointer hover:shadow-lg transition-all duration-300 p-4">
+        <div v-if="msg.teaseCategory" class="text-[10px] tracking-widest text-muted/60 mb-1">
+            {{ msg.teaseCategory }}
+        </div>
+        <div class="text-[15px] font-semibold text-text mb-2 leading-relaxed">
+            {{ msg.teaseContent }}
+        </div>
+        <div v-if="msg.teaseStatus === 'replied'" class="mt-2 pt-2 border-t border-border/40 space-y-1.5">
+            <div class="flex items-center gap-1.5 text-[13px]">
+                <span class="text-green-500 font-bold">√</span>
+                <span class="text-muted">你：</span>
+                <span class="text-text">{{ msg.userReply }}</span>
+            </div>
+            <div class="flex items-start gap-1.5 text-[13px]">
+                <span class="text-muted shrink-0">TA：</span>
+                <span class="text-text">{{ msg.systemReply }}</span>
+            </div>
+        </div>
+        <div v-else class="mt-2 pt-2 border-t border-border/40 text-[11px] text-muted/70 text-center tracking-wider">
+            点击回复 TA
+        </div>
+    </div>
+</div>
+
     <!-- 普通消息（含标签、引用、图片、气泡等） -->
     <div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
         <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
@@ -752,13 +779,7 @@
                     <i data-lucide="trash-2" class="w-3 h-3 stroke-[1.5]"></i>
                 </button>
 
-                <!-- 标签（放在气泡上方，独立于 v-html） -->
-                <div v-if="msg.tag" class="text-[10px] mb-0.5 px-1 flex items-center gap-1">
-    <span class="px-1.5 py-0.5 rounded" style="background:rgba(0,0,0,0.06);color:#555555;">
-        {{ msg.tag.type }} · {{ msg.tag.text }}
-    </span>
-</div>
-
+               
                 <!-- 图片消息 -->
                 <div v-if="msg.image" class="relative">
                     <img :src="msg.image" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
@@ -767,10 +788,28 @@
 
                 <!-- 纯文本气泡（v-html 内部不能有子元素，标记圆点移到外层） -->
                 <div v-else class="relative">
-                    <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px' }" v-html="highlightText(msg.content, msg.isTyping)">
-                    </div>
-                    <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
-                </div>
+    <!-- 组合气泡（引用 + 正文 + 标签） -->
+    <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
+        
+      
+        <!-- 2. 正文（v-html 独立放，避免覆盖上面的引用） -->
+        <div v-html="highlightText(msg.content, msg.isTyping)" class="leading-relaxed"></div>
+
+        <!-- 3. 底部标签（虚线分割 + 药丸状标签） -->
+        <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
+            <!-- 情绪类型标签 -->
+            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">
+                {{ msg.tag.type }}
+            </span>
+            <!-- 情绪内容标签 -->
+            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">
+                {{ msg.tag.text }}
+            </span>
+        </div>
+    </div>
+    <!-- 标记小圆点 -->
+    <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
+</div>
 
                 <!-- 时间戳 & 状态 -->
                 <div class="flex items-center gap-2 mt-1 px-1">
@@ -893,6 +932,46 @@
 <button @click="fillDefaultTagBoxes" class="w-full py-3 rounded-lg border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors">
     补全标签词条
 </button>
+ 
+<!-- ===== 3.5 吐槽设置（仅私聊） ===== -->
+<div v-if="currentSession && currentSession.type !== 'group'">
+    <div class="text-[11px] text-muted tracking-widest mb-2">吐槽</div>
+    <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
+        <!-- 启用开关 -->
+        <div class="flex items-center justify-between">
+            <span class="text-[13px] text-text">启用吐槽</span>
+            <button @click="toggleTeaseEnabled" class="w-10 h-5 rounded-full relative transition-colors" :class="getTeaseSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="getTeaseSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
+            </button>
+        </div>
+        <!-- 触发概率 -->
+        <div>
+            <div class="flex justify-between text-[11px] text-muted mb-1">
+                <span>触发概率</span>
+                <span>{{ Math.round(getTeaseSettings(currentSession.id).prob * 100) }}%</span>
+            </div>
+            <input type="range" min="1" max="100" 
+                   :value="getTeaseSettings(currentSession.id).prob * 100" 
+                   @input="e => { getTeaseSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }" 
+                   class="w-full accent-text" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <!-- 自动弹窗概率 -->
+        <div>
+            <div class="flex justify-between text-[11px] text-muted mb-1">
+                <span>自动弹窗概率</span>
+                <span>{{ Math.round(getTeaseSettings(currentSession.id).popupProb * 100) }}%</span>
+            </div>
+            <input type="range" min="0" max="100" 
+                   :value="getTeaseSettings(currentSession.id).popupProb * 100" 
+                   @input="e => { getTeaseSettings(currentSession.id).popupProb = e.target.value / 100; debouncedSave(); }" 
+                   class="w-full accent-text" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <!-- 手动触发按钮 -->
+        <button @click="forceTeaseNow" class="w-full py-2 rounded-lg border border-border text-[12px] text-text tracking-widest hover:bg-bg transition-colors">
+            让 TA 现在吐槽一次
+        </button>
+    </div>
+</div>
 
                                 <!-- ===== 3. 群聊专属：禁言 ===== -->
                                 <div v-if="currentSession && currentSession.type === 'group'">
@@ -939,20 +1018,12 @@
             <!-- 字卡（原语料库） -->
             <div v-else-if="currentView === 'library'" key="library" class="absolute inset-0 flex flex-col z-20 bg-bg">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
-                    <button @click="switchView('home')" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
-                    <span class="absolute left-1/2 -translate-x-1/2 -translate-x-20 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">{{ currentSession?.name || '' }} 字卡</span>
-                    <div class="flex gap-1">
-                        <button @click="routeMapOpen = true" class="p-2 text-muted hover:text-text" title="书架"><i data-lucide="library" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <button @click="exportLibrary" class="p-2 text-muted hover:text-text"><i data-lucide="download" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <label class="p-2 text-muted hover:text-text cursor-pointer"><i data-lucide="upload" class="w-5 h-5 stroke-[1.5]"></i><input type="file" accept=".json" class="hidden" @change="importLibrary"></label>
-                        <!-- ===== 新增：三合一导入/导出 ===== -->
-                        <button @click="exportTriple" class="p-2 text-muted hover:text-text" title="导出三合一备份"><i data-lucide="package" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <label class="p-2 text-muted hover:text-text cursor-pointer" title="导入三合一备份">
-                            <i data-lucide="package-open" class="w-5 h-5 stroke-[1.5]"></i>
-                            <input type="file" accept=".json" class="hidden" @change="importTriple">
-                        </label>
-                    </div>
-                </header>
+    <button @click="switchView('home')" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
+    <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">{{ currentSession?.name || '' }} 字卡</span>
+    <button @click="libPanelOpen = true" class="p-2 text-muted hover:text-text" title="更多功能">
+        <i data-lucide="more-horizontal" class="w-5 h-5 stroke-[1.5]"></i>
+    </button>
+</header>
 
                 <!-- 群聊会话：字卡库不展示，提示先切到私聊 -->
                 
@@ -1048,32 +1119,36 @@
                 <!-- 其他箱子：卷宗结构 -->
                 <main v-else class="flex-1 overflow-y-auto p-4 space-y-8" id="library-groups">
                     <div v-for="group in filteredGroups" :key="group.id" class="group-item relative" :data-id="group.id">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-2">
-                                <div class="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted hover:text-text drag-handle-group"><i data-lucide="grip-vertical" class="w-4 h-4"></i></div>
-                                <input v-model="group.name" @blur="debouncedSave" class="font-medium text-[14px] tracking-widest w-36 border-b border-transparent hover:border-border focus:border-text bg-transparent px-1">
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <button @click="addReplyToGroup(group.id)" class="text-muted hover:text-text text-[11px] flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> 添加</button>
-                                <button @click="deleteGroup(group.id)" class="text-muted hover:text-red-500"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
-                            </div>
-                        </div>
-                        <div class="bg-surface border border-border rounded-xl overflow-hidden reply-list" :data-group-id="group.id">
-                            <div v-if="!group.replies.length" class="p-5 text-center text-xs text-muted/50 font-light">空寂无声</div>
-                            <div v-for="reply in group.replies" :key="reply.id" class="reply-item flex items-center gap-3 p-3.5 border-b border-border/50 last:border-0 group/reply" :data-id="reply.id" :class="{'bg-bg/40': !reply.enabled}">
-                                <i data-lucide="grip-horizontal" class="w-3.5 h-3.5 text-muted drag-handle-reply cursor-grab shrink-0 opacity-60 hover:opacity-100"></i>
-                                <input type="checkbox" :value="reply.id" v-model="selectedRepliesArr" class="accent-text shrink-0">
-                                <template v-if="reply.image">
-                                    <img :src="reply.image" class="w-12 h-12 rounded-lg object-cover border border-border/50 shrink-0">
-                                    <span class="flex-1 text-[11px] text-muted font-light">表情包</span>
-                                </template>
-                                <input v-else v-model="reply.text" @blur="debouncedSave" class="flex-1 text-[13px] font-light bg-transparent" :class="{'text-muted line-through decoration-muted/40': !reply.enabled}" placeholder="留白一句">
-                                <button @click="toggleReplyEnable(reply)" class="w-8 h-4 rounded-full relative transition-colors duration-200 shrink-0" :class="reply.enabled ? 'bg-text' : 'bg-border'">
-                                    <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-surface rounded-full transition-transform duration-200" :class="reply.enabled ? 'translate-x-4' : 'translate-x-0'"></div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+            <!-- 收起/展开按钮 -->
+            <button @click="toggleGroupOpen(group.id)" class="p-1 text-muted hover:text-text transition-transform">
+                <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" :class="groupOpen[group.id] === false ? '-rotate-90' : ''"></i>
+            </button>
+            <div class="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted hover:text-text drag-handle-group"><i data-lucide="grip-vertical" class="w-4 h-4"></i></div>
+            <input v-model="group.name" @blur="debouncedSave" class="font-medium text-[14px] tracking-widest w-36 border-b border-transparent hover:border-border focus:border-text bg-transparent px-1">
+        </div>
+        <div class="flex items-center gap-3">
+            <button @click="addReplyToGroup(group.id)" class="text-muted hover:text-text text-[11px] flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> 添加</button>
+            <button @click="deleteGroup(group.id)" class="text-muted hover:text-red-500"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+        </div>
+    </div>
+    <div v-show="groupOpen[group.id] !== false" class="bg-surface border border-border rounded-xl overflow-hidden reply-list" :data-group-id="group.id">
+        <div v-if="!group.replies.length" class="p-5 text-center text-xs text-muted/50 font-light">空寂无声</div>
+        <div v-for="reply in group.replies" :key="reply.id" class="reply-item flex items-center gap-3 p-3.5 border-b border-border/50 last:border-0 group/reply" :data-id="reply.id" :class="{'bg-bg/40': !reply.enabled}">
+            <i data-lucide="grip-horizontal" class="w-3.5 h-3.5 text-muted drag-handle-reply cursor-grab shrink-0 opacity-60 hover:opacity-100"></i>
+            <input type="checkbox" :value="reply.id" v-model="selectedRepliesArr" class="accent-text shrink-0">
+            <template v-if="reply.image">
+                <img :src="reply.image" class="w-12 h-12 rounded-lg object-cover border border-border/50 shrink-0">
+                <span class="flex-1 text-[11px] text-muted font-light">表情包</span>
+            </template>
+            <input v-else v-model="reply.text" @blur="debouncedSave" class="flex-1 text-[13px] font-light bg-transparent" :class="{'text-muted line-through decoration-muted/40': !reply.enabled}" placeholder="留白一句">
+            <button @click="toggleReplyEnable(reply)" class="w-8 h-4 rounded-full relative transition-colors duration-200 shrink-0" :class="reply.enabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-surface rounded-full transition-transform duration-200" :class="reply.enabled ? 'translate-x-4' : 'translate-x-0'"></div>
+            </button>
+        </div>
+    </div>
+</div>
                     <button @click="addGroup" class="w-full py-4 border border-dashed border-border rounded-xl text-xs text-muted hover:text-text hover:border-muted transition-colors flex items-center justify-center gap-2 font-light tracking-widest mt-4">
                         <i data-lucide="folder-plus" class="w-4 h-4 stroke-[1.5]"></i> 新辟卷宗
                     </button>
@@ -1089,7 +1164,7 @@
                     </div>
                 </div>
 
-                <!-- 书架面板 -->
+                                <!-- 书架面板 -->
                 <div v-if="routeMapOpen" class="absolute inset-0 z-30 bg-bg flex flex-col">
                     <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
                         <button @click="routeMapOpen = false" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
@@ -1111,8 +1186,46 @@
                         </div>
                     </main>
                 </div>
-                </template>
+
+                <!-- ===== 字卡页面的侧拉面板 ===== -->
+                <transition name="slide">
+                    <div v-if="libPanelOpen" class="absolute inset-0 z-[300] flex justify-end" @click.self="libPanelOpen = false">
+                        <div class="absolute inset-0 bg-black/40" @click="libPanelOpen = false"></div>
+                        <div class="relative w-[300px] max-w-[85vw] h-full bg-surface shadow-2xl flex flex-col" style="background:var(--color-surface);z-index:1;">
+                            <div class="flex items-center justify-between px-4 py-4 border-b border-border/50 shrink-0">
+                                <span class="text-[15px] font-medium tracking-widest text-text">字卡工具</span>
+                                <button @click="libPanelOpen = false" class="p-1 text-muted hover:text-text">
+                                    <i data-lucide="x" class="w-5 h-5 stroke-[1.5]"></i>
+                                </button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+                                <button @click="routeMapOpen = true; libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
+                                    <i data-lucide="library" class="w-4 h-4 stroke-[1.5]"></i> 书架
+                                </button>
+                                <button @click="exportLibrary; libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
+                                    <i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出语料
+                                </button>
+                                <label class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                                    <i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入语料
+                                    <input type="file" accept=".json" class="hidden" @change="importLibrary">
+                                </label>
+                                <button @click="exportTriple; libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
+                                    <i data-lucide="package" class="w-4 h-4 stroke-[1.5]"></i> 导出三合一
+                                </button>
+                                <label class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                                    <i data-lucide="package-open" class="w-4 h-4 stroke-[1.5]"></i> 导入三合一
+                                    <input type="file" accept=".json" class="hidden" @change="importTriple">
+                                </label>
+                                <button @click="syncDefaultCards(); libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4 stroke-[1.5]"></i> 补入预设字卡
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+
             </div>
+            <!-- 字卡视图结束 -->
 
 
 
@@ -2882,6 +2995,25 @@
                 </div>
             </div>
         </div>
+
+<!-- 吐槽回复弹窗 -->
+<div v-if="teaseReplyOpen" class="redpacket-overlay" @click.self="teaseReplyOpen = false">
+    <div class="redpacket-card" style="width:320px;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;">
+            <div class="text-white text-sm font-medium tracking-wider">回复吐槽</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;">
+            <div class="text-[13px] text-muted mb-3 italic">TA说：“{{ currentTeaseMsg?.teaseContent }}”</div>
+            <input v-model="teaseInputText" @keyup.enter="submitTeaseReply" type="text" maxlength="30" 
+                   placeholder="写点什么回复 TA..." 
+                   class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:border-[var(--nav-icon-color)]" />
+            <div class="flex gap-2">
+                <button @click="teaseReplyOpen = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                <button @click="submitTeaseReply" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- 发红包弹窗 -->
         <div v-if="sendRp.show" class="redpacket-overlay" @click.self="sendRp.show = false">
@@ -4838,7 +4970,7 @@ const startMailTimer = () => {
     // 5 个固定箱子；箱内用「卷宗(分组)+留白句(字卡)」结构，与旧 replyGroups 一致
     const corpusBoxList = ['私聊', '群聊', '主动写信', '信封回复', '红包备注'];
     // 6 本专属书册（拍一拍/问号/状态）：固定服务对应功能，不参与书架情境链接，仅书册选择面板可编辑
-const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图'];
+const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图','吐槽'];
     // 书册选择面板显示全部书册（含专属）；书架情境链接只用 corpusBoxList
     const corpusBoxListAll = [...corpusBoxList, ...specialBoxList];
     // 5 个情境；默认每个情境连接与其同名的箱子
@@ -4856,6 +4988,7 @@ const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '�
 '情绪': '情绪',
     '心意': '心意',
     '交流意图': '交流意图',
+'吐槽': '吐槽',
     };
     // 红包备注箱固定三档隔板：小红包=高概率 / 红包=中概率 / 转账=低概率，不可删
     const RP_TIERS = ['小红包', '红包', '转账'];
@@ -4887,7 +5020,7 @@ const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '�
 const defaultCorpus = () => {
     const boxes = {};
     // 所有书册列表（包含新增的三个）
-    const allBoxNames = ['私聊', '群聊', '主动写信', '信封回复', '红包备注', '拍一拍', '问号', '状态', '情绪', '心意', '交流意图'];
+    const allBoxNames = ['私聊', '群聊', '主动写信', '信封回复', '红包备注', '拍一拍', '问号', '状态', '情绪', '心意', '交流意图','吐槽'];
     allBoxNames.forEach((b) => {
         boxes[b] = { groups: [], mix: b === '红包备注' ? false : (b === '群聊' ? true : undefined) };
     });
@@ -4938,6 +5071,30 @@ const defaultCorpus = () => {
             { id: genId(), text: '想知道你在做什么', enabled: true },
         ] 
     }];
+
+// 默认吐槽字卡
+boxes['吐槽'].groups = [
+    { id: genId(), name: '轻微调侃', replies: [
+        { id: genId(), text: '你这安静的样子，我看着就想哄。', enabled: true },
+        { id: genId(), text: '又在发呆？小心我把你拐跑。', enabled: true },
+    ]},
+    { id: genId(), name: '熟悉感', replies: [
+        { id: genId(), text: '你是不是想我了，不然怎么老是出现在我脑子里。', enabled: true },
+    ]},
+    { id: genId(), name: '情侣式调侃', replies: [
+        { id: genId(), text: '看你这傻样，我又要多喜欢一点了。', enabled: true },
+    ]},
+    { id: genId(), name: '轻微嫌弃', replies: [
+        { id: genId(), text: '看你这慢吞吞的，我都替你急。', enabled: true },
+    ]},
+    { id: genId(), name: '严肃吐槽', replies: [
+        { id: genId(), text: '你刚刚那句话，我可记下了。', enabled: true },
+    ]},
+    { id: genId(), name: '两个世界', replies: [
+        { id: genId(), text: '我在想你的时候，你也在想我吗？', enabled: true },
+    ]},
+];
+
     // 确保红包备注有标准三档隔板
     ensureRedpacketPartitions(boxes['红包备注']);
     const routes = {};
@@ -4950,9 +5107,8 @@ const defaultCorpus = () => {
       const corp = s.corpus || {};
       const boxes = corp.boxes ? JSON.parse(JSON.stringify(corp.boxes)) : {};
       const routes = corp.routes ? JSON.parse(JSON.stringify(corp.routes)) : {};
-      corpusBoxListAll.forEach((b) => {
-        if (!boxes[b]) boxes[b] = { groups: [], mix: b === '红包备注' ? false : (b === '群聊' ? true : undefined) };
-        if (!Array.isArray(boxes[b].groups)) boxes[b].groups = [];
+      ['私聊', '群聊', '主动写信', '信封回复', '红包备注', '拍一拍', '问号', '状态', '情绪', '心意', '交流意图', '吐槽'].forEach((b) => {
+    if (!boxes[b]) boxes[b] = { groups: [], mix: b === '红包备注' ? false : (b === '群聊' ? true : undefined) };
       });
       // 群聊箱子：旧档卷宗(直接挂在 groups、无 groups 子层) 迁移为隔板格式（隔板=群聊，旧内容进 __legacy 特殊隔板）
       if (boxes['群聊'] && Array.isArray(boxes['群聊'].groups)) {
@@ -5079,6 +5235,10 @@ const defaultCorpus = () => {
     };
     // 隔板展开状态
     const partitionOpen = reactive({});
+const groupOpen = reactive({});
+const toggleGroupOpen = (id) => {
+    groupOpen[id] = !(groupOpen[id] !== false);
+};
     const togglePartition = (id) => { partitionOpen[id] = !partitionOpen[id]; };
     const groupNameOf = (p) => {
       const sid = typeof p === 'string' ? p : p.id;
@@ -5138,6 +5298,7 @@ const defaultCorpus = () => {
     // 语料库视图交互状态
     const boxSelectOpen = ref(false);
     const routeMapOpen = ref(false);
+const libPanelOpen = ref(false);
     const editingSit = ref(null);
     const switchBox = (b) => {
       activeBox.value = b;
@@ -5206,6 +5367,137 @@ enableCardStitch: false,//拼字卡
 // ===== 侧拉面板开关 =====
 const settingsPanelOpen = ref(false);
 
+// ===== 吐槽设置（每个会话独立） =====
+const teaseSettingsMap = reactive({});
+
+const getTeaseSettings = (sessionId) => {
+    if (!teaseSettingsMap[sessionId]) {
+        teaseSettingsMap[sessionId] = {
+            enabled: true,
+            prob: 0.1,
+            popupProb: 0.7,
+        };
+    }
+    return teaseSettingsMap[sessionId];
+};
+
+const teaseReplyOpen = ref(false);
+const currentTeaseMsg = ref(null);
+const teaseInputText = ref('');
+
+const openTeaseReply = (msg) => {
+    if (msg.teaseStatus === 'replied') return;
+    currentTeaseMsg.value = msg;
+    teaseInputText.value = '';
+    teaseReplyOpen.value = true;
+};
+
+const submitTeaseReply = () => {
+    const msg = currentTeaseMsg.value;
+    const text = teaseInputText.value.trim();
+    if (!msg || !text) return;
+    msg.userReply = text;
+    msg.teaseStatus = 'replied';
+    const replies = ['嗯嗯，我也是这么想的。', '这就对啦，乖~', '你总是这么懂我。', '哼，算你会说话。', '那我可就当真了哦。', '再说一遍，我还想听。'];
+    msg.systemReply = replies[Math.floor(Math.random() * replies.length)];
+    teaseReplyOpen.value = false;
+    currentTeaseMsg.value = null;
+    debouncedSave();
+    showToast('已回复');
+};
+
+const toggleTeaseEnabled = () => {
+    const s = currentSession.value;
+    if (!s) return;
+    const ts = getTeaseSettings(s.id);
+    ts.enabled = !ts.enabled;
+    debouncedSave();
+};
+
+// ===== 同步预设字卡（补齐当前书册的默认词条） =====
+const syncDefaultCards = () => {
+    const s = currentSession.value;
+    if (!s) return;
+    const box = s.corpus.boxes[activeBox.value];
+    if (!box) return;
+
+    // 各书册的预设内容
+    const presets = {
+        '吐槽': [
+            { name: '轻微调侃', texts: ['你这安静的样子，我看着就想哄。', '又在发呆？小心我把你拐跑。', '今天怎么这么乖，是不是做坏事了？'] },
+            { name: '熟悉感', texts: ['你是不是想我了，不然怎么老是出现在我脑子里。', '你一沉默我就知道你在憋坏水。'] },
+            { name: '情侣式调侃', texts: ['看你这傻样，我又要多喜欢一点了。', '你再说一句，我就当你是在表白了。'] },
+            { name: '轻微嫌弃', texts: ['看你这慢吞吞的，我都替你急。', '你是不是又在偷懒？被我抓到了。'] },
+            { name: '严肃吐槽', texts: ['你刚刚那句话，我可记下了。', '你再这样，我可要生气了。'] },
+            { name: '两个世界', texts: ['我在想你的时候，你也在想我吗？', '你那边天晴吗？我这里全是想你的云。'] },
+        ],
+        '情绪': [
+            { name: '心情词库', texts: ['开心', '幸福', '激动', '平静', '想你了', '有点累', '充满希望', '需要你'] },
+        ],
+        '心意': [
+            { name: '心意词库', texts: ['关心你', '想陪你', '感谢你', '支持你', '信任你', '理解你', '心疼你'] },
+        ],
+        '交流意图': [
+            { name: '意图词库', texts: ['想听你说', '等你回应', '想分享', '求安慰', '想聊聊天', '在你身边', '想知道你在做什么'] },
+        ],
+    };
+
+    const def = presets[activeBox.value];
+    if (!def) { showToast('当前书册没有预设'); return; }
+
+    let added = 0;
+    def.forEach(cat => {
+        let g = (box.groups || []).find(x => x.name === cat.name);
+        if (!g) {
+            g = { id: genId(), name: cat.name, replies: [] };
+            box.groups = box.groups || [];
+            box.groups.push(g);
+        }
+        cat.texts.forEach(t => {
+            const exists = g.replies.some(r => (r.text || '').trim() === t);
+            if (!exists) {
+                g.replies.push({ id: genId(), text: t, enabled: true });
+                added++;
+            }
+        });
+    });
+
+    if (added > 0) {
+        showToast(`已补入 ${added} 条预设字卡`);
+        debouncedSave();
+        nextTick(initSortable);
+    } else {
+        showToast('预设字卡已存在，无需补入');
+    }
+};
+
+const forceTeaseNow = () => {
+    const s = currentSession.value;
+    if (!s || s.type === 'group') return;
+    const teasePool = [];
+    const teaseBox = s.corpus?.boxes?.['吐槽'];
+    if (teaseBox) {
+        (teaseBox.groups || []).forEach(g => {
+            (g.replies || []).forEach(r => {
+                if (r.enabled !== false && r.text && r.text.trim()) {
+                    teasePool.push({ text: r.text.trim(), category: g.name || '吐槽' });
+                }
+            });
+        });
+    }
+    if (!teasePool.length) { showToast('吐槽书册为空'); return; }
+    const picked = teasePool[Math.floor(Math.random() * teasePool.length)];
+    sendMessage('them', '', {
+        type: 'tease',
+        teaseContent: picked.text,
+        teaseCategory: picked.category,
+        teaseStatus: 'pending',
+        userReply: '',
+        systemReply: '',
+        session: s
+    });
+    showToast('TA 吐槽了一次');
+};
 // ===== 会话拼接设置（每个会话独立） =====
 const sessionSettings = reactive({});
 
@@ -5684,21 +5976,25 @@ if (contentRaw == null && !opts.image) return;
       const blank = (opts.blank === true);
       const content = blank ? contentRaw : contentRaw.trim();
       const isImage = !!opts.image;
-      if (!blank && !content && !isImage) return;
-      const newMsg = {
-        id: genId(),
-        sender,
-        content: '',
-        timestamp: Date.now(),
-        status: sender === 'me' ? 'sent' : 'read',
-        isReadFlag: currentView.value === 'chat',
-        isTyping: false,
-        marked: !!opts.marked,
-        mention: opts.mention || null,
-        image: opts.image || null,
-        quote: opts.quote || null,
-tag: opts.tag || null,        // 👈 新增
-      };
+     const isSpecialCard = !!opts.type; // 吐槽、分享等特殊卡片
+if (!blank && !content && !isImage && !isSpecialCard) return;
+      // 把 opts 中除 session 之外的所有自定义字段都合并进来
+const { session: _sess, ...extraOpts } = opts;
+const newMsg = {
+    ...extraOpts,              // 👈 关键：把 type、teaseContent 等一并带进去
+    id: genId(),
+    sender,
+    content: '',
+    timestamp: Date.now(),
+    status: sender === 'me' ? 'sent' : 'read',
+    isReadFlag: currentView.value === 'chat',
+    isTyping: false,
+    marked: !!opts.marked,
+    mention: opts.mention || null,
+    image: opts.image || null,
+    quote: opts.quote || null,
+    tag: opts.tag || null,
+};
       target.messages.push(newMsg);
       playTone(sender);
       scrollToBottom();
@@ -6551,6 +6847,53 @@ const getCombinedReply = (pool) => {
             delete typingSessions[cur.id];
             return;
         }
+
+// ===== 吐槽触发 =====
+if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
+    const ts = getTeaseSettings(cur.id);
+    if (ts.enabled) {
+        const teasePool = [];
+        const teaseBox = cur.corpus?.boxes?.['吐槽'];
+        if (teaseBox) {
+            (teaseBox.groups || []).forEach(g => {
+                (g.replies || []).forEach(r => {
+                    if (r.enabled !== false && r.text && r.text.trim()) {
+                        teasePool.push({ text: r.text.trim(), category: g.name || '吐槽' });
+                    }
+                });
+            });
+        }
+        if (teasePool.length) {
+            const picked = teasePool[Math.floor(Math.random() * teasePool.length)];
+            acts.length = 0;
+            acts.push(() => {
+                sendMessage('them', '', {
+                    type: 'tease',
+                    teaseContent: picked.text,
+                    teaseCategory: picked.category,
+                    teaseStatus: 'pending',
+                    userReply: '',
+                    systemReply: '',
+                    session: cur
+                });
+            });
+            // 自动弹窗
+            if (Math.random() < ts.popupProb) {
+                setTimeout(() => {
+                    const lastMsg = cur.messages[cur.messages.length - 1];
+                    if (lastMsg && lastMsg.type === 'tease' && lastMsg.teaseStatus === 'pending') {
+                        openTeaseReply(lastMsg);
+                    }
+                }, 800);
+            }
+            // 直接执行发送（因为后面还有延迟逻辑，直接 return 让卡片单独发送）
+            let t = 0;
+            acts.forEach((fn) => { t += randomMs(600, 1200); setTimeout(fn, t); });
+            delete typingSessions[cur.id];
+            return;
+        }
+    }
+}
 
         // ---- 普通回复 ----
         if (settings.blankReplyEnabled && Math.random() < 0.1) {
@@ -10575,6 +10918,19 @@ selectedTag,
 getTagsForType,
 selectTag,
 fillDefaultTagBoxes,
+teaseSettingsMap,
+getTeaseSettings,
+teaseReplyOpen,
+currentTeaseMsg,
+teaseInputText,
+openTeaseReply,
+submitTeaseReply,
+toggleTeaseEnabled,
+forceTeaseNow,
+syncDefaultCards,
+libPanelOpen,
+groupOpen,
+toggleGroupOpen,
       deleteEnvelope
     };
   },
