@@ -42,14 +42,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="空境">
 
-    <!-- 核心依赖 -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/localforage@1.10.0/dist/localforage.min.js"></script>
-    <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+     <!-- 核心依赖：本地文件，加载更快 -->
+    <script src="./lib/vue.global.prod.js"></script>
+    <script src="./lib/tailwind.js"></script>
+    <script src="./lib/lucide.min.js"></script>
+    <script src="./lib/localforage.min.js"></script>
+    <script src="./lib/Sortable.min.js"></script>
+    <script src="./lib/html2canvas.min.js"></script>
 
     <script>
         tailwind.config = {
