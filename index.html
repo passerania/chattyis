@@ -660,9 +660,40 @@
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
                     <div id="capture-area" class="pb-10">
                         <template v-for="(msg, index) in messages" :key="msg.id">
-    <!-- 撤回提示 -->
-    <div v-if="msg.retracted" class="flex justify-center mb-4">
-        <span class="text-[10px] tracking-wider" :class="chatBgDark ? 'text-white/60' : 'text-muted/50'">{{ msg.sender === 'me' ? '你撤回了一条消息' : '对方撤回了一条消息' }}</span>
+                <!-- 撤回消息（正常消息外观） -->
+    <div v-if="msg.retracted" :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
+        <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
+            <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1">
+                <div class="w-full h-full bg-surface border border-border/50 flex items-center justify-center overflow-hidden" :style="{ borderRadius: settings.avatarRadius + '%' }">
+                    <img v-if="senderAvatar(msg.sender)" :src="senderAvatar(msg.sender)" class="w-full h-full object-cover">
+                    <span v-else class="text-[10px] text-muted serif-text">{{ senderName(msg.sender).charAt(0) }}</span>
+                </div>
+            </div>
+            <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
+                <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
+                    <button @click.stop="toggleRetractExpand(msg)"
+                            class="flex items-center gap-1 px-3 py-1 rounded-full border border-border/60 text-[12px] text-muted hover:bg-bg/50 transition-colors">
+                        <span>{{ retractLabel(msg) }}</span>
+                        <svg viewBox="0 0 24 24" class="w-3 h-3 transition-transform" :class="retractExpandedIds[msg.id] ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                    </button>
+                    <div v-if="retractExpandedIds[msg.id]" class="mt-2 px-3 py-2 rounded-lg text-[13px] leading-relaxed space-y-1" style="background:rgba(0,0,0,0.05);">
+                        <div v-for="(c, ci) in retractContents(msg)" :key="ci">（已撤回）{{ c }}</div>
+                    </div>
+                    <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">{{ msg.tag.type }}</span>
+                        <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 mt-1 px-1">
+                    <span v-if="msg.dictTag" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
+                    <span v-if="msg.freeCompose" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
+                    <span class="text-[9px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- 拍一拍灰字（type='pat'，居中浅灰，不做气泡） -->
@@ -675,8 +706,9 @@
      @contextmenu.prevent="openMsgMenu(msg)"
      @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
     <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         class="msg-menu-bar absolute flex flex-col gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
          style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+       <button @click.stop="msgMenuQuote2" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded">引用</button>
         <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
     </div>
         <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
@@ -913,22 +945,9 @@
 
     <!-- 普通消息（含标签、引用、图片、气泡等） -->
 <div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex"
-     :class="[msg.sender === 'me' ? 'justify-end' : 'justify-start', (msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id) ? 'z-[60]' : '']"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)"
-     @touchend="onMsgPressEnd"
-     @touchmove="onMsgPressEnd">
-    <!-- 长按菜单 -->
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50]"
-         :class="msg.sender === 'me' ? 'right-0' : 'left-0'"
-         style="bottom: 100%; margin-bottom: 6px;"
-         @click.stop>
-        <button @click.stop="msgMenuCopy" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">复制</button>
-        <button @click.stop="msgMenuQuote" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">引用</button>
-        <button v-if="msg.sender === 'me'" @click.stop="msgMenuRetract" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">撤回</button>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded transition-colors">删除</button>
-    </div>        <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
+     :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'"
+     @click="toggleMsgToolbar(msg)">
+    <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
             <!-- 头像 -->
             <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1" :class="{'opacity-0': !shouldShowAvatar(index)}">
                 <div class="w-full h-full bg-surface border border-border/50 flex items-center justify-center overflow-hidden" :style="{ borderRadius: settings.avatarRadius + '%' }">
@@ -937,8 +956,30 @@
                 </div>
             </div>
 
-            <!-- 消息内容容器 -->
+                       <!-- 消息内容容器 -->
             <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
+                <!-- 消息工具栏（复制/引用/撤回/删除） -->
+                <div class="msg-toolbar absolute flex flex-col gap-1 z-[50]"
+                     :style="msg.sender === 'me' ? 'right: calc(100% + 6px); top: 0;' : 'left: calc(100% + 6px); top: 0;'"
+                     :class="(activeMsgId === msg.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'"
+                     @click.stop>
+                    <button @click.stop="msgMenuCopy2(msg)" title="复制"
+                            class="w-6 h-6 rounded-full bg-surface border border-border/60 shadow-sm flex items-center justify-center text-muted hover:text-text transition-colors">
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                    </button>
+                    <button @click.stop="msgMenuQuote2(msg)" title="引用"
+                            class="w-6 h-6 rounded-full bg-surface border border-border/60 shadow-sm flex items-center justify-center text-muted hover:text-text transition-colors">
+                        <i data-lucide="quote" class="w-3 h-3"></i>
+                    </button>
+                    <button v-if="msg.sender === 'me'" @click.stop="msgMenuRetract2(msg)" title="撤回"
+                            class="w-6 h-6 rounded-full bg-surface border border-border/60 shadow-sm flex items-center justify-center text-muted hover:text-text transition-colors">
+                        <i data-lucide="undo-2" class="w-3 h-3"></i>
+                    </button>
+                    <button @click.stop="msgMenuDelete2(msg)" title="删除"
+                            class="w-6 h-6 rounded-full bg-surface border border-border/60 shadow-sm flex items-center justify-center text-muted hover:text-red-500 transition-colors">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                </div>
                 <!-- 群聊时显示发送者名称 -->
                 <span v-if="currentSession.type === 'group' && msg.sender !== 'me' && shouldShowAvatar(index)" class="text-[10px] tracking-wider mb-0.5 px-1" :class="msg.sender === 'me' ? 'text-right' : 'text-left'" style="color:var(--color-muted);">{{ senderName(msg.sender) }}</span>
 
@@ -946,7 +987,7 @@
                 <span v-if="msg.mention" class="text-[10px] mb-0.5 px-1.5 py-0.5 rounded tracking-wider" style="color:var(--nav-icon-color);background:rgba(24,95,165,0.1);">@{{ mentionNameOf(msg.mention) }}</span>
 
                 <!-- 引用 -->
-                <div v-if="msg.quote" class="mb-1 px-2 py-1 rounded-lg border-l-2 text-[11px] cursor-pointer max-w-[220px]" style="border-color:#9aa0a8;background:rgba(0,0,0,0.04);color:var(--color-muted);" @click="jumpToQuote(msg.quote.id)">
+                <div v-if="msg.quote" class="mb-1 px-2 py-1 rounded-lg border-l-2 text-[11px] cursor-pointer max-w-[220px]" style="border-color:#9aa0a8;background:rgba(0,0,0,0.04);color:var(--color-muted);" @click.stop="jumpToQuote(msg.quote.id)">
                     <div class="truncate">{{ quotePreview(msg.quote) }}</div>
                 </div>
 
@@ -1299,11 +1340,48 @@
                    :value="getFreeComposeSettings(currentSession.id).publicRatio * 100"
                    @input="e => { getFreeComposeSettings(currentSession.id).publicRatio = e.target.value / 100; debouncedSave(); }"
                    class="w-full" style="accent-color: var(--nav-icon-color);">
-            <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
+                        <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
                 单会话时固定存个人版；多会话时按此概率存公共版或个人版
             </div>
         </div>
-        
+
+        <!-- ===== 撤回半句 ===== -->
+        <div class="pt-2 border-t border-border/30">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[13px] text-text">启用撤回半句</span>
+                <button @click="getRetractSettings(currentSession.id).retractEnabled = !getRetractSettings(currentSession.id).retractEnabled; debouncedSave();"
+                        class="w-10 h-5 rounded-full relative transition-colors"
+                        :class="getRetractSettings(currentSession.id).retractEnabled ? 'bg-text' : 'bg-border'">
+                    <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                         :class="getRetractSettings(currentSession.id).retractEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                </button>
+            </div>
+            <div v-if="getRetractSettings(currentSession.id).retractEnabled">
+                <div class="flex justify-between text-[11px] text-muted mb-1">
+                    <span>撤回概率</span>
+                    <span>{{ Math.round(getRetractSettings(currentSession.id).retractProb * 100) }}%</span>
+                </div>
+                <input type="range" min="0" max="100"
+                       :value="getRetractSettings(currentSession.id).retractProb * 100"
+                       @input="e => { getRetractSettings(currentSession.id).retractProb = e.target.value / 100; debouncedSave(); }"
+                       class="w-full mb-3" style="accent-color: var(--nav-icon-color);">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] text-muted">撤回手法</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                        <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
+                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                    </div>
+                </div>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                    <div>1 = 按所有标点拆，随机撤段</div>
+                    <div>2 = 按字数随机撤前/后</div>
+                    <div>3 = 混合（1 或 2 随机）</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <!-- ===== 3.4b 梦角自由造句·卷宗管理（仅私聊） ===== -->
@@ -1427,6 +1505,92 @@
                 class="w-full py-2 rounded-lg border border-border text-[12px] text-text tracking-widest hover:bg-bg transition-colors">
             保存设置至所有联系人
         </button>
+<!-- ===== 群聊梦角自由造句 + 抓取 ===== -->
+<div v-if="currentSession && currentSession.type === 'group'">
+    <div class="text-[11px] text-muted tracking-widest mb-2">梦角自由造句</div>
+    <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
+        <div class="flex items-center justify-between">
+            <span class="text-[13px] text-text">启用造句</span>
+            <button @click="getGroupFreeComposeSettings(currentSession.id).groupComposeEnabled = !getGroupFreeComposeSettings(currentSession.id).groupComposeEnabled; debouncedSave();"
+                    class="w-10 h-5 rounded-full relative transition-colors"
+                    :class="getGroupFreeComposeSettings(currentSession.id).groupComposeEnabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                     :class="getGroupFreeComposeSettings(currentSession.id).groupComposeEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+            </button>
+        </div>
+        <div v-if="getGroupFreeComposeSettings(currentSession.id).groupComposeEnabled">
+            <div class="flex justify-between text-[11px] text-muted mb-1">
+                <span>造句概率</span>
+                <span>{{ Math.round(getGroupFreeComposeSettings(currentSession.id).groupComposeProb * 100) }}%</span>
+            </div>
+            <input type="range" min="0" max="100"
+                   :value="getGroupFreeComposeSettings(currentSession.id).groupComposeProb * 100"
+                   @input="e => { getGroupFreeComposeSettings(currentSession.id).groupComposeProb = e.target.value / 100; debouncedSave(); }"
+                   class="w-full" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-border/30">
+            <span class="text-[13px] text-text">抓取我的消息</span>
+            <button @click="getGroupFreeComposeSettings(currentSession.id).groupGrabEnabled = !getGroupFreeComposeSettings(currentSession.id).groupGrabEnabled; debouncedSave();"
+                    class="w-10 h-5 rounded-full relative transition-colors"
+                    :class="getGroupFreeComposeSettings(currentSession.id).groupGrabEnabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                     :class="getGroupFreeComposeSettings(currentSession.id).groupGrabEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+            </button>
+        </div>
+        <div v-if="getGroupFreeComposeSettings(currentSession.id).groupGrabEnabled">
+            <div class="flex justify-between text-[11px] text-muted mb-1">
+                <span>抓取概率</span>
+                <span>{{ Math.round(getGroupFreeComposeSettings(currentSession.id).groupGrabProb * 100) }}%</span>
+            </div>
+            <input type="range" min="0" max="100"
+                   :value="getGroupFreeComposeSettings(currentSession.id).groupGrabProb * 100"
+                   @input="e => { getGroupFreeComposeSettings(currentSession.id).groupGrabProb = e.target.value / 100; debouncedSave(); }"
+                   class="w-full" style="accent-color: var(--nav-icon-color);">
+        </div>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1">
+            造句：TA 会用随机成员语料造句，存到「公共梦角自由造句」<br>
+            抓取：TA 会把你的话收进「公共梦角自由造句」
+        </div>
+
+        <!-- ===== 撤回半句 ===== -->
+        <div class="pt-2 border-t border-border/30">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[13px] text-text">启用撤回半句</span>
+                <button @click="getRetractSettings(currentSession.id).retractEnabled = !getRetractSettings(currentSession.id).retractEnabled; debouncedSave();"
+                        class="w-10 h-5 rounded-full relative transition-colors"
+                        :class="getRetractSettings(currentSession.id).retractEnabled ? 'bg-text' : 'bg-border'">
+                    <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                         :class="getRetractSettings(currentSession.id).retractEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                </button>
+            </div>
+            <div v-if="getRetractSettings(currentSession.id).retractEnabled">
+                <div class="flex justify-between text-[11px] text-muted mb-1">
+                    <span>撤回概率</span>
+                    <span>{{ Math.round(getRetractSettings(currentSession.id).retractProb * 100) }}%</span>
+                </div>
+                <input type="range" min="0" max="100"
+                       :value="getRetractSettings(currentSession.id).retractProb * 100"
+                       @input="e => { getRetractSettings(currentSession.id).retractProb = e.target.value / 100; debouncedSave(); }"
+                       class="w-full mb-3" style="accent-color: var(--nav-icon-color);">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] text-muted">撤回手法</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                        <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
+                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                    </div>
+                </div>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                    <div>1 = 按所有标点拆，随机撤段</div>
+                    <div>2 = 按字数随机撤前/后</div>
+                    <div>3 = 混合（1 或 2 随机）</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                                 <!-- ===== 3. 群聊专属：禁言 ===== -->
                                 <div v-if="currentSession && currentSession.type === 'group'">
                                     <div class="text-[11px] text-muted tracking-widest mb-2">群聊管理</div>
@@ -1925,6 +2089,22 @@
                     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">意趣</span>
                 </header>
                  <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-12">
+                    <section>
+                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间配色</h3>
+                        <div class="bg-surface border border-border rounded-xl p-3 grid grid-cols-3 gap-3">
+                            <div v-for="(t, key) in THEMES" :key="key"
+                                 @click="applyTheme(key)"
+                                 class="aspect-square rounded-xl border cursor-pointer overflow-hidden relative transition-all"
+                                 :class="settings.themeId === key ? 'ring-2 ring-text ring-offset-2' : 'border-border/40 hover:scale-105'"
+                                 :style="{ background: t.bg }">
+                                <div class="absolute inset-3 rounded-md border" :style="{ borderColor: t.border, background: t.surface }"></div>
+                                <span class="absolute bottom-1 left-0 right-0 text-center text-[10px] tracking-wider font-medium" :style="{ color: t.text }">{{ t.label }}</span>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-muted/60 leading-relaxed px-2 mt-2">
+                            点击色块切换整套配色（背景 + 面板 + 文字 + 强调色）
+                        </div>
+                    </section>
                         <section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">屏风</h3>
                         <div v-if="currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
                             <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
@@ -6739,6 +6919,7 @@ spacePhoto: '',
       spaceMemo: '',
 spacePlaylistId: '14273792576',
       apps: [],
+themeId: 'day',
     });
 // ===== 侧拉面板开关 =====
 const settingsPanelOpen = ref(false);
@@ -6849,6 +7030,85 @@ const getFreeComposeGroupSettings = (sessionId) => {
     return freeComposeGroupSettingsMap[sessionId];
 };
 
+// 群聊专用：造句 + 抓取设置（复用同一 map，加群聊字段）
+const getGroupFreeComposeSettings = (sessionId) => {
+    const s = getFreeComposeGroupSettings(sessionId);
+    if (s.groupComposeEnabled === undefined) s.groupComposeEnabled = true;
+    if (s.groupComposeProb === undefined) s.groupComposeProb = 0.15;
+    if (s.groupGrabEnabled === undefined) s.groupGrabEnabled = false;
+    if (s.groupGrabProb === undefined) s.groupGrabProb = 0.15;
+    return s;
+};
+
+// ===== P2-b：撤回半句设置（复用同一 map） =====
+const getRetractSettings = (sessionId) => {
+    const s = getFreeComposeGroupSettings(sessionId);
+    if (s.retractEnabled === undefined) s.retractEnabled = false;
+    if (s.retractProb === undefined) s.retractProb = 0.5;
+    if (s.retractMethod === undefined) s.retractMethod = 1;
+    return s;
+};
+
+// ===== P2-b：核心撤回函数 =====
+const retractSentence = (text, method) => {
+    if (!text || !text.trim()) return null;
+    text = text.trim();
+
+    if (method === 1) {
+        // 按所有标点拆
+        const parts = text.match(/[^，。！？；、,.!?;]*[，。！？；、,.!?;]?/g) || [];
+        const segs = parts.filter(s => s && s.trim());
+        if (segs.length < 2) return null;
+        const keepCount = 1 + Math.floor(Math.random() * (segs.length - 1));
+        const idxs = [...Array(segs.length).keys()];
+        for (let i = idxs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+        }
+        const keepIdx = idxs.slice(0, keepCount).sort((a, b) => a - b);
+        const remaining = keepIdx.map(i => segs[i]).join('').trim();
+        if (!remaining) return null;
+        return { remaining, original: text };
+    }
+
+    if (method === 2) {
+        // 按字符数撤前/后
+        const len = text.length;
+        if (len < 4) return null;
+        const maxCut = Math.min(5, len - 2);
+        const cutLen = 1 + Math.floor(Math.random() * maxCut);
+        const fromFront = Math.random() < 0.5;
+        const remaining = fromFront ? text.slice(cutLen).trim() : text.slice(0, len - cutLen).trim();
+        if (!remaining) return null;
+        return { remaining, original: text };
+    }
+
+    if (method === 3) {
+        // 混合
+        return retractSentence(text, Math.random() < 0.5 ? 1 : 2);
+    }
+
+    return null;
+};
+
+const retractContents = (msg) => {
+    if (!msg) return [];
+    if (Array.isArray(msg.originalContents)) return msg.originalContents.filter(s => s && s.trim());
+    if (msg.originalContent && msg.originalContent.trim()) return [msg.originalContent];
+    return [];
+};
+const retractLabel = (msg) => {
+    const isMe = msg.sender === 'me';
+    const arr = retractContents(msg);
+    if (arr.length <= 1) return isMe ? '我撤回了一条消息' : '对方撤回了一条消息';
+    return isMe ? `我撤回了 ${arr.length} 条字卡` : `对方撤回了 ${arr.length} 条字卡`;
+};
+
+const retractExpandedIds = reactive({});
+const toggleRetractExpand = (msg) => {
+    if (!msg || !msg.id) return;
+    retractExpandedIds[msg.id] = !retractExpandedIds[msg.id];
+};
 // ===== 生成一个卷宗名 =====
 const generateFreeComposeGroupName = (targetBox, session) => {
     if (!targetBox) return '1';
@@ -7228,6 +7488,81 @@ const composeSentence = (src, session) => {
     if (!result || result === src) return null;
     return result;
 };
+
+// ===== P2-a：群聊梦角自由造句 =====
+const saveGroupFreeComposedSentence = (sentence) => {
+    if (!sentence) return;
+    const targetBox = sharedBoxes['公共梦角自由造句'];
+    if (!targetBox) return;
+    if (!Array.isArray(targetBox.groups)) targetBox.groups = [];
+    if (!targetBox.groups.length) {
+        targetBox.groups.push({ id: genId(), name: '梦角自由造句', replies: [] });
+    }
+    // 整本书册去重
+    const allTexts = new Set();
+    targetBox.groups.forEach(g => (g.replies || []).forEach(r => { if (r.text) allTexts.add(r.text); }));
+    if (allTexts.has(sentence)) return;
+    // 加到最后一个卷宗
+    const g = targetBox.groups[targetBox.groups.length - 1];
+    if (!g.replies) g.replies = [];
+    g.replies.push({ id: genId(), text: sentence, enabled: true, isSystem: false });
+    debouncedSave();
+};
+
+const triggerGroupFreeCompose = (member, group) => {
+    if (!member || !group) return false;
+    const src = drawSourceSentence(member);
+    if (!src) return false;
+    const newSentence = composeSentence(src, member);
+    if (!newSentence) return false;
+    const lastMsg = group.messages[group.messages.length - 1];
+    if (lastMsg && lastMsg.content === newSentence) return false;
+
+    // ===== 撤回半句判定 =====
+    const rs = getRetractSettings(group.id);
+    let finalSend = newSentence;
+    let retractInfo = null;
+    if (rs.retractEnabled && Math.random() < rs.retractProb) {
+        const r = retractSentence(newSentence, rs.retractMethod);
+        if (r) {
+            retractInfo = r;
+            finalSend = r.remaining;
+        }
+    }
+
+    const opts = { session: group, freeCompose: true };
+        if (retractInfo) {
+        opts.retracted = true;
+        opts.originalContents = [retractInfo.original];
+    }
+    sendMessage(member.id, finalSend, opts);
+    saveGroupFreeComposedSentence(finalSend);
+    return true;
+};
+
+const tryGroupGrabUserMessage = (msg, group) => {
+    if (!msg || !group) return;
+    const gs = getGroupFreeComposeSettings(group.id);
+    if (!gs.groupGrabEnabled) return;
+    if (Math.random() >= gs.groupGrabProb) return;
+    if (!msg.content || !msg.content.trim()) return;
+    const text = msg.content.trim();
+    if (text.length < 3) return;
+    setTimeout(() => {
+        saveGroupFreeComposedSentence(text);
+        group.messages.push({
+            id: genId(),
+            sender: 'system',
+            content: 'TA 把你的话收进了字卡',
+            timestamp: Date.now(),
+            isTyping: false,
+            isReadFlag: currentView.value === 'chat' && currentSessionId.value === group.id,
+        });
+        scrollToBottom();
+        debouncedSave();
+    }, 1500 + Math.random() * 1000);
+};
+
 // ===== 保存自由造句到字卡 =====
 const saveFreeComposedSentence = (sentence, session) => {
     if (!sentence || !session) return;
@@ -7290,18 +7625,32 @@ const triggerFreeCompose = (session) => {
     const newSentence = composeSentence(src, session);
     if (!newSentence) return false;
 
-    // 避免和上一条相同
+        // 避免和上一条相同
     const lastMsg = session.messages[session.messages.length - 1];
     if (lastMsg && lastMsg.content === newSentence) return false;
 
-        // 发送
-    sendMessage('them', newSentence, {
-        session,
-        freeCompose: true,
-    });
+    // ===== 撤回半句判定 =====
+    const rs = getRetractSettings(session.id);
+    let finalSend = newSentence;
+    let retractInfo = null;
+    if (rs.retractEnabled && Math.random() < rs.retractProb) {
+        const r = retractSentence(newSentence, rs.retractMethod);
+        if (r) {
+            retractInfo = r;
+            finalSend = r.remaining;
+        }
+    }
 
-    // 存入字卡
-    saveFreeComposedSentence(newSentence, session);
+    // 发送
+    const opts = { session, freeCompose: true };
+            if (retractInfo) {
+        opts.retracted = true;
+        opts.originalContents = [retractInfo.original];
+    }
+    sendMessage('them', finalSend, opts);
+
+    // 存入字卡（存发出去的内容）
+    saveFreeComposedSentence(finalSend, session);
 
     return true;
 };
@@ -8008,6 +8357,8 @@ const newMsg = {
     ...extraOpts,              // 👈 关键：把 type、teaseContent 等一并带进去
     id: genId(),
     sender,
+        retracted: !!opts.retracted,
+    originalContents: opts.originalContents || (opts.originalContent ? [opts.originalContent] : []),
     content: '',
     timestamp: Date.now(),
     status: sender === 'me' ? 'sent' : 'read',
@@ -8019,13 +8370,15 @@ const newMsg = {
     quote: opts.quote || null,
     tag: opts.tag || null,
 };
-      target.messages.push(newMsg);
+            target.messages.push(newMsg);
       playTone(sender);
       scrollToBottom();
       manageActiveTimer();
       updateUnread();
       // 打字机逐字动画已移除（移动端易卡）：消息直接完整显示
       newMsg.content = content;
+      // 消息 DOM 新增后重绘 lucide 图标
+      nextTick(() => { if (window.lucide) lucide.createIcons(); });
     };
     // ===== 群聊 @ 提及 =====
     const mentionTarget = ref(null);      // 当前 @ 的成员 id（null=未@）
@@ -8536,6 +8889,9 @@ const selectTag = (type, text) => {
     const lastMsg = cur.messages[cur.messages.length - 1];
     // 梦角选用户消息（仅私聊）
     if (!isGroup && lastMsg) tryGrabUserMessage(lastMsg, cur);
+// 群聊抓取用户消息
+    if (isGroup && lastMsg) tryGroupGrabUserMessage(lastMsg, cur);
+    draftText.value = '';
     draftText.value = '';
     mentionTarget.value = null;
     selectedTag.value = null;
@@ -8675,6 +9031,7 @@ const patLongPressEnd = () => {
       return {
         id: m.id,
         sender: m.sender,
+        displayName: senderName(m.sender),
         content: m.content ? m.content.trim().slice(0, 60) : '',
         image: m.image || null,
       };
@@ -8682,7 +9039,7 @@ const patLongPressEnd = () => {
     // 引用预览文字
     const quotePreview = (quote) => {
       if (!quote) return '';
-      const name = senderName(quote.sender);
+      const name = quote.displayName || senderName(quote.sender);
       if (quote.image) return `${name}：[图片]`;
       return `${name}：${quote.content || '…'}`;
     };
@@ -9106,7 +9463,17 @@ const opts = { marked, session: cur };
       } else {
         prob = 0.6;
       }
-      if (Math.random() >= prob) return;
+           if (Math.random() >= prob) return;
+
+      // ===== 群聊梦角自由造句：先掷造句概率 =====
+      const _gcs = getGroupFreeComposeSettings(group.id);
+      if (_gcs.groupComposeEnabled && Math.random() < _gcs.groupComposeProb) {
+        const srcMember = sessions.value.find((s) => s.id === mid);
+        if (srcMember) {
+          setTimeout(() => triggerGroupFreeCompose(srcMember, group), i * randomMs(600, 1600));
+          return;
+        }
+      }
 
       const offset = i * randomMs(600, 1600);
       setTimeout(() => {
@@ -9595,8 +9962,10 @@ const msgMenuQuote = () => {
 const msgMenuRetract = () => {
     const m = msgMenu.msg;
     if (!m) return;
-    m.retracted = true;
+    m.originalContents = [m.content || ''].filter(s => s.trim());
+    m.content = '';
     m.image = null;
+    m.retracted = true;
     closeMsgMenu();
     debouncedSave();
 };
@@ -9672,6 +10041,92 @@ watch(homePage, (v) => {
         if (window.lucide) lucide.createIcons();
     });
 });
+
+
+// ===== 消息工具栏（普通消息用） =====
+const activeMsgId = ref(null);
+const toggleMsgToolbar = (msg) => {
+    if (activeMsgId.value === msg.id) activeMsgId.value = null;
+    else activeMsgId.value = msg.id;
+};
+const closeMsgToolbar = () => { activeMsgId.value = null; };
+
+const msgMenuCopy2 = (m) => {
+    if (!m) return;
+    const text = m.content || '[图片]';
+    try { navigator.clipboard.writeText(text); showToast('已复制'); }
+    catch (e) { showToast('复制失败'); }
+    closeMsgToolbar();
+};
+const msgMenuQuote2 = (m) => {
+    if (!m) return;
+    pendingQuote.value = {
+        id: m.id, sender: m.sender,
+        displayName: senderName(m.sender),
+        content: m.content ? m.content.slice(0, 60) : '',
+        image: m.image || null,
+    };
+    closeMsgToolbar();
+};
+const msgMenuRetract2 = (m) => {
+    if (!m) return;
+    m.originalContents = [m.content || ''].filter(s => s.trim());
+    m.content = '';
+    m.image = null;
+    m.retracted = true;
+    closeMsgToolbar();
+    debouncedSave();
+};
+const msgMenuDelete2 = (m) => {
+    if (!m) return;
+    deleteMsg(m.id);
+    closeMsgToolbar();
+};
+
+const _toolbarDocClick = (e) => {
+    if (e.target.closest('.msg-toolbar')) return;
+    closeMsgToolbar();
+};
+watch(activeMsgId, (v) => {
+    if (v) setTimeout(() => document.addEventListener('click', _toolbarDocClick), 0);
+    else document.removeEventListener('click', _toolbarDocClick);
+});
+
+// 切换会话 / 离开聊天视图时，清空待引用
+watch(currentSessionId, () => { pendingQuote.value = null; });
+watch(() => currentView.value, (v) => { if (v !== 'chat') pendingQuote.value = null; });
+
+// ===== T3：主题配色（6 套） =====
+const THEMES = {
+    day:    { label: '日间',       bg: '#f7f7f9', surface: '#ffffff', text: '#0a0b0b', muted: '#888888', border: '#e2e2e2', accent: '#070707', navIcon: '#3a3a3a', dark: false, swatch: '#ffffff' },
+    night:  { label: '夜间',       bg: '#0d0d0f', surface: '#171719', text: '#e6e6e6', muted: '#666666', border: '#2a2a2a', accent: '#ffffff', navIcon: '#cfcfcf', dark: true,  swatch: '#2a2a2a' },
+    pink:   { label: '雾粉',       bg: '#faf5f7', surface: '#ffffff', text: '#3a2a30', muted: '#9a8890', border: '#ead8dd', accent: '#c87d9e', navIcon: '#a06880', dark: false, swatch: '#f4dce4' },
+    cream:  { label: '奶油黄',     bg: '#fbf8ef', surface: '#ffffff', text: '#3a3428', muted: '#9a9280', border: '#e8e2c8', accent: '#b89950', navIcon: '#8a7530', dark: false, swatch: '#f5ead0' },
+    mist:   { label: '雾蓝',       bg: '#f2f5fa', surface: '#ffffff', text: '#1f2a3a', muted: '#7a8798', border: '#d8dfe8', accent: '#5b7fa8', navIcon: '#4a6d95', dark: false, swatch: '#dce6f2' },
+    mono:   { label: '黑白拼色',   bg: '#1a1a1a', surface: '#f5f5f5', text: '#f5f5f5', muted: '#a0a0a0', border: '#333333', accent: '#ffffff', navIcon: '#e0e0e0', dark: true,  swatch: '#1a1a1a' },
+};
+
+const applyTheme = (id) => {
+    const t = THEMES[id];
+    if (!t) return;
+    const root = document.documentElement;
+    // 整套变量覆盖
+    root.style.setProperty('--color-bg', t.bg);
+    root.style.setProperty('--color-surface', t.surface);
+    root.style.setProperty('--color-text', t.text);
+    root.style.setProperty('--color-muted', t.muted);
+    root.style.setProperty('--color-border', t.border);
+    root.style.setProperty('--color-accent', t.accent);
+    root.style.setProperty('--nav-icon-color', t.navIcon);
+    // 整体背景随主题（覆盖 body 上的背景色）
+    document.body.style.backgroundColor = t.bg;
+    // 深浅模式跟随
+    root.classList.toggle('dark', !!t.dark);
+    settings.darkMode = !!t.dark;
+    settings.themeId = id;
+    settings.accentColor = null;
+    debouncedSave();
+};
 
 const hideSession = (sessionId) => {
     // 隐藏聊天室（右键/长按）
@@ -13794,7 +14249,7 @@ if (stored.money.installment) {
                 if (stored.boardPeriodNotes) boardPeriodNotes.value = stored.boardPeriodNotes;
                 if (stored.boardPeriodDeleted) boardPeriodDeleted.value = stored.boardPeriodDeleted;
                 if (stored.boardPersonalDays) boardPersonalDays.value = stored.boardPersonalDays;
-                if (settings.darkMode) document.documentElement.classList.add('dark');
+                applyTheme(settings.themeId || 'day');
             }
             if (!currentSessionId.value) {
                 const vis = visibleSessions.value;
@@ -14334,7 +14789,7 @@ adjustConcatCount,
 deleteCurrentSession,
 // Step E
 dailyAppModal, closeDailyAppManage, startAddApp, startEditApp, cancelAppEdit, saveApp, deleteApp,DAILY_CATEGORIES, dailyAddModal, closeDailyAdd, switchDailyAddTab, saveDailyAdd, deleteDailyRecord,dailyBudgetModal, closeDailyBudgetEdit, saveDailyBudget, toggleInstallmentPaid,homePage, onHomeTouchStart, onHomeTouchEnd,spaceMonthName, spaceDay, spaceWeekday, uploadSpacePhoto,
-mutedMembers,
+mutedMembers,THEMES, applyTheme,
 spaceTodayStr, spaceInstallmentsToday, spacePeriodDay,
 isMuted,
 // 长按消息菜单
@@ -14344,7 +14799,13 @@ isMuted,
 // T2 软件页面
       AVAILABLE_APPS, appsPickerOpen, openAppsPicker, closeAppsPicker,
       addApp, removeApp, onAppPressStart, onAppPressEnd,
-openMuteDialog,
+// 消息工具栏
+      activeMsgId, toggleMsgToolbar, closeMsgToolbar,
+      msgMenuCopy2, msgMenuQuote2, msgMenuRetract2, msgMenuDelete2,
+getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,
+      saveGroupFreeComposedSentence,
+// P2-b 撤回
+      getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,
 muteMember,
 unmuteMember,
 tagPickerOpen,
