@@ -279,6 +279,7 @@
 
      </style>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.css">
     <style id="custom-css-injection"></style>
 </head>
 <body class="flex justify-center items-center h-screen w-screen transition-colors duration-300">
@@ -395,7 +396,12 @@
     <div class="app-container text-sm">
         <transition name="view">
             <!-- 主屏幕 -->
-                <div v-if="currentView === 'home'" key="home" class="absolute inset-0 flex flex-col justify-between pt-24 px-8 z-10 bg-bg" :style="homeBgStyle">
+                <div v-if="currentView === 'home'" key="home" class="absolute inset-0 z-10 bg-bg overflow-hidden" :style="homeBgStyle" @touchstart="onHomeTouchStart" @touchend="onHomeTouchEnd">
+    <!-- 三页轨道 -->
+    <div class="home-track flex h-full transition-transform duration-300 ease-out" :style="{ transform: `translateX(-${homePage * 100}%)` }">
+
+        <!-- ===== 第 1 页：会话列表（原主屏内容） ===== -->
+        <div class="w-full h-full shrink-0 flex flex-col justify-between pt-24 px-8 overflow-hidden">
                 <!-- 顶部导航栏（位于原「林小初」高度）：字卡 / 意趣（移除洞察） -->
                 <transition name="navfade">
                     <div v-show="!settings.navCollapsed" class="flex items-center justify-around mb-6">
@@ -504,10 +510,104 @@
                           <path fill="var(--nav-icon-color)" d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h11a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3h-1v9.793a.5.5 0 0 1-.854.353l-1.792-1.792a.5.5 0 0 0-.708 0l-1.792 1.792a.5.5 0 0 1-.854-.353V2z"/>
                         </g>
                       </svg>
-                    <span class="nav-label">字笺</span>
+                                        <span class="nav-label">字笺</span>
                   </button>
                 </div>
             </div>
+    
+                <!-- ===== 第 2 页：温馨空间 ===== -->
+        <div class="w-full h-full shrink-0 overflow-y-auto px-5 pt-16 pb-24">
+            <!-- 顶部标题 -->
+            <div class="mb-4 px-1">
+                <div class="text-[10px] tracking-[0.3em] text-muted/70 mb-1">SIDE BY SIDE</div>
+                <div class="text-2xl font-light tracking-wide" style="font-family:'Noto Serif SC',serif;">side by side.</div>
+            </div>
+
+            <!-- 照片卡 -->
+            <label class="block relative w-full rounded-2xl overflow-hidden mb-4 cursor-pointer group" style="aspect-ratio: 4/3; background: rgba(0,0,0,0.04);">
+                <img v-if="settings.spacePhoto" :src="settings.spacePhoto" class="absolute inset-0 w-full h-full object-cover">
+                <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted/50">
+                    <i data-lucide="image" class="w-6 h-6"></i>
+                    <div class="text-[12px] tracking-widest">收藏，和你有关的瞬间</div>
+                    <div class="text-[10px] opacity-70">轻点放入一张照片</div>
+                </div>
+                <input type="file" accept="image/*" class="hidden" @change="uploadSpacePhoto">
+                <button v-if="settings.spacePhoto" @click.prevent.stop="settings.spacePhoto = ''; debouncedSave()"
+                        class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 text-white text-xs flex items-center justify-center">✕</button>
+            </label>
+
+            <!-- 两栏：备忘录 + 日历 -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <!-- 备忘录 -->
+                <div class="rounded-2xl p-4 bg-white/40 border border-border/30 flex flex-col" style="min-height:140px;">
+                    <div class="text-[10px] tracking-widest text-muted/70 mb-2">他的此刻</div>
+                    <textarea v-model="settings.spaceMemo" @input="debouncedSave"
+                              maxlength="60"
+                              class="flex-1 bg-transparent text-[13px] leading-relaxed resize-none outline-none"
+                              placeholder="属于两个人的小小空间"></textarea>
+                </div>
+                                <!-- 日历 -->
+                <div class="rounded-2xl p-4 bg-white/40 border border-border/30 flex flex-col" style="min-height:140px;">
+                    <div class="text-[10px] tracking-widest text-muted/70">{{ spaceMonthName }}</div>
+                    <div>
+                        <div class="text-3xl font-light">{{ spaceDay }}</div>
+                        <div class="text-[11px] text-muted mt-1">{{ spaceWeekday }}</div>
+                    </div>
+                    <div v-if="spaceInstallmentsToday.length || spacePeriodDay" class="mt-3 pt-3 border-t border-border/30 space-y-1">
+                        <div v-for="item in spaceInstallmentsToday" :key="item.recordId"
+                             class="flex items-center gap-1.5 text-[11px]"
+                             :class="item.paid ? 'text-muted line-through' : 'text-text'">
+                            <span>💳</span>
+                            <span class="truncate flex-1">{{ item.name }}</span>
+                            <span class="shrink-0">¥{{ item.amount }}</span>
+                        </div>
+                        <div v-if="spacePeriodDay" class="flex items-center gap-1.5 text-[11px] text-red-400">
+                            <span>🌿</span>
+                            <span>经期 第 {{ spacePeriodDay }} 天</span>
+                        </div>
+                    </div>
+                </div>
+</div>
+                                    <!-- 音乐卡 -->
+            <div class="rounded-2xl p-3 bg-white/40 border border-border/30">
+                <div class="text-[10px] tracking-widest text-muted/70 mb-2 px-1">OUR LITTLE SOUNDTRACK</div>
+                <div class="netease-mini-player" data-id="14273792576" data-server="netease" data-type="playlist"></div>
+            </div>
+<!-- ===== 大div不要删 ===== -->
+</div>
+                <!-- ===== 第 3 页：软件 ===== -->
+        <div class="w-full h-full shrink-0 overflow-y-auto px-6 pt-20 pb-24">
+            <div class="text-[10px] tracking-[0.3em] text-muted/70 mb-5 px-1">APPS</div>
+            <div id="apps-grid" class="grid grid-cols-4 gap-x-2 gap-y-5">
+                <div v-for="app in settings.apps" :key="app.id"
+                     @click="switchView(app.view)"
+                     @contextmenu.prevent="removeApp(app.id)"
+                     @touchstart="onAppPressStart(app)" @touchend="onAppPressEnd" @touchmove="onAppPressEnd"
+                     class="flex flex-col items-center gap-1.5 cursor-pointer select-none">
+                    <div class="w-14 h-14 rounded-[22%] flex items-center justify-center"
+                         style="background: rgba(255,255,255,0.55); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.65); box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                        <i :data-lucide="app.icon" class="w-6 h-6 text-text"></i>
+                    </div>
+                    <span class="text-[10px] text-text/80 tracking-wider truncate max-w-full">{{ app.label }}</span>
+                </div>
+                <div @click="openAppsPicker" class="flex flex-col items-center gap-1.5 cursor-pointer select-none">
+                    <div class="w-14 h-14 rounded-[22%] flex items-center justify-center border border-dashed border-border/70" style="background: rgba(255,255,255,0.25);">
+                        <i data-lucide="plus" class="w-6 h-6 text-muted"></i>
+                    </div>
+                    <span class="text-[10px] text-muted/70 tracking-wider">添加</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 分页圆点 -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+        <span v-for="i in 3" :key="i" @click="homePage = i - 1"
+              class="h-1.5 rounded-full cursor-pointer transition-all"
+              :class="homePage === i - 1 ? 'bg-text w-4' : 'bg-muted/40 w-1.5'"></span>
+    </div>
+</div>
             
             <!-- 交谈视图 --><!-- 群组抬头在header的class里面 -->
             <div v-else-if="currentView === 'chat'" key="chat" class="absolute inset-0 flex flex-col z-20" :style="chatBgStyle">
@@ -560,13 +660,25 @@
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
                     <div id="capture-area" class="pb-10">
                         <template v-for="(msg, index) in messages" :key="msg.id">
+    <!-- 撤回提示 -->
+    <div v-if="msg.retracted" class="flex justify-center mb-4">
+        <span class="text-[10px] tracking-wider" :class="chatBgDark ? 'text-white/60' : 'text-muted/50'">{{ msg.sender === 'me' ? '你撤回了一条消息' : '对方撤回了一条消息' }}</span>
+    </div>
+
     <!-- 拍一拍灰字（type='pat'，居中浅灰，不做气泡） -->
-    <div v-if="msg.type === 'pat'" class="flex justify-center mb-4">
+    <div v-else-if="msg.type === 'pat'" class="flex justify-center mb-4">
         <span class="text-[10px] tracking-wider" :class="chatBgDark ? 'text-white/60' : 'text-muted/50'">{{ msg.content }}</span>
     </div>
 
     <!-- 未拆且未过期红包 -->
-    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer">
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
             <div class="px-4 py-3 text-white text-center">
                 <div class="text-lg mb-1">🧧</div>
@@ -577,7 +689,14 @@
     </div>
 
     <!-- 已过期红包 -->
-    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt <= Date.now()" class="flex justify-center mb-4">
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt <= Date.now()" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface opacity-60">
             <div class="px-4 py-3 text-center">
                 <div class="text-sm mb-1">🧧</div>
@@ -588,7 +707,14 @@
     </div>
 
     <!-- 已拆红包 -->
-    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'opened'" class="flex justify-center mb-4">
+    <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'opened'" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface">
             <div class="px-4 py-3 text-center">
                 <div class="text-sm mb-1">🎁</div>
@@ -600,7 +726,14 @@
     </div>
 
     <!-- 问卷卡片 -->
-    <div v-else-if="msg.type === 'survey'" class="flex justify-center mb-4">
+<div v-else-if="msg.type === 'survey'" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
             <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷 · {{ msg.status === 'answered' ? (msg.declined ? 'TA未作答' : '已作答') : '待TA作答' }}</div>
             <div class="px-4 py-3 space-y-2">
@@ -613,7 +746,14 @@
     </div>
 
     <!-- 问卷作答结果 -->
-    <div v-else-if="msg.type === 'surveyResult'" class="flex justify-center mb-4">
+<div v-else-if="msg.type === 'surveyResult'" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
             <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷作答</div>
             <div v-if="msg.declined" class="px-4 py-5 text-center text-[12px] text-muted/70 tracking-wider">TA选择不答</div>
@@ -676,7 +816,14 @@
     </div>
 
     <!-- 我发的红包（靠右） -->
-    <div v-else-if="msg.sender === 'me' && msg.type === 'redpacket'" class="mb-4 flex justify-end group relative">
+<div v-else-if="msg.sender === 'me' && msg.type === 'redpacket'" class="mb-4 flex justify-end group relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="flex items-center gap-2">
             <button @click="deleteMsg(msg.id)" class="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
             <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
@@ -695,7 +842,14 @@
     </div>
 
     <!-- 群聊抢红包 -->
-    <div v-else-if="msg.type === 'grabPacket'" class="flex justify-center mb-4">
+<div v-else-if="msg.type === 'grabPacket'" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
         <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
             <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;">
                 <div class="text-lg mb-1">🧧</div>
@@ -724,7 +878,14 @@
     </div>
 
 <!-- 吐槽卡片 -->
-<div v-else-if="msg.type === 'tease'" class="flex justify-center mb-4">
+<div v-else-if="msg.type === 'tease'" class="flex justify-center mb-4 relative"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
+         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
+    </div>
     <div @click="openTeaseReply(msg)" 
          class="w-72 rounded-2xl overflow-hidden shadow-md border border-border/60 bg-surface cursor-pointer hover:shadow-lg transition-all duration-300 p-4">
         <div v-if="msg.teaseCategory" class="text-[10px] tracking-widest text-muted/60 mb-1">
@@ -751,8 +912,23 @@
 </div>
 
     <!-- 普通消息（含标签、引用、图片、气泡等） -->
-    <div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
-        <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
+<div v-else :id="'msg-'+msg.id" class="mb-5 relative group flex"
+     :class="[msg.sender === 'me' ? 'justify-end' : 'justify-start', (msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id) ? 'z-[60]' : '']"
+     @contextmenu.prevent="openMsgMenu(msg)"
+     @touchstart="onMsgPressStart(msg)"
+     @touchend="onMsgPressEnd"
+     @touchmove="onMsgPressEnd">
+    <!-- 长按菜单 -->
+    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
+         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50]"
+         :class="msg.sender === 'me' ? 'right-0' : 'left-0'"
+         style="bottom: 100%; margin-bottom: 6px;"
+         @click.stop>
+        <button @click.stop="msgMenuCopy" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">复制</button>
+        <button @click.stop="msgMenuQuote" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">引用</button>
+        <button v-if="msg.sender === 'me'" @click.stop="msgMenuRetract" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded transition-colors">撤回</button>
+        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded transition-colors">删除</button>
+    </div>        <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
             <!-- 头像 -->
             <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1" :class="{'opacity-0': !shouldShowAvatar(index)}">
                 <div class="w-full h-full bg-surface border border-border/50 flex items-center justify-center overflow-hidden" :style="{ borderRadius: settings.avatarRadius + '%' }">
@@ -846,6 +1022,13 @@
                             </transition>
                         </div>
                         <div class="border-t border-border/30 mb-2.5"></div>
+                    </div>
+                    <div v-if="pendingQuote" class="mb-2 flex items-center gap-2 bg-surface/80 border border-border/60 rounded-xl px-3 py-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[10px] text-muted tracking-widest mb-0.5">引用</div>
+                            <div class="text-[12px] text-text truncate">{{ quotePreview(pendingQuote) }}</div>
+                        </div>
+                        <button @click="pendingQuote = null" class="text-muted hover:text-text text-lg leading-none shrink-0">✕</button>
                     </div>
                     <div class="flex items-end gap-2 bg-surface/80 border border-border/60 rounded-2xl px-3 py-1.5 focus-within:border-muted transition-colors shadow-sm">
                         <button @click="plusOpen = !plusOpen" class="p-2 -ml-1 shrink-0" :class="chatBgDark ? 'text-white/85 hover:text-white' : 'text-muted hover:text-text'" title="更多功能"><i data-lucide="plus" class="w-5 h-5 stroke-[1.5]"></i></button>
@@ -2100,9 +2283,13 @@
                                 {{ item.app?.name || '未知软件' }} · 第 {{ item.periodIndex + 1 }}/{{ item.record.totalInstallments }} 期
                             </div>
                         </div>
-                        <div class="text-[13px] font-medium shrink-0" :class="item.paid ? 'text-muted line-through' : 'text-red-500'">
-                            -¥{{ item.record.perInstallment.toLocaleString('zh-CN') }}
-                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+    <div class="text-[13px] font-medium" :class="item.paid ? 'text-muted line-through' : 'text-red-500'">
+        -¥{{ item.record.perInstallment.toLocaleString('zh-CN') }}
+    </div>
+    <button @click.stop="deleteDailyRecord(item.record.id)"
+            class="text-muted hover:text-red-500 text-[13px] px-1 leading-none">×</button>
+</div>
                     </div>
                 </div>
             </div>
@@ -2117,7 +2304,11 @@
                             <div class="text-[13px] text-text truncate">{{ r.name || r.category }}</div>
                             <div class="text-[10px] text-muted">{{ r.category }}</div>
                         </div>
-                        <div class="text-[13px] font-medium text-text shrink-0">¥{{ r.amount.toLocaleString('zh-CN') }}</div>
+<div class="flex items-center gap-2 shrink-0">
+    <div class="text-[13px] font-medium text-text">¥{{ r.amount.toLocaleString('zh-CN') }}</div>
+    <button @click.stop="deleteDailyRecord(r.id)"
+            class="text-muted hover:text-red-500 text-[13px] px-1 leading-none">×</button>
+</div>
                     </div>
                 </div>
             </div>
@@ -2127,35 +2318,7 @@
                 <div class="text-3xl mb-3 opacity-30">📒</div>
                 <div class="text-xs tracking-widest">本月还没有记账</div>
             </div>
-<!-- ===== 分期软件管理 ===== -->
-<div class="mt-8">
-    <div class="flex items-center justify-between mb-3">
-        <div class="text-[12px] text-muted tracking-widest">分期软件</div>
-        <button @click="openInstAppAdd" class="text-[11px] text-text hover:underline flex items-center gap-1">
-            <i data-lucide="plus" class="w-3 h-3"></i> 添加
-        </button>
-    </div>
-    <div v-if="!money.installment.apps.length" class="text-center text-[11px] text-muted/60 py-4 border border-dashed border-border rounded-xl">
-        还没有添加分期软件
-    </div>
-    <div v-else class="space-y-2">
-        <div v-for="app in money.installment.apps" :key="app.id"
-             class="flex items-center justify-between px-3 py-2.5 bg-surface border border-border rounded-xl">
-            <div class="flex-1 min-w-0">
-                <div class="text-[13px] text-text truncate">{{ app.name }}</div>
-                <div class="text-[10px] text-muted">每月 {{ app.repayDay }} 号还款</div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <button @click="openInstAppEdit(app)" class="text-muted hover:text-text p-1">
-                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-                </button>
-                <button @click="deleteInstApp(app)" class="text-muted hover:text-red-500 p-1">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
         </template>
 
 <!-- ===== 下面两个是荷包视图的maindiv ===== -->
@@ -3579,6 +3742,167 @@
         </div>
     </div>
 </div>
+<!-- ===== 预算编辑弹窗 ===== -->
+<div v-if="dailyBudgetModal.show" class="redpacket-overlay" style="z-index:280;" @click.self="closeDailyBudgetEdit">
+    <div class="redpacket-card" style="width:300px;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;">
+            <div class="text-white text-sm font-medium tracking-wider">设置本月预算</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:14px;">
+            <div class="text-[11px] text-muted mb-1">{{ dailyMonth.replace('-', ' 年 ') }} 月预算</div>
+            <input type="number" min="0" step="0.01" v-model.number="dailyBudgetModal.value"
+                   class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4"
+                   placeholder="0">
+            <div class="flex gap-2">
+                <button @click="closeDailyBudgetEdit" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                <button @click="saveDailyBudget" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ===== 记一笔弹窗 ===== -->
+<div v-if="dailyAddModal.show" class="redpacket-overlay" style="z-index:280;" @click.self="closeDailyAdd">
+    <div class="redpacket-card" style="width:340px;">
+        <div class="redpacket-card-top" style="padding-bottom:0;">
+            <div class="text-white text-sm font-medium tracking-wider mb-3">记一笔</div>
+            <div class="flex gap-1">
+                <button @click="switchDailyAddTab('normal')"
+                        class="flex-1 py-1.5 rounded-t-lg text-[12px] tracking-widest transition-colors"
+                        :class="dailyAddModal.tab === 'normal' ? 'bg-white/20 text-white' : 'text-white/60'">
+                    普通消费
+                </button>
+                <button @click="switchDailyAddTab('installment')"
+                        class="flex-1 py-1.5 rounded-t-lg text-[12px] tracking-widest transition-colors"
+                        :class="dailyAddModal.tab === 'installment' ? 'bg-white/20 text-white' : 'text-white/60'">
+                    分期
+                </button>
+            </div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:14px;">
+            <!-- 普通消费表单 -->
+            <template v-if="dailyAddModal.tab === 'normal'">
+                <div class="text-[11px] text-muted mb-1">名称</div>
+                <input v-model="dailyAddModal.normal.name" maxlength="20"
+                       class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3"
+                       placeholder="如：午饭、打车">
+                <div class="text-[11px] text-muted mb-1">分类</div>
+                <select v-model="dailyAddModal.normal.category"
+                        class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3">
+                    <option v-for="c in DAILY_CATEGORIES" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <div class="text-[11px] text-muted mb-1">金额（¥）</div>
+                <input type="number" min="0" step="0.01" v-model.number="dailyAddModal.normal.amount"
+                       class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4"
+                       placeholder="0">
+            </template>
+            <!-- 分期表单 -->
+            <template v-else>
+                <div class="text-[11px] text-muted mb-1">名称</div>
+                <input v-model="dailyAddModal.installment.name" maxlength="20"
+                       class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3"
+                       placeholder="如：手机、耳机">
+                <div class="text-[11px] text-muted mb-1">分类</div>
+                <select v-model="dailyAddModal.installment.category"
+                        class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3">
+                    <option v-for="c in DAILY_CATEGORIES" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <div class="text-[11px] text-muted mb-1">所属软件</div>
+                <select v-model="dailyAddModal.installment.appId"
+                        class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3">
+                    <option value="">请选择</option>
+                    <option v-for="a in money.daily.apps" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+                <div v-if="!money.daily.apps.length" class="text-[10px] text-red-400 mb-3">
+                    还没有软件，请先去「软件管理」添加
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <div class="flex-1">
+                        <div class="text-[11px] text-muted mb-1">每期金额</div>
+                        <input type="number" min="0" step="0.01" v-model.number="dailyAddModal.installment.perInstallment"
+                               class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm"
+                               placeholder="0">
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[11px] text-muted mb-1">期数</div>
+                        <input type="number" min="1" max="60" v-model.number="dailyAddModal.installment.totalInstallments"
+                               class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm"
+                               placeholder="12">
+                    </div>
+                </div>
+            </template>
+            <div class="flex gap-2">
+                <button @click="closeDailyAdd" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                <button @click="saveDailyAdd" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ===== 软件管理弹窗 ===== -->
+<div v-if="dailyAppModal.show" class="redpacket-overlay" style="z-index:280;" @click.self="closeDailyAppManage">
+    <div class="redpacket-card" style="width:320px;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+            <span class="text-white text-sm font-medium tracking-wider">
+                {{ dailyAppModal.editing ? (dailyAppModal.editing.id ? '编辑软件' : '添加软件') : '软件管理' }}
+            </span>
+            <button @click="closeDailyAppManage" class="text-white/80 text-sm">✕</button>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:60vh;overflow-y:auto;">
+            <!-- 列表模式 -->
+            <template v-if="!dailyAppModal.editing">
+                <div v-if="!money.daily.apps.length" class="text-center text-xs text-muted/60 py-6">还没有添加软件</div>
+                <div v-for="app in money.daily.apps" :key="app.id"
+                     class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[13px] text-text truncate">{{ app.name }}</div>
+                        <div class="text-[10px] text-muted">每月 {{ app.payDay }} 号还款</div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button @click="startEditApp(app)" class="text-[11px] text-muted hover:text-text">编辑</button>
+                        <button @click="deleteApp(app.id)" class="text-[11px] text-red-400 hover:text-red-500">删除</button>
+                    </div>
+                </div>
+                <button @click="startAddApp"
+                        class="w-full py-2.5 mt-2 rounded-lg border border-dashed border-border text-[12px] text-muted hover:text-text tracking-widest">
+                    + 添加软件
+                </button>
+            </template>
+            <!-- 编辑模式 -->
+            <template v-else>
+                <div class="text-[11px] text-muted mb-1">软件名称</div>
+                <input v-model="dailyAppModal.form.name" maxlength="20"
+                       class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3"
+                       placeholder="如：美团、支付宝、花呗">
+                <div class="text-[11px] text-muted mb-1">每月还款日（1-28）</div>
+                <input type="number" min="1" max="28" v-model.number="dailyAppModal.form.payDay"
+                       class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4">
+                <div class="flex gap-2">
+                    <button @click="cancelAppEdit" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                    <button @click="saveApp" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">保存</button>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 添加软件弹窗 ===== -->
+<div v-if="appsPickerOpen" class="redpacket-overlay" style="z-index:280;" @click.self="closeAppsPicker">
+    <div class="redpacket-card" style="width:320px;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;">
+            <div class="text-white text-sm font-medium tracking-wider">添加软件</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;">
+            <div v-for="a in AVAILABLE_APPS" :key="a.view"
+                 @click="addApp(a.view)"
+                 class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2 cursor-pointer hover:border-muted transition-colors"
+                 :class="settings.apps.some(x => x.view === a.view) ? 'opacity-40 cursor-not-allowed' : ''">
+                <span class="text-[13px] text-text">{{ a.label }}</span>
+                <span class="text-[11px] text-muted">{{ settings.apps.some(x => x.view === a.view) ? '已添加' : '+ 添加' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-弹窗往上加->
 
 <!-- 吐槽回复弹窗 -->
@@ -3847,7 +4171,8 @@
     </div>
 </div>
 
-<script>
+    <script src="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.js"></script>
+    <script>
 if (typeof Vue === 'undefined') {
   document.body.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;color:#333;line-height:1.8;text-align:center">'
     + '<div style="font-size:42px;margin-bottom:12px">☁️</div>'
@@ -6410,6 +6735,10 @@ const exportSelectedBoxes = ref([]);
       navCollapsed: false, // 主屏顶部图标收纳（字卡/意趣 收起）
       playerCSS: '',                // 我的气泡刺绣（全局，群聊私聊通用）    // 空白回复（通用）
 enableCardStitch: false,//拼字卡
+spacePhoto: '',
+      spaceMemo: '',
+spacePlaylistId: '14273792576',
+      apps: [],
     });
 // ===== 侧拉面板开关 =====
 const settingsPanelOpen = ref(false);
@@ -8201,7 +8530,9 @@ const selectTag = (type, text) => {
     const cur = currentSession.value;
     const isGroup = cur && cur.type === 'group';
     const mention = isGroup ? mentionTarget.value : null;
-    sendMessage('me', txt, { mention, tag: selectedTag.value ? { ...selectedTag.value } : null });
+    const opts = { mention, tag: selectedTag.value ? { ...selectedTag.value } : null };
+    if (pendingQuote.value) opts.quote = pendingQuote.value;
+    sendMessage('me', txt, opts);
     const lastMsg = cur.messages[cur.messages.length - 1];
     // 梦角选用户消息（仅私聊）
     if (!isGroup && lastMsg) tryGrabUserMessage(lastMsg, cur);
@@ -8209,6 +8540,7 @@ const selectTag = (type, text) => {
     mentionTarget.value = null;
     selectedTag.value = null;
     tagPickerOpen.value = false;
+    pendingQuote.value = null;
     if (settings.autoReply) {
         if (isGroup) setTimeout(() => triggerGroupReply(800, mention, cur), 200);
         else setTimeout(() => triggerReply(undefined, cur), 200);
@@ -9103,8 +9435,247 @@ if (Math.random() < 0.1) {
       switchView('chat');
     };
 
+// ===== S1：主屏三页桌面 =====
+const homePage = ref(0); // 0=会话 1=温馨空间 2=软件
+
+let _homeTouchX = 0;
+let _homeTouchY = 0;
+const onHomeTouchStart = (e) => {
+    _homeTouchX = e.touches[0].clientX;
+    _homeTouchY = e.touches[0].clientY;
+};
+const onHomeTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - _homeTouchX;
+    const dy = e.changedTouches[0].clientY - _homeTouchY;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0 && homePage.value < 2) homePage.value++;
+    else if (dx > 0 && homePage.value > 0) homePage.value--;
+};
+
+
+// ===== S2：温馨空间 =====
+const spaceMonthName = computed(() => {
+    const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    return months[new Date().getMonth()];
+});
+const spaceDay = computed(() => new Date().getDate());
+const spaceWeekday = computed(() => {
+    const w = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    return w[new Date().getDay()];
+});
+const uploadSpacePhoto = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+        settings.spacePhoto = ev.target.result;
+        debouncedSave();
+    };
+    fr.readAsDataURL(file);
+    e.target.value = '';
+};
+
+// ===== T1：温馨空间日历卡 =====
+const spaceTodayStr = computed(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+});
+
+const periodDayNumber = (dateStr) => {
+    const p = boardPeriod.value;
+    if (!p || !p.lastStart) return 0;
+    const start = new Date(p.lastStart + 'T00:00:00');
+    const [cy, cm, cd] = dateStr.split('-').map(Number);
+    const cur = new Date(cy, cm - 1, cd);
+    const diff = Math.floor((cur - start) / 86400000);
+    if (diff < 0) return 0;
+    const interval = p.interval || 28;
+    const duration = p.duration || 5;
+    const inPeriod = diff % interval;
+    if (inPeriod < duration) return inPeriod + 1;
+    return 0;
+};
+
+const installmentsDueToday = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const result = [];
+    (money.daily.records || []).forEach(r => {
+        if (r.type !== 'installment') return;
+        const app = (money.daily.apps || []).find(a => a.id === r.appId);
+        if (!app || app.payDay !== d) return;
+        const [ry, rm, rd] = (r.date || '').split('-').map(Number);
+        if (!ry) return;
+        let startY = ry, startM = rm;
+        if (rd > app.payDay) {
+            startM += 1;
+            if (startM > 12) { startM = 1; startY++; }
+        }
+        const totalMonths = (y - startY) * 12 + (m - startM);
+        if (totalMonths < 0) return;
+        if (totalMonths >= (r.totalInstallments || 0)) return;
+        const periodIndex = totalMonths;
+        const paid = (r.paidPeriods || []).includes(periodIndex);
+        result.push({
+            recordId: r.id,
+            name: r.name || r.category || '分期',
+            amount: r.perInstallment || 0,
+            appName: app.name,
+            periodIndex,
+            totalInstallments: r.totalInstallments,
+            paid,
+        });
+    });
+    return result;
+};
+
+const spaceInstallmentsToday = computed(() => installmentsDueToday(spaceTodayStr.value));
+const spacePeriodDay = computed(() => periodDayNumber(spaceTodayStr.value));
+
+// ===== 长按消息菜单 =====
+const msgMenu = reactive({ show: false, msg: null });
+const pendingQuote = ref(null);
+let _msgPressTimer = null;
+
+const openMsgMenu = (msg) => {
+    if (!msg) return;
+    msgMenu.msg = msg;
+    msgMenu.show = true;
+};
+const closeMsgMenu = () => {
+    msgMenu.show = false;
+    msgMenu.msg = null;
+};
+const onMsgPressStart = (msg) => {
+    if (_msgPressTimer) clearTimeout(_msgPressTimer);
+    _msgPressTimer = setTimeout(() => {
+        openMsgMenu(msg);
+        _msgPressTimer = null;
+    }, 500);
+};
+const onMsgPressEnd = () => {
+    if (_msgPressTimer) { clearTimeout(_msgPressTimer); _msgPressTimer = null; }
+};
+const msgMenuCopy = () => {
+    const m = msgMenu.msg;
+    if (!m) return;
+    const text = m.content || '[图片]';
+    try {
+        navigator.clipboard.writeText(text);
+        showToast('已复制');
+    } catch (e) {
+        showToast('复制失败');
+    }
+    closeMsgMenu();
+};
+
+const _msgMenuDocClick = (e) => {
+    if (e.target.closest('.msg-menu-bar')) return;
+    closeMsgMenu();
+};
+watch(() => msgMenu.show, (v) => {
+    if (v) {
+        setTimeout(() => document.addEventListener('click', _msgMenuDocClick), 0);
+    } else {
+        document.removeEventListener('click', _msgMenuDocClick);
+    }
+});
+
+
+const msgMenuQuote = () => {
+    const m = msgMenu.msg;
+    if (!m) return;
+    pendingQuote.value = {
+        id: m.id,
+        sender: m.sender,
+        content: m.content ? m.content.slice(0, 60) : '',
+        image: m.image || null,
+    };
+    closeMsgMenu();
+};
+const msgMenuRetract = () => {
+    const m = msgMenu.msg;
+    if (!m) return;
+    m.retracted = true;
+    m.image = null;
+    closeMsgMenu();
+    debouncedSave();
+};
+const msgMenuDelete = () => {
+    const m = msgMenu.msg;
+    if (!m) return;
+    deleteMsg(m.id);
+    closeMsgMenu();
+};
+
+// ===== T2：软件页面 =====
+const AVAILABLE_APPS = [
+    { view: 'library',     label: '字卡',   icon: 'layers' },
+    { view: 'yiqu',        label: '意趣',   icon: 'sparkles' },
+    { view: 'money',       label: '荷包',   icon: 'wallet' },
+    { view: 'board',       label: '字笺',   icon: 'notebook-pen' },
+    { view: 'mailbox',     label: '留言板', icon: 'mail' },
+    { view: 'preferences', label: '设置',   icon: 'settings' },
+];
+const defaultApps = () => AVAILABLE_APPS.map(a => ({ id: genId(), ...a }));
+
+const appsPickerOpen = ref(false);
+const openAppsPicker = () => {
+    appsPickerOpen.value = true;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+const closeAppsPicker = () => { appsPickerOpen.value = false; };
+
+const addApp = (viewKey) => {
+    const def = AVAILABLE_APPS.find(a => a.view === viewKey);
+    if (!def) return;
+    if (settings.apps.some(a => a.view === viewKey)) { showToast('已添加过'); return; }
+    settings.apps.push({ id: genId(), ...def });
+    appsPickerOpen.value = false;
+    debouncedSave();
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const removeApp = async (id) => {
+    const app = settings.apps.find(a => a.id === id);
+    if (!app) return;
+    if (!(await appConfirm(`移除「${app.label}」？`))) return;
+    settings.apps = settings.apps.filter(a => a.id !== id);
+    debouncedSave();
+};
+
+let _appPressTimer = null;
+const onAppPressStart = (app) => {
+    if (_appPressTimer) clearTimeout(_appPressTimer);
+    _appPressTimer = setTimeout(() => { removeApp(app.id); _appPressTimer = null; }, 600);
+};
+const onAppPressEnd = () => {
+    if (_appPressTimer) { clearTimeout(_appPressTimer); _appPressTimer = null; }
+};
+
+let appsSortable = null;
+const initAppsSortable = () => {
+    if (appsSortable) { try { appsSortable.destroy(); } catch (e) {} appsSortable = null; }
+    const el = document.getElementById('apps-grid');
+    if (!el) return;
+    appsSortable = new Sortable(el, {
+        animation: 180,
+        onEnd: (evt) => {
+            const moved = settings.apps.splice(evt.oldIndex, 1)[0];
+            settings.apps.splice(evt.newIndex, 0, moved);
+            debouncedSave();
+        },
+    });
+};
+watch(homePage, (v) => {
+    if (v === 2) nextTick(() => {
+        initAppsSortable();
+        if (window.lucide) lucide.createIcons();
+    });
+});
+
+const hideSession = (sessionId) => {
     // 隐藏聊天室（右键/长按）
-    const hideSession = (sessionId) => {
+   
       const s = sessions.value.find((x) => x.id === sessionId);
       if (s) {
         s.hidden = true;
@@ -10748,7 +11319,7 @@ const currentDailyBill = computed(() => {
     const budget = getMonthlyBudget(ym);
     const installment = getMonthlyInstallmentTotal(ym);
     const normal = getMonthlyNormalTotal(ym);
-    const available = budget - installment;
+    const available = budget - installment- normal;
     const apps = (money.daily.apps || []);
     const installments = getMonthlyInstallmentItems(ym);
     const normals = (money.daily.records || [])
@@ -10764,10 +11335,179 @@ const changeDailyMonth = (delta) => {
     dailyMonth.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0');
 };
 // 占位函数，后面 Step E 实现
-const openDailyBudgetEdit = () => { showToast('预算编辑 · 下一步实现'); };
-const openDailyAppManage = () => { showToast('软件管理 · 下一步实现'); };
-const openDailyAdd = () => { showToast('记一笔 · 下一步实现'); };
-const toggleInstallmentPaid = (recordId, periodIndex) => { showToast('标记已还 · 下一步实现'); };
+// ===== Step G：预算编辑 =====
+const dailyBudgetModal = reactive({
+    show: false,
+    value: 0,
+});
+
+const openDailyBudgetEdit = () => {
+    const ym = dailyMonth.value;
+    dailyBudgetModal.value = (money.daily.budgets || {})[ym] || 0;
+    dailyBudgetModal.show = true;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const closeDailyBudgetEdit = () => {
+    dailyBudgetModal.show = false;
+};
+
+const saveDailyBudget = () => {
+    const v = Number(dailyBudgetModal.value);
+    if (!(v >= 0)) { showToast('请输入有效金额'); return; }
+    if (!money.daily.budgets) money.daily.budgets = {};
+    money.daily.budgets[dailyMonth.value] = v;
+    dailyBudgetModal.show = false;
+    debouncedSave();
+};
+// ===== Step E：软件管理 =====
+const dailyAppModal = reactive({
+    show: false,
+    editing: null,       // null=列表模式；有值=编辑/新增模式
+    form: { name: '', payDay: 15 }
+});
+
+const openDailyAppManage = () => {
+    dailyAppModal.show = true;
+    dailyAppModal.editing = null;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const closeDailyAppManage = () => {
+    dailyAppModal.show = false;
+    dailyAppModal.editing = null;
+};
+
+const startAddApp = () => {
+    dailyAppModal.editing = { id: '', name: '', payDay: 15 };
+    dailyAppModal.form.name = '';
+    dailyAppModal.form.payDay = 15;
+};
+
+const startEditApp = (app) => {
+    dailyAppModal.editing = app;
+    dailyAppModal.form.name = app.name;
+    dailyAppModal.form.payDay = app.payDay;
+};
+
+const cancelAppEdit = () => {
+    dailyAppModal.editing = null;
+};
+
+const saveApp = () => {
+    const name = (dailyAppModal.form.name || '').trim();
+    const payDay = Number(dailyAppModal.form.payDay);
+    if (!name) { showToast('请输入软件名称'); return; }
+    if (!payDay || payDay < 1 || payDay > 28) { showToast('还款日需在 1~28 之间'); return; }
+    if (!money.daily.apps) money.daily.apps = [];
+    if (dailyAppModal.editing && dailyAppModal.editing.id) {
+        const target = money.daily.apps.find(a => a.id === dailyAppModal.editing.id);
+        if (target) { target.name = name; target.payDay = payDay; }
+    } else {
+        money.daily.apps.push({ id: genId(), name, payDay });
+    }
+    dailyAppModal.editing = null;
+    debouncedSave();
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    showToast('已保存');
+};
+
+const deleteApp = async (id) => {
+    const app = money.daily.apps.find(a => a.id === id);
+    if (!app) return;
+    if (!(await appConfirm(`删除「${app.name}」？\n已录入的分期计划不会自动删除。`))) return;
+    money.daily.apps = money.daily.apps.filter(a => a.id !== id);
+    debouncedSave();
+};
+// ===== Step F：记一笔（普通消费 / 分期）=====
+const DAILY_CATEGORIES = ['餐饮', '交通', '购物', '娱乐', '日用', '医疗', '其他'];
+
+const dailyAddModal = reactive({
+    show: false,
+    tab: 'normal',
+    normal: { name: '', category: '餐饮', amount: 0 },
+    installment: { name: '', category: '购物', appId: '', perInstallment: 0, totalInstallments: 12 },
+});
+
+const openDailyAdd = () => {
+    dailyAddModal.show = true;
+    dailyAddModal.tab = 'normal';
+    dailyAddModal.normal = { name: '', category: '餐饮', amount: 0 };
+    dailyAddModal.installment = { name: '', category: '购物', appId: '', perInstallment: 0, totalInstallments: 12 };
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const closeDailyAdd = () => {
+    dailyAddModal.show = false;
+};
+
+const switchDailyAddTab = (tab) => {
+    dailyAddModal.tab = tab;
+};
+
+const saveDailyAdd = () => {
+    if (!Array.isArray(money.daily.records)) money.daily.records = [];
+    const dateStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD' 字符串，两个统计函数都吃这个格式
+
+    if (dailyAddModal.tab === 'normal') {
+        const name = (dailyAddModal.normal.name || '').trim();
+        const amount = Number(dailyAddModal.normal.amount);
+        if (!name) { showToast('请输入名称'); return; }
+        if (!(amount > 0)) { showToast('请输入有效金额'); return; }
+        money.daily.records.push({
+            id: genId(),
+            type: 'normal',
+            name,
+            category: dailyAddModal.normal.category,
+            amount,
+            date: dateStr,
+        });
+    } else {
+        const name = (dailyAddModal.installment.name || '').trim();
+        const perInstallment = Number(dailyAddModal.installment.perInstallment);
+        const totalInstallments = Number(dailyAddModal.installment.totalInstallments);
+        const appId = dailyAddModal.installment.appId;
+        if (!name) { showToast('请输入名称'); return; }
+        if (!appId) { showToast('请选择所属软件'); return; }
+        if (!(perInstallment > 0)) { showToast('请输入每期金额'); return; }
+        if (!(totalInstallments >= 1)) { showToast('请输入期数'); return; }
+        money.daily.records.push({
+            id: genId(),
+            type: 'installment',
+            appId,
+            name,
+            category: dailyAddModal.installment.category,
+            perInstallment,
+            totalInstallments,
+            paidPeriods: [],
+            date: dateStr,
+        });
+    }
+
+    dailyAddModal.show = false;
+    debouncedSave();
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    showToast('已记账');
+};
+
+const deleteDailyRecord = async (id) => {
+    const r = (money.daily.records || []).find(x => x.id === id);
+    if (!r) return;
+    if (!(await appConfirm(`删除这笔「${r.name || r.category}」？`))) return;
+    money.daily.records = money.daily.records.filter(x => x.id !== id);
+    debouncedSave();
+};
+
+// ===== Step G：还款标记 =====
+const toggleInstallmentPaid = (recordId, periodIndex) => {
+    const r = (money.daily.records || []).find(x => x.id === recordId);
+    if (!r || r.type !== 'installment') return;
+    if (!Array.isArray(r.paidPeriods)) r.paidPeriods = [];
+    const idx = r.paidPeriods.indexOf(periodIndex);
+    if (idx >= 0) r.paidPeriods.splice(idx, 1);   // 撤销
+    else r.paidPeriods.push(periodIndex);          // 标记已还
+    debouncedSave();
+};
     // 时间格式化：年月日 时分
     const formatDateTime = (ts) => {
       if (!ts) return '';
@@ -12299,8 +13039,9 @@ const monthlyBudgetRemain = (monthStr) => {
       messages.value[idx].sender !== messages.value[idx - 1].sender ||
       messages.value[idx].timestamp - messages.value[idx - 1].timestamp > 120000;
     const deleteMsg = (id) => {
-      currentSession.value.messages = currentSession.value.messages.filter((m) => m.id !== id);
-    };
+    currentSession.value.messages = currentSession.value.messages.filter((m) => m.id !== id);
+    debouncedSave();
+};
     const editAvatar = async (role) => {
       const s = currentSession.value;
       const isGroup = s && s.type === 'group';
@@ -12978,6 +13719,7 @@ sessions.value.forEach(s => {
                 if (stored.settings) Object.assign(settings, stored.settings);
                 if (!settings.homeBgLibrary) settings.homeBgLibrary = [];
                 if (settings.homeBgImage === undefined) settings.homeBgImage = '';
+ if (!Array.isArray(settings.apps)) settings.apps = defaultApps();
                 if (!settings.checkBgLibrary) settings.checkBgLibrary = [];
                 if (settings.checkBgImage === undefined) settings.checkBgImage = '';
                 if (!settings.allowanceBg) settings.allowanceBg = { spring: '', summer: '', autumn: '', winter: '' };
@@ -13016,12 +13758,20 @@ if (stored.sharedBoxes) {
     mergeFromSessions('公共梦角自由造句');
 }
                 if (stored.money) {
-                    if (stored.money.check) Object.assign(money.check, stored.money.check);
-                    if (Array.isArray(stored.money.history)) {
-                        money.history.splice(0, money.history.length, ...stored.money.history);
-                    }
-                    if (stored.money.allowance) Object.assign(money.allowance, stored.money.allowance);
-                }
+    if (stored.money.check) Object.assign(money.check, stored.money.check);
+    if (Array.isArray(stored.money.history)) {
+        money.history.splice(0, money.history.length, ...stored.money.history);
+    }
+    if (stored.money.allowance) Object.assign(money.allowance, stored.money.allowance);
+    // 👇 新增：恢复日常记账
+    if (stored.money.daily) {
+        if (Array.isArray(stored.money.daily.records)) money.daily.records = stored.money.daily.records;
+        if (Array.isArray(stored.money.daily.apps)) money.daily.apps = stored.money.daily.apps;
+        if (stored.money.daily.budgets && typeof stored.money.daily.budgets === 'object') {
+            money.daily.budgets = stored.money.daily.budgets;
+        }
+    }
+}
 if (stored.sessionSettings) {
     Object.assign(sessionSettings, stored.sessionSettings);
 }
@@ -13582,8 +14332,18 @@ toggleConcat,
 toggleConcatEmoji,
 adjustConcatCount,
 deleteCurrentSession,
+// Step E
+dailyAppModal, closeDailyAppManage, startAddApp, startEditApp, cancelAppEdit, saveApp, deleteApp,DAILY_CATEGORIES, dailyAddModal, closeDailyAdd, switchDailyAddTab, saveDailyAdd, deleteDailyRecord,dailyBudgetModal, closeDailyBudgetEdit, saveDailyBudget, toggleInstallmentPaid,homePage, onHomeTouchStart, onHomeTouchEnd,spaceMonthName, spaceDay, spaceWeekday, uploadSpacePhoto,
 mutedMembers,
+spaceTodayStr, spaceInstallmentsToday, spacePeriodDay,
 isMuted,
+// 长按消息菜单
+      msgMenu, pendingQuote, openMsgMenu, closeMsgMenu,
+      onMsgPressStart, onMsgPressEnd,
+      msgMenuCopy, msgMenuQuote, msgMenuRetract, msgMenuDelete,
+// T2 软件页面
+      AVAILABLE_APPS, appsPickerOpen, openAppsPicker, closeAppsPicker,
+      addApp, removeApp, onAppPressStart, onAppPressEnd,
 openMuteDialog,
 muteMember,
 unmuteMember,
