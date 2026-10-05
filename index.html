@@ -7105,7 +7105,8 @@ const getPublicTexts = () => {
 const _pickRandomBook = (session, situation) => {
     const s = session || currentSession.value;
     if (!s) return null;
-    const wm = s.corpus && s.corpus.weightMap && s.corpus.weightMap[situation];
+    // 读全局设置里的权重
+    const wm = settings.replyWeightMap && settings.replyWeightMap[situation];
     if (!wm || !wm.pools) return null;
     const valid = [];
     let totalW = 0;
@@ -7117,6 +7118,7 @@ const _pickRandomBook = (session, situation) => {
         const nonEmpty = box.groups.some(g => Array.isArray(g.replies) && g.replies.length > 0);
         if (!nonEmpty) return;
         valid.push({ boxName, weight, box });
+        totalW += weight;
     });
     if (!valid.length) return null;
     let r = Math.random() * totalW;
