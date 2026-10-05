@@ -536,7 +536,31 @@ body { color: var(--color-text); }
                 <button v-if="settings.spacePhoto" @click.prevent.stop="settings.spacePhoto = ''; debouncedSave()"
                         class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 text-white text-xs flex items-center justify-center">✕</button>
             </label>
-
+            <!-- 头像行 -->
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex -space-x-3 shrink-0">
+                        <div class="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
+                            <img v-if="profiles.me.avatar" :src="profiles.me.avatar" class="w-full h-full object-cover">
+                            <span v-else class="w-full h-full flex items-center justify-center text-[12px] text-muted serif-text">{{ (profiles.me.name || '我').charAt(0) }}</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
+                            <img v-if="currentSession?.avatar" :src="currentSession.avatar" class="w-full h-full object-cover">
+                            <span v-else class="w-full h-full flex items-center justify-center text-[12px] text-muted serif-text">{{ (currentSession?.name || '?').charAt(0) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <div class="text-[9px] tracking-[0.3em] text-muted/70">MY FAVORITE PERSON</div>
+                        <div class="text-[18px] font-light tracking-wide truncate">{{ currentSession?.name || '……' }}</div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end shrink-0">
+                    <div class="text-[11px] italic text-muted/70" style="font-family:'Noto Serif SC',serif;">you &amp; me</div>
+                    <svg class="w-5 h-5 mt-0.5 text-muted/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </div>
+            </div>
             <!-- 两栏：备忘录 + 日历 -->
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <!-- 备忘录 -->
@@ -1636,21 +1660,23 @@ body { color: var(--color-text); }
                 <!-- 群聊会话：字卡库不展示，提示先切到私聊 -->
                 <!-- ===== 大分类标签（横向滚动） ===== -->
 <div class="shrink-0 bg-surface border-b border-border/40 px-2 py-2 flex gap-1.5 overflow-x-auto" style="scrollbar-width:none;">
-    <button v-for="(boxes, cat) in bigCategoryMap" :key="cat" 
+        <button v-for="(boxes, cat) in bigCategoryMap" :key="cat" 
             @click="switchBigCategory(cat)"
-            class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+            class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors flex items-center gap-1"
             :class="currentBigCategory === cat ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
         {{ cat }}
+        <span class="text-[10px] tabular-nums" :class="currentBigCategory === cat ? 'opacity-70' : 'opacity-50'">{{ countCategoryCards(cat) }}</span>
     </button>
 </div>
 
 <!-- ===== 子标签（横向滚动） ===== -->
 <div class="shrink-0 bg-surface border-b border-border/40 px-2 py-2 flex gap-1.5 overflow-x-auto" style="scrollbar-width:none;">
-    <button v-for="b in (bigCategoryMap[currentBigCategory] || [])" :key="b"
+        <button v-for="b in (bigCategoryMap[currentBigCategory] || [])" :key="b"
             @click="switchBox(b)"
-            class="shrink-0 px-3 py-1 rounded-lg text-[11px] tracking-widest transition-colors"
+            class="shrink-0 px-3 py-1 rounded-lg text-[11px] tracking-widest transition-colors flex items-center gap-1"
             :class="activeBox === b ? 'border border-text text-text bg-bg' : 'border border-border text-muted hover:text-text'">
         {{ boxLabel[b] || b }}
+        <span class="text-[10px] tabular-nums opacity-60">{{ countBoxCards(b) }}</span>
     </button>
 </div>
 
@@ -1769,9 +1795,10 @@ body { color: var(--color-text); }
      class="flex gap-1.5 overflow-x-auto pb-1 mb-3" style="scrollbar-width:none;">
     <button v-for="item in currentGroupList" :key="item.id"
         @click="groupFilter = item.id"
-        class="shrink-0 px-3 py-1 rounded-full text-[11px] tracking-widest transition-colors"
+        class="shrink-0 px-3 py-1 rounded-full text-[11px] tracking-widest transition-colors flex items-center gap-1"
         :class="groupFilter === item.id ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
     {{ item.name }}
+    <span v-if="item.id !== '__all__'" class="text-[10px] tabular-nums" :class="groupFilter === item.id ? 'opacity-70' : 'opacity-50'">{{ countGroupCards(item.id) }}</span>
 </button>
 </div>
 
@@ -1897,7 +1924,23 @@ body { color: var(--color-text); }
                     <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">设置</span>
                 </header>
-                 <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-12"><section>
+                                  <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-12">
+                                                <!-- ===== Tab 分页 ===== -->
+                        <div class="flex gap-1 bg-surface border border-border rounded-xl p-1 shrink-0">
+                            <button @click="settingsTab = '外观'"
+                                    class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                    :class="settingsTab === '外观' ? 'bg-text text-white' : 'text-muted hover:text-text'">外观</button>
+                            <button @click="settingsTab = '回复设置'"
+                                    class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                    :class="settingsTab === '回复设置' ? 'bg-text text-white' : 'text-muted hover:text-text'">回复设置</button>
+                            <button @click="settingsTab = '系统'"
+                                    class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                    :class="settingsTab === '系统' ? 'bg-text text-white' : 'text-muted hover:text-text'">系统</button>
+                        </div>
+
+                        <!-- ===== Tab: 外观 ===== -->
+                        <template v-if="settingsTab === '外观'">
+                        <section>
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">我的头像</h3>
                             <div class="bg-surface border border-border rounded-xl p-3.5 flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-3">
@@ -2042,21 +2085,12 @@ body { color: var(--color-text); }
 <section>
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">私语</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                                <div class="flex items-center justify-between p-3.5 border-b border-border">
-                                    <span>主动搭话</span>
-                                    <button @click="toggleActiveMessage" class="w-10 h-5 rounded-full relative" :class="settings.activeMessage ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.activeMessage ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                </div>
-                                <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 flex flex-col gap-2 border-b border-border">
-                                    <div class="flex justify-between text-[11px] text-muted"><span>发起间隔</span><span>{{settings.activeInterval}} 分钟</span></div>
-                                    <input type="range" v-model.number="settings.activeInterval" min="5" max="120" @change="manageActiveTimer" class="w-full accent-text">
-                                </div>
                                 <div class="flex items-center justify-between p-3.5">
                                     <span>标记</span>
                                     <button @click="settings.markEnabled = !settings.markEnabled" class="w-10 h-5 rounded-full relative" :class="settings.markEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.markEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                 </div>
                             </div>
-                        </section>
-<section>
+                        </section><section>
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                 <div class="p-3.5">
@@ -2078,9 +2112,197 @@ body { color: var(--color-text); }
                                     <button @click="exportAllData" class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5"><i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出备份</button>
                                     <label class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"><i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入备份<input type="file" accept=".json" class="hidden" @change="importAllData"></label>
                                 </div>
+                                                        </div>
+                        </section>
+                        </template>
+
+                                                <!-- ===== Tab: 回复设置 ===== -->
+                        <template v-if="settingsTab === '回复设置'">
+                            <!-- 子 tab -->
+                            <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
+                                <button v-for="sub in ['私聊','群聊','留言回复','主动留言']" :key="sub"
+                                        @click="replySubTab = sub"
+                                        class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+                                        :class="replySubTab === sub ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sub }}</button>
                             </div>
-                        </section></main>
+
+                            <!-- 子 tab: 私聊 / 群聊 / 留言回复 → 字卡权重 -->
+                            <template v-if="replySubTab !== '主动留言'">
+                                <div v-if="!currentSession" class="text-center text-xs text-muted/60 py-8">请先进入一个会话</div>
+                                <template v-else>
+                                    <div v-if="!replySettingsGroups.length" class="text-center text-xs text-muted/60 py-8">当前会话没有任何字卡书册</div>
+                                    <section v-for="grp in replySettingsGroups" :key="grp.catName" class="bg-surface border border-border/60 rounded-xl overflow-hidden mb-3">
+                                        <div class="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-bg/40">
+                                            <span class="text-[12px] text-text tracking-widest font-medium">{{ grp.catName }}</span>
+                                            <button @click="toggleAllInCategory(replySubTab, grp.catName, grp.boxes)"
+                                                    class="text-[11px] text-muted hover:text-text tracking-widest">
+                                                {{ grp.boxes.some(b => getPoolWeight(replySubTab, b) > 0) ? '全不选' : '全选' }}
+                                            </button>
+                                        </div>
+                                        <div class="p-3 space-y-3">
+                                            <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-3">
+                                                <button @click="togglePool(replySubTab, boxName)"
+                                                        class="w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors"
+                                                        :class="getPoolWeight(replySubTab, boxName) > 0 ? 'bg-text border-text' : 'border-border'">
+                                                    <svg v-if="getPoolWeight(replySubTab, boxName) > 0" viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+                                                </button>
+                                                <span class="text-[13px] text-text w-24 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
+                                                <input type="range" min="0" max="100"
+                                                       :value="getPoolWeight(replySubTab, boxName)"
+                                                       @input="e => setPoolWeight(replySubTab, boxName, e.target.value)"
+                                                       class="flex-1"
+                                                       :disabled="getPoolWeight(replySubTab, boxName) === 0"
+                                                       :style="getPoolWeight(replySubTab, boxName) === 0 ? 'opacity:0.3;' : ''">
+                                                <span class="text-[11px] text-muted w-8 text-right tabular-nums shrink-0">{{ getPoolWeight(replySubTab, boxName) }}</span>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
+                                        权重按归一化计算（不必凑 100）。权重为 0 或未勾选 = 该场景不使用此书册。<br>
+                                        此设置全局生效，所有会话共用。
+                                    </div>
+                                </template>
+                            </template>
+
+                                                       <!-- 子 tab: 主动留言 -->
+                            <template v-if="replySubTab === '主动留言'">
+                                <div class="text-[11px] text-muted/80 leading-relaxed px-1 mb-3">
+                                    以下都是 TA 随机行为的触发概率（%）：嫌频繁就把数值调小，调到 0 = 不再触发；开关关掉 = 彻底关闭该行为。修改即时保存生效。
+                                </div>
+
+                                <!-- ===== 主动搭话 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">主动搭话</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>主动搭话</span>
+                                            <button @click="toggleActiveMessage" class="w-10 h-5 rounded-full relative" :class="settings.activeMessage ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.activeMessage ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                        </div>
+                                        <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 flex flex-col gap-2 border-b border-border">
+                                            <div class="flex justify-between text-[11px] text-muted"><span>发起间隔</span><span>{{settings.activeInterval}} 分钟</span></div>
+                                            <input type="range" v-model.number="settings.activeInterval" min="5" max="120" @change="manageActiveTimer" class="w-full accent-text">
+                                        </div>
+                                        <div class="flex items-center justify-between p-3.5">
+                                            <span>标记</span>
+                                            <button @click="settings.markEnabled = !settings.markEnabled" class="w-10 h-5 rounded-full relative" :class="settings.markEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.markEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 联系人主动写信 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">联系人主动写信</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>联系人主动写信</span>
+                                            <button @click="settings.autoLetterEnabled = !settings.autoLetterEnabled; debouncedSave();" class="w-10 h-5 rounded-full relative" :class="settings.autoLetterEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.autoLetterEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">每天最多写信（封）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('autoLetterMaxPerDay', -1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxPerDay }}</span>
+                                                <button @click="adjustSetting('autoLetterMaxPerDay', 1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">主动写信概率（%）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('autoLetterProb', -5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterProb }}</span>
+                                                <button @click="adjustSetting('autoLetterProb', 5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">最短写信时间（分钟）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('autoLetterMinMin', -10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMinMin }}</span>
+                                                <button @click="adjustSetting('autoLetterMinMin', 10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3">
+                                            <span class="text-[13px]">最长写信时间（分钟）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('autoLetterMaxMin', -30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxMin }}</span>
+                                                <button @click="adjustSetting('autoLetterMaxMin', 30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 联系人回信 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">联系人回信</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">回信概率（%）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('replyLetterProb', -5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.replyLetterProb }}</span>
+                                                <button @click="adjustSetting('replyLetterProb', 5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">最短回信时间（分钟）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('replyLetterMinMin', -10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMinMin }}</span>
+                                                <button @click="adjustSetting('replyLetterMinMin', 10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3">
+                                            <span class="text-[13px]">最长回信时间（分钟）</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('replyLetterMaxMin', -30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMaxMin }}</span>
+                                                <button @click="adjustSetting('replyLetterMaxMin', 30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 信件内容 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">信件内容</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">最少字卡条数</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('letterMinCards', -1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMinCards }}</span>
+                                                <button @click="adjustSetting('letterMinCards', 1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">最多字卡条数</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('letterMaxCards', -1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMaxCards }}</span>
+                                                <button @click="adjustSetting('letterMaxCards', 1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-3.5">
+                                            <span>信件拼接随机标点</span>
+                                            <button @click="settings.letterRandomPunctuation = !settings.letterRandomPunctuation; debouncedSave();" class="w-10 h-5 rounded-full relative" :class="settings.letterRandomPunctuation ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.letterRandomPunctuation ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
+                                    这些参数下一批会接到主动写信 / 回信逻辑里，当前修改会保存但暂不影响实际行为。
+                                </div>
+                            </template>
+                        </template>
+
+                        <!-- ===== Tab: 系统 ===== -->
+                        <template v-if="settingsTab === '系统'">
+                            <div class="text-center text-xs text-muted/60 py-10">系统设置 · 待建设</div>
+                        </template>
+</main>
             </div>
+                        
 
 
             <!-- 意趣 -->
@@ -2692,56 +2914,177 @@ body { color: var(--color-text); }
             </div>
 
 
-<!-- ===== 留言板视图 ===== -->
+<!-- ===== 信箱视图 ===== -->
 <div v-else-if="currentView === 'mailbox'" key="mailbox" class="absolute inset-0 flex flex-col z-20 bg-bg">
     <header class="h-14 flex items-center justify-between px-4 border-b border-border/40 shrink-0 bg-surface relative">
-    <button @click="currentView = 'home'" class="p-2 -ml-1 text-text hover:opacity-60">
-        <i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i>
-    </button>
-    <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text">留言板</span>
-    <span class="w-9"></span>
-</header>
-    <div class="shrink-0 bg-surface/60 border-b border-border/40 px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap">
-        <div class="flex items-center gap-1">
-            <span class="text-[10px] text-muted">发送者</span>
-            <select v-model="mailFilter.sender" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
-                <option value="all">全部</option>
-                <option value="me">我</option>
-                <option value="them">TA</option>
-            </select>
-        </div>
-        <div class="flex items-center gap-1">
-            <span class="text-[10px] text-muted">状态</span>
-            <select v-model="mailFilter.status" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
-                <option value="all">全部</option>
-                <option value="read">已读</option>
-                <option value="unread">未读</option>
-            </select>
-        </div>
-        <button @click="markAllMailRead" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors">全部已读</button>
+        <button @click="currentView = 'home'" class="p-2 -ml-1 text-text hover:opacity-60">
+            <i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i>
+        </button>
+        <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text">信箱</span>
+        <span class="w-9"></span>
+    </header>
+
+    <!-- ===== 4 tab ===== -->
+    <div class="shrink-0 bg-surface border-b border-border/40 px-3 py-2 flex gap-1.5 overflow-x-auto" style="scrollbar-width:none;">
+        <button v-for="t in [{k:'inbox',label:'收到的信'},{k:'outbox',label:'寄出的信'},{k:'write',label:'写封信'},{k:'data',label:'信件数据'}]"
+                :key="t.k"
+                @click="mailboxTab = t.k"
+                class="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+                :class="mailboxTab === t.k ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
+            {{ t.label }}
+        </button>
     </div>
-    <main class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <div v-if="!filteredMailList.length" class="mt-20 text-center text-xs text-muted/60">暂无留言</div>
-       
- <div v-for="item in filteredMailList" :key="item.id" 
-     @click="markMailRead(item.sessionId, item.id)"
-     class="bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-bg/40 transition-colors">
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-medium text-text">{{ item.sessionName }}</span>
-                    <span class="text-[10px] text-muted">{{ item.sender === 'me' ? '我' : 'TA' }}</span>
-                    <span v-if="!item.read" class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-                    <span v-else class="text-[9px] text-muted/50">已读</span>
-                </div>
-                <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+
+    <!-- ===== Tab: 收到的信 ===== -->
+    <template v-if="mailboxTab === 'inbox'">
+        <div class="shrink-0 bg-surface/60 border-b border-border/40 px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap">
+            <div class="flex items-center gap-1">
+                <span class="text-[10px] text-muted">来自</span>
+                <select v-model="mailFilter.sessionId" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
+                    <option value="all">全部</option>
+                    <option v-for="opt in mailSessionOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+                </select>
             </div>
-            <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap">{{ item.body }}</div>
-            <div v-if="item.cards && item.cards.length" class="mt-2 text-[12px] text-muted/70">
-                <span class="text-[10px] text-muted">回信：</span>
-                <span v-for="(c, ci) in item.cards" :key="ci" class="inline-block mr-2">{{ c }}</span>
+            <div class="flex items-center gap-1">
+                <span class="text-[10px] text-muted">状态</span>
+                <select v-model="mailFilter.status" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
+                    <option value="all">全部</option>
+                    <option value="unread">未读</option>
+                    <option value="read">已读</option>
+                </select>
+            </div>
+            <button @click="markAllMailRead" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors ml-auto">全部已读</button>
+        </div>
+        <main class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div v-if="!filteredInbox.length" class="mt-20 text-center text-xs text-muted/60">暂无来信</div>
+                        <div v-for="item in filteredInbox" :key="item.id"
+                 @click="markMailRead(item.sessionId, item.id); openMailDetail(item)"
+                 class="bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-bg/40 transition-colors">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-medium text-text">来自 {{ item.sessionName }}</span>
+                        <span v-if="!item.read" class="text-[9px] tracking-widest px-1.5 py-0.5 rounded-full bg-text text-white">新来信</span>
+                    </div>
+                    <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+                </div>
+                <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap line-clamp-3">{{ item.body }}</div>
+            </div>
+        </main>
+    </template>
+
+    <!-- ===== Tab: 寄出的信 ===== -->
+    <template v-else-if="mailboxTab === 'outbox'">
+        <div class="shrink-0 bg-surface/60 border-b border-border/40 px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap">
+            <div class="flex items-center gap-1">
+                <span class="text-[10px] text-muted">发给</span>
+                <select v-model="mailFilter.sessionId" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
+                    <option value="all">全部</option>
+                    <option v-for="opt in mailSessionOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="text-[10px] text-muted">状态</span>
+                <select v-model="mailFilter.status" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
+                    <option value="all">全部</option>
+                    <option value="read">已读</option>
+                    <option value="unread">未读</option>
+                </select>
             </div>
         </div>
-    </main>
+        <main class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div v-if="!filteredOutbox.length" class="mt-20 text-center text-xs text-muted/60">还没有寄出的信</div>
+                       <div v-for="item in filteredOutbox" :key="item.id"
+                 @click="markMailRead(item.sessionId, item.id); openMailDetail(item)"
+                 class="bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-bg/40 transition-colors">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-medium text-text">寄给 {{ item.sessionName }}</span>
+                    <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+                </div>
+                <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap line-clamp-3">{{ item.body }}</div>
+            </div>
+        </main>
+    </template>
+
+        <!-- ===== Tab: 写封信 ===== -->
+    <template v-else-if="mailboxTab === 'write'">
+        <main class="flex-1 overflow-y-auto px-4 py-4">
+            <!-- 寄给谁 -->
+            <div class="text-[10px] text-muted tracking-widest mb-1">寄给谁</div>
+            <select v-model="letterDraft.to" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] text-text mb-4 outline-none focus:border-[var(--nav-icon-color)]">
+                <option value="">请选择</option>
+                <option v-for="s in sessions.filter(x => x.type !== 'group')" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+
+            <!-- 引用的来信（只读，有才显示） -->
+            <div v-if="letterDraft.quoteBody" class="mb-3 relative rounded-xl border border-border/50 overflow-hidden" style="background: rgba(0,0,0,0.03);">
+                <div class="px-3 py-2 border-b border-border/40 flex items-center justify-between">
+                    <span class="text-[10px] text-muted tracking-widest">引用来信 · 来自 {{ letterDraft.quoteFrom }}</span>
+                    <button @click="clearLetterQuote" class="text-muted hover:text-text text-sm leading-none">✕</button>
+                </div>
+                <div class="px-3 py-2 text-[12px] text-muted leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto" style="font-family: 'Noto Serif SC', serif;">{{ letterDraft.quoteBody }}</div>
+            </div>
+
+            <!-- 信纸样式输入区 -->
+            <div class="relative rounded-xl border border-border/50 overflow-hidden mb-4" style="background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(0,0,0,0.02));">
+                <!-- 信头 -->
+                <div class="px-5 pt-4 pb-2 border-b border-border/30">
+                    <div class="text-[10px] tracking-[0.3em] text-muted/60 mb-0.5">A LETTER FOR</div>
+                    <div class="text-[15px] font-light tracking-wide" style="font-family: 'Noto Serif SC', serif;">
+                        {{ sessions.find(x => x.id === letterDraft.to)?.name || '……' }}
+                    </div>
+                </div>
+                <!-- 正文 -->
+                <textarea v-model="letterDraft.text" rows="9"
+                          class="w-full bg-transparent px-5 py-4 text-[14px] leading-loose resize-none outline-none"
+                          style="font-family: 'Noto Serif SC', serif;"
+                          placeholder="见字如面…"></textarea>
+            </div>
+
+            <!-- 底部按钮 -->
+            <div class="flex gap-2">
+                <button @click="openLetterDivination"
+                        class="flex-1 py-2.5 rounded-lg border border-border text-[12px] text-text tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-1.5">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 附加占卜
+                </button>
+                <button @click="sendLetterFromTab"
+                        class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider"
+                        style="background:var(--nav-icon-color);">寄出</button>
+            </div>
+
+            <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-3">
+                回信将在 1~480 分钟内到达（可在设置·回复设置·主动留言里调整）。
+            </div>
+        </main>
+    </template>
+
+        <!-- ===== Tab: 信件数据 ===== -->
+    <template v-else-if="mailboxTab === 'data'">
+        <main class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            <section>
+                <div class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">收藏的信 · {{ favoritedMailList.length }} 封</div>
+                <div v-if="!favoritedMailList.length" class="bg-surface border border-border rounded-xl p-4 text-center text-[12px] text-muted/60">
+                    暂无收藏
+                </div>
+                <div v-else class="space-y-3">
+                    <div v-for="item in favoritedMailList" :key="item.id"
+                         @click="openMailDetail(item)"
+                         class="bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-bg/40 transition-colors">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-medium text-text">来自 {{ item.sessionName }}</span>
+                            <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+                        </div>
+                        <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap line-clamp-3">{{ item.body }}</div>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <div class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">占卜牌组</div>
+                <div class="bg-surface border border-border rounded-xl p-4 text-center text-[12px] text-muted/60">
+                    占卜功能 · 待实现
+                </div>
+            </section>
+        </main>
+    </template>
 </div>
         </transition>
 
@@ -3047,7 +3390,7 @@ body { color: var(--color-text); }
                     <select v-model="bulkForm.groupId" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3">
                         <option v-for="g in activeGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
                     </select>
-                    <div class="text-[10px] text-muted mb-1">一行一个字卡</div>
+                    <div class="text-[10px] text-muted mb-1">【卷宗标题】自动新建卷宗&#10;一行一个字卡</div>
                     <textarea v-model="bulkForm.text" rows="6" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3 font-light resize-none" placeholder="第一句&#10;第二句&#10;第三句"></textarea>
                     <button @click="submitBulk" class="w-full py-2.5 rounded-lg text-white text-sm font-medium" style="background:var(--nav-icon-color);">添加</button>
                 </div>
@@ -4082,7 +4425,49 @@ body { color: var(--color-text); }
         </div>
     </div>
 </div>
+<!-- ===== 4-3：信件详情弹层 ===== -->
+<div v-if="mailDetail.show" class="redpacket-overlay" style="z-index:280;background:rgba(0,0,0,0.45);" @click.self="closeMailDetail">
+    <div class="bg-surface rounded-2xl overflow-hidden shadow-2xl flex flex-col" style="width:92vw;max-width:420px;max-height:80vh;">
+        <!-- 头部 -->
+        <div class="shrink-0 px-5 py-3.5 border-b border-border/50 flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[13px] font-medium text-text truncate">
+                    {{ mailDetail.item?.sender === 'me' ? '寄给 ' + mailDetail.item.sessionName : mailDetail.item?.sessionName }}
+                </span>
+                <span v-if="mailDetail.item?.sender === 'them' && !mailDetail.item?.read" class="text-[9px] tracking-widest px-1.5 py-0.5 rounded-full bg-text text-white shrink-0">新来信</span>
+            </div>
+            <span class="text-[10px] text-muted shrink-0">{{ formatMailTime(mailDetail.item?.timestamp) }}</span>
+        </div>
 
+        <!-- 正文 -->
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+            <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap">{{ mailDetail.item?.body || '（无内容）' }}</div>
+        </div>
+
+        <!-- 底部按钮 -->
+        <div class="shrink-0 px-4 py-3 border-t border-border/50 flex gap-2">
+            <template v-if="mailDetail.item?.sender === 'them'">
+                <button @click="toggleFavoriteMail"
+                        class="flex-1 py-2.5 rounded-xl border border-border text-[12px] text-text tracking-widest hover:bg-bg transition-colors">
+                    {{ mailDetail.item?.raw?.favorited ? '取消收藏' : '收藏来信' }}
+                </button>
+                <button @click="replyFromMailDetail"
+                        class="flex-1 py-2.5 rounded-xl border border-border text-[12px] text-text tracking-widest hover:bg-bg transition-colors">
+                    提笔回信
+                </button>
+            </template>
+            <button @click="deleteMailDetail"
+                    class="flex-1 py-2.5 rounded-xl border border-red-400/50 text-[12px] text-red-500 tracking-widest hover:bg-red-500/10 transition-colors">
+                删除
+            </button>
+            <button @click="closeMailDetail"
+                    class="flex-1 py-2.5 rounded-xl text-white text-[12px] tracking-widest"
+                    style="background:var(--nav-icon-color);">
+                关闭
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-弹窗往上加->
 
@@ -5521,10 +5906,15 @@ const sendSystemDrawing = async (sess, mode) => {
             // 他的状态（从状态书册抽，每6小时80%概率换）
             statusText: '',
             // 我的表情包（会话级独立，仅我使用，不进角色语料）
-            myEmotes: [],
-        },
-      ];
-    };
+                   myEmotes: [],
+        _lastAutoLetterAt: 0,
+        _todayLetterCount: 0,
+        _todayLetterDate: '',
+        _todayReplyCount: 0,
+        _todayReplyDate: '',
+      },
+    ];
+  };
 
         // ===== 信封：从语料库抽取字卡 =====
         // 扁平化某会话语料库里所有"启用"的语料文本（可指定 session，默认当前）
@@ -5579,6 +5969,11 @@ const sendSystemDrawing = async (sess, mode) => {
         // 其余情境（私聊/信封回复/分享回复等）接入群聊或红包备注箱子时一律混抽（后台默认混合，不受该箱混合开关影响）
         const envelopeCardItems = (session, situation = '群聊', groupId = null, tierId = null) => {
         
+          // ===== 信封回复场景走权重抽卡 =====
+          if (situation === '信封回复') {
+            const items = drawWeightedCards(session, '信封回复', 20);
+            return items;
+          }
 // ===== 群聊共享池：直接从群聊的「私语」箱子读取 =====
 if (situation === '群聊' && session && session.type === 'group') {
   const privateBox = session.corpus?.boxes?.['私聊'];
@@ -5667,16 +6062,27 @@ return items;
           setTimeout(() => checkEnvelopeArrival(), delay + 800);
         };
 
-        // 检查到达：到点才抽字卡生成回信（在线周期检查 / 离线打开检查）
-        const checkEnvelopeArrival = () => {
+               const checkEnvelopeArrival = () => {
           const now = Date.now();
           let changed = false;
           sessions.value.forEach((s) => {
-            if (s.type === 'group') return; // 群聊无留言板功能
+            if (s.type === 'group') return;
             (s.envelopes || []).forEach((e) => {
               if (e.from === 'dream' && e.status === 'pending' && e.arriveAt && e.arriveAt <= now) {
-                e.cards = drawEnvelopeCards(null, s); // 用"这个好友自己"的语料库
+                // 生成回信内容（用 letterMinCards~MaxCards 参数）
+                const minC = Math.max(1, settings.letterMinCards || 20);
+                const maxC = Math.max(minC, settings.letterMaxCards || 50);
+                const count = minC + Math.floor(Math.random() * (maxC - minC + 1));
+                e.cards = drawEnvelopeCards(count, s);
                 e.status = 'arrived';
+                // 回填原信的 repliedBy
+                if (e.replyTo) {
+                  const origin = (s.envelopes || []).find(x => x.id === e.replyTo);
+                  if (origin) {
+                    if (!Array.isArray(origin.repliedBy)) origin.repliedBy = [];
+                    origin.repliedBy.push(e.id);
+                  }
+                }
                 changed = true;
               }
             });
@@ -5691,57 +6097,69 @@ return items;
           }
         };
 
-// ===== 定时收信（每天10点和20点，30%概率） =====
-const checkScheduledMail = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    // 只在10:00-10:05 或 20:00-20:05 之间检测
-    if (!((hour === 10 && minute < 5) || (hour === 20 && minute < 5))) {
-        return;
-    }
-    // 检查今天是否已经发过
-    const todayKey = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${hour}`;
-    const lastSend = localStorage.getItem('kongjing_mail_last_send');
-    if (lastSend === todayKey) return;
-    
-    // 30% 概率发送
-    if (Math.random() < 0.3) {
-        // 遍历所有私聊会话
-        sessions.value.forEach(s => {
-            if (s.type === 'group') return;
-            // 确保 envelopes 存在
-            if (!s.envelopes) s.envelopes = [];
-            // 生成一条来自系统用户的留言
-            const cards = drawEnvelopeCards(3 + Math.floor(Math.random() * 5), s);
-            const arriveAt = Date.now();
-            s.envelopes.push({
-                id: 'd_' + Date.now() + '_' + s.id,
-                from: 'dream',
-                cards: cards,
-                body: '',
-                createdAt: arriveAt,
-                status: 'arrived',
-                arriveAt: arriveAt,
-            });
+// ===== 主动来信（按参数，打开时补算 + 定时检查） =====
+const _todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+const runAutoLetterCheck = () => {
+    if (!settings.autoLetterEnabled) return;
+    const now = Date.now();
+    const today = _todayStr();
+    const minIntervalMs = Math.max(1, settings.autoLetterMinMin || 1) * 60 * 1000;
+    let anySent = false;
+
+    sessions.value.forEach((s) => {
+        if (!s || s.type === 'group') return;
+
+        // 跨天清零
+        if (s._todayLetterDate !== today) {
+            s._todayLetterDate = today;
+            s._todayLetterCount = 0;
+        }
+        // 今天上限
+        if ((s._todayLetterCount || 0) >= (settings.autoLetterMaxPerDay || 3)) return;
+        // 距上次不足最短间隔
+        if (now - (s._lastAutoLetterAt || 0) < minIntervalMs) return;
+        // 掷骰子
+        if (Math.random() * 100 >= (settings.autoLetterProb || 0)) return;
+
+        // 发信
+        if (!s.envelopes) s.envelopes = [];
+        const minCards = Math.max(1, settings.letterMinCards || 20);
+        const maxCards = Math.max(minCards, settings.letterMaxCards || 50);
+        const count = minCards + Math.floor(Math.random() * (maxCards - minCards + 1));
+        const cards = drawEnvelopeCards(count, s);
+        const arriveAt = now;
+        s.envelopes.push({
+            id: 'd_' + now + '_' + s.id,
+            from: 'dream',
+            cards,
+            body: '',
+            createdAt: arriveAt,
+            status: 'arrived',
+            arriveAt,
         });
-        localStorage.setItem('kongjing_mail_last_send', todayKey);
+        s._lastAutoLetterAt = now;
+        s._todayLetterCount = (s._todayLetterCount || 0) + 1;
+        anySent = true;
+    });
+
+    if (anySent) {
         showToast('📩 收到新信件！');
         debouncedSave();
     }
 };
 
-// 启动定时收信检查（每5分钟检查一次）
 let mailTimer = null;
 const startMailTimer = () => {
     if (mailTimer) clearInterval(mailTimer);
-    // 启动时先检查一次（延迟5秒，避免和启动冲突）
-    setTimeout(() => checkScheduledMail(), 5000);
+    setTimeout(() => runAutoLetterCheck(), 5000);
     mailTimer = setInterval(() => {
-        checkScheduledMail();
-    }, 5 * 60 * 1000); // 每5分钟检查一次
+        runAutoLetterCheck();
+    }, 15 * 60 * 1000); // 每 15 分钟
 };
-
         // 信底部日期时间（年月日 时:分）
         const formatEnvelopeDate = (ts) => {
           const d = new Date(ts);
@@ -6490,12 +6908,21 @@ boxes['词典'].groups = [
 
 
 
-    // 确保红包备注有标准三档隔板
+       // 确保红包备注有标准三档隔板
     ensureRedpacketPartitions(boxes['红包备注']);
     const routes = {};
     corpusSitList.forEach((s) => (routes[s] = [s]));
-    return { activeBox: '私聊', boxes, routes };
+    return { activeBox: '私聊', boxes, routes, weightMap: defaultWeightMap() };
 };
+
+// ===== 权重默认表 =====
+const defaultWeightMap = () => ({
+    '私聊':     { pools: { '私聊': 50, '公共': 40 } },
+    '群聊':     { pools: { '群聊': 50, '公共': 50 } },
+    '主动写信': { pools: { '主动写信': 50, '私聊': 30, '公共': 20 } },
+    '信封回复': { pools: { '信封回复': 60, '私聊': 20, '公共': 20 } },
+    '红包备注': { pools: { '红包备注': 100 } },
+});
 
     // 读取旧档时归一化：补齐缺失箱子/情境/路由，并把旧 replyGroups 迁进「私聊」箱
     const normalizeCorpus = (s) => {
@@ -6591,10 +7018,23 @@ if (boxes['公共梦角自由造句']) {
         });
     });
 
+            // 权重表兼容：旧档没 weightMap 就补默认
+      let weightMap = corp.weightMap;
+      if (!weightMap || typeof weightMap !== 'object') {
+        weightMap = defaultWeightMap();
+      } else {
+        // 补齐缺失场景
+        const def = defaultWeightMap();
+        Object.keys(def).forEach((sit) => {
+          if (!weightMap[sit] || !weightMap[sit].pools) weightMap[sit] = def[sit];
+        });
+      }
+
       return {
         activeBox: corpusBoxListAll.includes(corp.activeBox) ? corp.activeBox : '私聊',
         boxes,
         routes,
+        weightMap,
       };
     };
 
@@ -6653,6 +7093,63 @@ const getPublicTexts = () => {
     return items;
 };
 
+// ===== 权重抽取：书册 → 卷宗 → 单卡（O(1) 三级下钻） =====
+const _pickRandomBook = (session, situation) => {
+    const s = session || currentSession.value;
+    if (!s) return null;
+    const wm = s.corpus && s.corpus.weightMap && s.corpus.weightMap[situation];
+    if (!wm || !wm.pools) return null;
+    const valid = [];
+    let totalW = 0;
+    Object.entries(wm.pools).forEach(([boxName, weight]) => {
+        if (!weight || weight <= 0) return;
+        const box = isSharedBox(boxName) ? sharedBoxes[boxName] : s.corpus?.boxes?.[boxName];
+        if (!box || !Array.isArray(box.groups)) return;
+        // 快速检查：只扫 groups 层的 replies.length，不深入每张卡
+        const nonEmpty = box.groups.some(g => Array.isArray(g.replies) && g.replies.length > 0);
+        if (!nonEmpty) return;
+        valid.push({ boxName, weight, box });
+    });
+    if (!valid.length) return null;
+    let r = Math.random() * totalW;
+    let picked = valid[valid.length - 1];
+    for (const v of valid) {
+        r -= v.weight;
+        if (r <= 0) { picked = v; break; }
+    }
+    return picked.box;
+};
+
+const drawWeightedCard = (session, situation) => {
+    const box = _pickRandomBook(session, situation);
+    if (!box) return null;
+    // 从卷宗里随机选一个有内容的
+    const groupsWithCards = (box.groups || []).filter(g => Array.isArray(g.replies) && g.replies.length > 0);
+    if (!groupsWithCards.length) return null;
+    const g = groupsWithCards[Math.floor(Math.random() * groupsWithCards.length)];
+    const enabledReplies = g.replies.filter(r => r.enabled !== false && ((r.text && r.text.trim()) || r.image));
+    if (!enabledReplies.length) return null;
+    const r = enabledReplies[Math.floor(Math.random() * enabledReplies.length)];
+    return { text: (r.text || '').trim(), image: r.image || null };
+};
+
+// 抽 N 张不重复（用于拼接模式）
+const drawWeightedCards = (session, situation, n) => {
+    const out = [];
+    const seen = new Set();
+    let tries = 0;
+    const maxTries = Math.max(n * 8, 20);
+    while (out.length < n && tries < maxTries) {
+        tries++;
+        const c = drawWeightedCard(session, situation);
+        if (!c) break;
+        const key = c.text || c.image || '';
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push(c);
+    }
+    return out;
+};
 
     const sessions = ref(createDefaultSessions());
 
@@ -6940,6 +7437,27 @@ spacePhoto: '',
 spacePlaylistId: '14273792576',
       apps: [],
 themeId: 'day',
+      // ===== 主动留言 =====
+      autoLetterEnabled: true,
+      autoLetterMaxPerDay: 3,
+      autoLetterProb: 30,
+      autoLetterMinMin: 1,
+      autoLetterMaxMin: 480,
+      replyLetterProb: 80,
+      replyLetterMinMin: 1,
+      replyLetterMaxMin: 480,
+      letterMinCards: 20,
+      letterMaxCards: 50,
+      letterRandomPunctuation: true,
+ replyLetterMaxPerDay: 5,
+      // ===== 主动留言结束 =====
+      replyWeightMap: {
+          '私聊':     { pools: { '私聊': 50, '公共': 40 } },
+          '群聊':     { pools: { '群聊': 50, '公共': 50 } },
+          '主动写信': { pools: { '主动写信': 50, '私聊': 30, '公共': 20 } },
+          '信封回复': { pools: { '信封回复': 60, '私聊': 20, '公共': 20 } },
+          '红包备注': { pools: { '红包备注': 100 } },
+      },
     });
 // ===== 侧拉面板开关 =====
 const settingsPanelOpen = ref(false);
@@ -7963,12 +8481,36 @@ const isMailRead = (sessionId, mailId) => {
 
 // 留言板筛选条件
 const mailFilter = reactive({
-    sender: 'all', // 'all' | 'me' | 'them'
-    status: 'all', // 'all' | 'read' | 'unread'
+    sessionId: 'all',  // 'all' 或具体会话 id
+    status: 'all',     // 'all' | 'read' | 'unread'
 });
 
+// ===== 信箱 4 tab =====
+const mailboxTab = ref('inbox');  // 'inbox' | 'outbox' | 'write' | 'data'
 
+// 写信草稿
+const letterDraft = reactive({
+    to: '',
+    quoteFrom: '',   // 引用来信的说话人（只读）
+    quoteBody: '',   // 引用来信的原文（只读）
+    text: '',        // 用户自己写的内容
+});
 // ===== 留言列表计算 =====
+// 来信字卡拼接显示：根据 letterRandomPunctuation 决定分隔符
+const _joinCardsForDisplay = (cards) => {
+    if (!Array.isArray(cards) || !cards.length) return '';
+    if (!settings.letterRandomPunctuation) return cards.join('  ');
+    const pool = ['，', '。', '！', '？', '，', '。', '  '];
+    let out = '';
+    cards.forEach((c, i) => {
+        out += c;
+        if (i < cards.length - 1) {
+            out += pool[Math.floor(Math.random() * pool.length)];
+        }
+    });
+    return out;
+};
+
 // 获取所有私聊会话的留言
 const allMailItems = computed(() => {
     const items = [];
@@ -7984,7 +8526,7 @@ const allMailItems = computed(() => {
                 sessionId: s.id,
                 sessionName: s.name,
                 sender: e.from === 'user' ? 'me' : 'them',
-                body: e.from === 'user' ? e.body : (e.cards ? e.cards.join('\n') : ''),
+                body: e.from === 'user' ? e.body : (e.cards ? _joinCardsForDisplay(e.cards) : ''),
                 cards: e.cards || [],
                 timestamp: e.arriveAt || e.createdAt || Date.now(),
                 read: isRead,
@@ -7992,28 +8534,7 @@ const allMailItems = computed(() => {
             });
         });
     });
-const allMailItems = computed(() => {
-    const items = [];
-    sessions.value.forEach(s => {
-        if (s.type === 'group') return;
-        const envelopes = s.envelopes || [];
-        envelopes.forEach(e => {
-            if (e.status !== 'arrived') return;
-            const isRead = isMailRead(s.id, e.id);
-            items.push({
-                id: e.id,
-                sessionId: s.id,
-                sessionName: s.name,
-                sender: e.from === 'user' ? 'me' : 'them',
-                body: e.from === 'user' ? e.body : (e.cards ? e.cards.join('\n') : ''),
-                cards: e.cards || [],
-                timestamp: e.arriveAt || e.createdAt || Date.now(),
-                read: isRead,
-                raw: e,
-            });
-        });
-    });
-    // 👇 新增：按 id 去重
+    // 按 id 去重
     const seen = new Set();
     const uniqueItems = items.filter(item => {
         if (seen.has(item.id)) return false;
@@ -8022,33 +8543,44 @@ const allMailItems = computed(() => {
     });
     return uniqueItems.sort((a, b) => b.timestamp - a.timestamp);
 });
-    // 按时间倒序
-    return items.sort((a, b) => b.timestamp - a.timestamp);
+
+// 收信 / 寄信 分开
+const inboxList = computed(() => allMailItems.value.filter(m => m.sender === 'them'));
+const outboxList = computed(() => allMailItems.value.filter(m => m.sender === 'me'));
+
+// 应用筛选（会话 + 状态）
+const _applyMailFilter = (list) => {
+    let out = list;
+    if (mailFilter.sessionId && mailFilter.sessionId !== 'all') {
+        out = out.filter(m => m.sessionId === mailFilter.sessionId);
+    }
+    if (mailFilter.status === 'read') out = out.filter(m => m.read === true);
+    else if (mailFilter.status === 'unread') out = out.filter(m => m.read === false);
+    return out;
+};
+
+const filteredInbox = computed(() => _applyMailFilter(inboxList.value));
+const filteredOutbox = computed(() => _applyMailFilter(outboxList.value));
+
+// 收藏的信
+const favoritedMailList = computed(() =>
+    allMailItems.value.filter(m => m.raw && m.raw.favorited)
+);
+// 会话筛选下拉选项（只列有信的会话）
+const mailSessionOptions = computed(() => {
+    const seen = new Map();
+    allMailItems.value.forEach(m => {
+        if (!seen.has(m.sessionId)) seen.set(m.sessionId, m.sessionName);
+    });
+    return [...seen.entries()].map(([id, name]) => ({ id, name }));
 });
 
-// 筛选后的留言列表
-const filteredMailList = computed(() => {
-    let list = allMailItems.value;
-    // 发送者筛选
-    if (mailFilter.sender === 'me') {
-        list = list.filter(item => item.sender === 'me');
-    } else if (mailFilter.sender === 'them') {
-        list = list.filter(item => item.sender === 'them');
-    }
-    // 状态筛选
-    if (mailFilter.status === 'read') {
-        list = list.filter(item => item.read === true);
-    } else if (mailFilter.status === 'unread') {
-        list = list.filter(item => item.read === false);
-    }
-    return list;
-});
-
+// 兼容旧字段（避免别处引用报错）
+const filteredMailList = computed(() => filteredInbox.value);
 // 未读留言总数（用于小红点）
 const totalUnreadMail = computed(() => {
-    return allMailItems.value.filter(item => !item.read).length;
+    return allMailItems.value.filter(item => item.sender === 'them' && !item.read).length;
 });
-
 // 标记所有留言为已读
 const markAllMailRead = () => {
     allMailItems.value.forEach(item => {
@@ -8057,6 +8589,123 @@ const markAllMailRead = () => {
         }
     });
     showToast('全部已读');
+};
+// ===== 4-3：信件详情弹层 =====
+const mailDetail = reactive({ show: false, item: null });
+const openMailDetail = (item) => {
+    mailDetail.item = item;
+    mailDetail.show = true;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+const closeMailDetail = () => {
+    mailDetail.show = false;
+    mailDetail.item = null;
+};
+
+// 找到对应 session 里的原始 envelope 对象
+const _findEnvelope = (item) => {
+    if (!item) return { s: null, env: null };
+    const s = sessions.value.find(x => x.id === item.sessionId);
+    if (!s || !Array.isArray(s.envelopes)) return { s: null, env: null };
+    const env = s.envelopes.find(e => e.id === item.id);
+    return { s, env };
+};
+
+const toggleFavoriteMail = () => {
+    const { s, env } = _findEnvelope(mailDetail.item);
+    if (!env) return;
+    env.favorited = !env.favorited;
+    debouncedSave();
+    showToast(env.favorited ? '已收藏' : '已取消收藏');
+};
+
+const deleteMailDetail = async () => {
+    const { s, env } = _findEnvelope(mailDetail.item);
+    if (!env) return;
+    if (!(await appConfirm('删除这封信？'))) return;
+    s.envelopes = s.envelopes.filter(e => e.id !== env.id);
+    debouncedSave();
+    closeMailDetail();
+    showToast('已删除');
+};
+
+const replyFromMailDetail = () => {
+    const item = mailDetail.item;
+    if (!item) return;
+    closeMailDetail();
+    mailboxTab.value = 'write';
+    letterDraft.to = item.sessionId;
+    letterDraft.quoteFrom = item.sessionName;
+    letterDraft.quoteBody = item.body || '';
+    letterDraft.text = '';
+};
+const clearLetterQuote = () => {
+    letterDraft.quoteFrom = '';
+    letterDraft.quoteBody = '';
+};
+// ===== 从信箱 tab 寄信 =====
+const openMailboxWrite = (toId) => {
+    mailboxTab.value = 'write';
+    letterDraft.to = toId || (currentSession.value?.id || (sessions.value[0]?.id || ''));
+    letterDraft.text = '';
+};
+const sendLetterFromTab = () => {
+    const s = sessions.value.find(x => x.id === letterDraft.to);
+    if (!s) { showToast('请选择收信人'); return; }
+    if (s.type === 'group') { showToast('群聊不支持写信'); return; }
+    const text = letterDraft.text.trim();
+    if (!text && !letterDraft.quoteBody) { showToast('写点什么'); return; }
+
+    // 拼正文（引用 + 用户内容）
+    let body = text;
+    if (letterDraft.quoteFrom && letterDraft.quoteBody) {
+        const quoted = letterDraft.quoteBody.split('\n').map(l => '> ' + l).join('\n');
+        body = `> 来自 ${letterDraft.quoteFrom}：\n${quoted}\n\n${text}`;
+    }
+
+    const now = Date.now();
+    s.envelopes = s.envelopes || [];
+    const uid = 'u_' + now;
+    s.envelopes.push({ id: uid, from: 'user', body: body, createdAt: now, status: 'arrived' });
+
+    // ===== 回信概率 + 每日上限 =====
+    const today = _todayStr();
+    if (s._todayReplyDate !== today) {
+        s._todayReplyDate = today;
+        s._todayReplyCount = 0;
+    }
+    const overLimit = (s._todayReplyCount || 0) >= (settings.replyLetterMaxPerDay || 5);
+    const missProb = Math.random() * 100 >= (settings.replyLetterProb || 80);
+
+    if (overLimit || missProb) {
+        // 不回信
+        letterDraft.text = '';
+        clearLetterQuote();
+        debouncedSave();
+        showToast('已寄出');
+        return;
+    }
+
+    // 生成回信占位
+    s._todayReplyCount = (s._todayReplyCount || 0) + 1;
+    const minM = Math.max(1, settings.replyLetterMinMin || 1);
+    const maxM = Math.max(minM, settings.replyLetterMaxMin || 480);
+    const delayMs = (minM + Math.random() * (maxM - minM)) * 60 * 1000;
+    const arriveAt = now + delayMs;
+    s.envelopes.push({
+        id: 'd_' + now, from: 'dream', cards: null,
+        createdAt: now, status: 'pending', arriveAt, replyTo: uid,
+    });
+
+    letterDraft.text = '';
+    clearLetterQuote();
+    debouncedSave();
+    setTimeout(() => checkEnvelopeArrival(), delayMs + 800);
+    showToast('已寄出');
+};
+// 占卜占位
+const openLetterDivination = () => {
+    showToast('占卜 · 待实现');
 };
 
 // 格式化留言时间
@@ -9235,7 +9884,8 @@ const getCombinedReply = (pool) => {
     typingSessions[sess.id] = true;
     const minS = Math.max(1, settings.replyDelayMin || 2);
     const maxS = Math.max(minS, settings.replyDelayMax || 5);
-    const d = settings.typewriter ? 250 : (delay || 600);
+     // 首条延迟统一用 min~max 秒（不管徐徐道来开不开、不论什么玩法）
+    const d = randomMs(minS * 1000, maxS * 1000);
     setTimeout(() => {
         const cur = sess;
 // ===== 词典拼字：优先判断 =====
@@ -9321,17 +9971,8 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
         if (settings.blankReplyEnabled && Math.random() < 0.1) {
             acts.push(() => sendMessage('them', ' ', { blank: true, session: cur }));
         } else {
-                       let pool = [];
-            // 私聊书册
-            const box = cur.corpus ? cur.corpus.boxes['私聊'] : null;
-            (box ? (box.groups || []) : []).forEach((g) =>
-                (g.replies || []).forEach((r) => {
-                    const t = (r.text || '').trim();
-                    if (r.enabled && (t || r.image)) pool.push({ text: t, image: r.image || null });
-                })
-            );
-            // 👇 公共书册
-            pool.push(...getPublicCards());
+                                              // ===== 用权重抽卡（书册 → 卷宗 → 单卡） =====
+            const pool = drawWeightedCards(cur, '私聊', 30);
             if (pool.length) {
                 const marked = settings.markEnabled && Math.random() < 0.15;
                 const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
@@ -9445,6 +10086,9 @@ const opts = { marked, session: cur };
   const group = groupArg || currentSession.value;
   if (!group || group.type !== 'group') return;
   const memberIds = group.members || [];
+  const _minS = Math.max(1, settings.replyDelayMin || 2);
+  const _maxS = Math.max(_minS, settings.replyDelayMax || 5);
+  const _startDelay = randomMs(_minS * 1000, _maxS * 1000);
   setTimeout(() => {
     const onlineMembers = memberIds.filter(mid => {
       if (mention && mid === mention) return true;
@@ -9470,9 +10114,18 @@ const opts = { marked, session: cur };
       }
       // ===== 拍一拍逻辑结束 =====
 
-      const groupPool = envelopeCardItems(group, '群聊', group.id);
-      const privatePool = envelopeCardItems(member, '私聊');
-      const pool = [...groupPool, ...privatePool];
+            // ===== 用群聊场景的权重抽卡（成员语料自动被抽到的话就带上） =====
+      let pool = drawWeightedCards(group, '群聊', 20);
+      // 兼容：如果群聊权重没配或抽不到，回退到成员个人语料
+      if (!pool.length) {
+        const privateBox = member.corpus?.boxes?.['私聊'];
+        (privateBox?.groups || []).forEach((g) => {
+          (g.replies || []).forEach((r) => {
+            const t = (r.text || '').trim();
+            if (r.enabled !== false && (t || r.image)) pool.push({ text: t, image: r.image || null });
+          });
+        });
+      }
       if (!pool.length) return;
 
       let prob;
@@ -9769,10 +10422,15 @@ if (Math.random() < 0.1) {
         bgLibrary: [],
         callBgImages: [],
         customCSS: '',
-        hidden: false,
+                hidden: false,
         myPatList: [],
         statusText: '',
-        myEmotes: [],
+                myEmotes: [],
+        _lastAutoLetterAt: 0,
+        _todayLetterCount: 0,
+        _todayLetterDate: '',
+        _todayReplyCount: 0,
+        _todayReplyDate: '',
       };
       sessions.value.unshift(s);
       startIncomingTimer(s);
@@ -10148,6 +10806,106 @@ const applyTheme = (id) => {
     debouncedSave();
 };
 
+// ===== 回复设置（全局） =====
+const settingsTab = ref('外观');
+const replySubTab = ref('私聊');
+
+// 数字调整（- + 按钮用）
+const adjustSetting = (key, delta, min, max) => {
+    const cur = Number(settings[key]) || 0;
+    let next = cur + delta;
+    if (min != null) next = Math.max(min, next);
+    if (max != null) next = Math.min(max, next);
+    settings[key] = next;
+    debouncedSave();
+};
+
+// ===== 字卡计数 =====
+const _countReplyCards = (replies) => {
+    return (replies || []).filter(r => (r.text && r.text.trim()) || r.image).length;
+};
+
+const countBoxCards = (boxName, session) => {
+    const s = session || currentSession.value;
+    if (!s) return 0;
+    const box = isSharedBox(boxName) ? sharedBoxes[boxName] : s.corpus?.boxes?.[boxName];
+    if (!box) return 0;
+    const isParted = (boxName === '群聊' || boxName === '红包备注');
+    let n = 0;
+    (box.groups || []).forEach(g => {
+        if (isParted) {
+            (g.groups || []).forEach(inner => { n += _countReplyCards(inner.replies); });
+        } else {
+            n += _countReplyCards(g.replies);
+        }
+    });
+    return n;
+};
+
+const countCategoryCards = (catName) => {
+    const boxes = bigCategoryMap[catName] || [];
+    return boxes.reduce((sum, b) => sum + countBoxCards(b), 0);
+};
+
+const countGroupCards = (groupId) => {
+    const g = activeGroups.value?.find(x => x.id === groupId);
+    if (!g) return 0;
+    const isParted = (activeBox.value === '群聊' || activeBox.value === '红包备注');
+    if (isParted) {
+        let n = 0;
+        (g.groups || []).forEach(inner => { n += _countReplyCards(inner.replies); });
+        return n;
+    }
+    return _countReplyCards(g.replies);
+};
+
+const boxHasCards = (boxName, session) => {
+    const s = session || currentSession.value;
+    if (!s) return false;
+    const box = isSharedBox(boxName) ? sharedBoxes[boxName] : s.corpus?.boxes?.[boxName];
+    if (!box || !Array.isArray(box.groups)) return false;
+    return box.groups.some(g =>
+        Array.isArray(g.replies) && g.replies.some(r =>
+            r.enabled !== false && ((r.text && r.text.trim()) || r.image)
+        )
+    );
+};
+
+// 只列「个人主字卡」「公共字卡」两个分类，过滤空书册
+const replySettingsGroups = computed(() => {
+    const s = currentSession.value;
+    if (!s) return [];
+    const allowCats = ['个人主字卡', '公共字卡'];
+    const out = [];
+    allowCats.forEach((catName) => {
+        const boxList = bigCategoryMap[catName] || [];
+        const visible = boxList.filter(b => boxHasCards(b, s));
+        if (visible.length) out.push({ catName, boxes: visible });
+    });
+    return out;
+});
+
+const getPoolWeight = (scene, boxName) => {
+    if (!settings.replyWeightMap) return 0;
+    const pools = settings.replyWeightMap[scene]?.pools;
+    return pools ? (pools[boxName] || 0) : 0;
+};
+const setPoolWeight = (scene, boxName, v) => {
+    if (!settings.replyWeightMap) settings.replyWeightMap = {};
+    if (!settings.replyWeightMap[scene]) settings.replyWeightMap[scene] = { pools: {} };
+    if (!settings.replyWeightMap[scene].pools) settings.replyWeightMap[scene].pools = {};
+    settings.replyWeightMap[scene].pools[boxName] = Math.max(0, Math.min(100, Number(v) || 0));
+    debouncedSave();
+};
+const togglePool = (scene, boxName) => {
+    const cur = getPoolWeight(scene, boxName);
+    setPoolWeight(scene, boxName, cur > 0 ? 0 : 50);
+};
+const toggleAllInCategory = (scene, catName, boxes) => {
+    const anyOn = boxes.some(b => getPoolWeight(scene, b) > 0);
+    boxes.forEach(b => setPoolWeight(scene, b, anyOn ? 0 : 50));
+};
+
 const hideSession = (sessionId) => {
     // 隐藏聊天室（右键/长按）
    
@@ -10366,7 +11124,12 @@ const removeGroupMember = (mid) => {
         groupChatEnabled: false,            // 主动会话（群聊局部开关）
         groupChatInterval: 30,              // 主动会话间隔（分钟）
         groupMarkEnabled: false,            // 群聊标记（群聊局部开关）
-        roleAtRoleEnabled: false,           // TA可@任意一位（群聊局部开关，关闭则只能@用户）
+               roleAtRoleEnabled: false,           // TA可@任意一位（群聊局部开关，关闭则只能@用户）
+               _lastAutoLetterAt: 0,
+        _todayLetterCount: 0,
+        _todayLetterDate: '',
+        _todayReplyCount: 0,
+        _todayReplyDate: '',
       };
       sessions.value.unshift(g);
       groupPickerOpen.value = false;
@@ -14164,8 +14927,12 @@ if (stored.freeComposeGroupSettingsMap) {
                         unread: typeof s.unread === 'number' ? s.unread : 0,
                         myPatList: Array.isArray(s.myPatList) ? s.myPatList : [],
                         statusText: typeof s.statusText === 'string' ? s.statusText : '',
-                        myEmotes: Array.isArray(s.myEmotes) ? s.myEmotes : [],
+                         myEmotes: Array.isArray(s.myEmotes) ? s.myEmotes : [],
+                        _lastAutoLetterAt: Number(s._lastAutoLetterAt) || 0,
+                        _todayLetterCount: Number(s._todayLetterCount) || 0,
+                        _todayLetterDate: s._todayLetterDate || '',
                         type: s.type || 'private',
+
                         members: s.members || [],
                         groupPackets: s.groupPackets || [],
                         roleGrabRedpacketEnabled: !!s.roleGrabRedpacketEnabled,
@@ -14182,11 +14949,28 @@ if (stored.freeComposeGroupSettingsMap) {
                             dailyDate: s.redPacket?.dailyDate ?? null,
                         },
                     }));
-                    migrateSessions(sessions.value);
+                                        migrateSessions(sessions.value);
 // 老档兼容：从会话里删掉共享书册（已经迁到 sharedBoxes）
 sessions.value.forEach(s => {
     if (s.corpus && s.corpus.boxes) {
         SHARED_BOXES.forEach(k => { delete s.corpus.boxes[k]; });
+    }
+});
+
+// 老档兼容：补全主动来信 + 回信 + 信封字段
+sessions.value.forEach((s) => {
+    if (s._lastAutoLetterAt === undefined) s._lastAutoLetterAt = 0;
+    if (s._todayLetterCount === undefined) s._todayLetterCount = 0;
+    if (s._todayLetterDate === undefined) s._todayLetterDate = '';
+    if (s._todayReplyCount === undefined) s._todayReplyCount = 0;
+    if (s._todayReplyDate === undefined) s._todayReplyDate = '';
+    if (Array.isArray(s.envelopes)) {
+        s.envelopes.forEach((e) => {
+            if (e.replyToId === undefined) e.replyToId = null;
+            if (e.repliedBy === undefined) e.repliedBy = [];
+            if (e.favorited === undefined) e.favorited = false;
+            if (e.divination === undefined) e.divination = null;
+        });
     }
 });
                 }
@@ -14792,13 +15576,17 @@ getMailReadIds,
 markMailRead,
 isMailRead,
 mailFilter,
+mailboxTab, letterDraft, openMailboxWrite, sendLetterFromTab, openLetterDivination,
+    inboxList, outboxList, filteredInbox, filteredOutbox, mailSessionOptions,
+mailDetail, openMailDetail, closeMailDetail,
+    toggleFavoriteMail, deleteMailDetail, replyFromMailDetail,clearLetterQuote,favoritedMailList,
     filteredMailList,     // ← 必须有
     totalUnreadMail,      // ← 必须有
     markAllMailRead,      // ← 必须有
     formatMailTime,       // ← 必须有
     checkMailArrival,     // ← 必须有
 startMailTimer,
-checkScheduledMail,
+runAutoLetterCheck,
 settingsPanelOpen,
 sessionSettings,
 getSessionSettings,
@@ -14826,6 +15614,10 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,
       saveGroupFreeComposedSentence,
 // P2-b 撤回
       getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,
+// 回复设置（全局）
+  settingsTab, replySubTab, boxHasCards,adjustSetting,
+      replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,
+countBoxCards, countCategoryCards, countGroupCards,
 muteMember,
 unmuteMember,
 tagPickerOpen,
