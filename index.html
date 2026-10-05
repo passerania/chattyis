@@ -66,8 +66,9 @@
     </script>
 
     <style>
-        html { background-color: #ffffff; color-scheme: light; }
-        html.dark { color-scheme: dark; }
+        html { background-color: var(--color-bg); color-scheme: light; color: var(--color-text); }
+html.dark { color-scheme: dark; }
+body { color: var(--color-text); }
         /* 启动挡板：纯白全屏，盖在最顶，挡住 Edge 冷启动的脏快照（黑罩+弹窗），约 1 秒后自动淡出 */
        #boot-splash {
     position: fixed; inset: 0; z-index: 99999;
@@ -1766,12 +1767,12 @@
 <!-- ===== 卷宗横向标签栏（三级，所有书册通用） ===== -->
 <div v-if="activeBox !== '群聊' && activeBox !== '红包备注' && currentGroupList.length > 1"
      class="flex gap-1.5 overflow-x-auto pb-1 mb-3" style="scrollbar-width:none;">
-    <button v-for="(name, idx) in currentGroupList" :key="idx"
-            @click="groupFilter = name"
-            class="shrink-0 px-3 py-1 rounded-full text-[11px] tracking-widest transition-colors"
-            :class="groupFilter === name ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
-        {{ name }}
-    </button>
+    <button v-for="item in currentGroupList" :key="item.id"
+        @click="groupFilter = item.id"
+        class="shrink-0 px-3 py-1 rounded-full text-[11px] tracking-widest transition-colors"
+        :class="groupFilter === item.id ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
+    {{ item.name }}
+</button>
 </div>
 
     <!-- 卷宗列表 -->
@@ -6720,16 +6721,30 @@ const switchBigCategory = (cat) => {
 
 
 // ===== 卷宗筛选（非词典书册用） =====
-const groupFilter = ref('全部');
+const groupFilter = ref('__all__');
 
 const currentGroupList = computed(() => {
     const groups = activeGroups.value || [];
-    return ['全部', ...groups.map(g => g.name).filter(Boolean)];
+    return [
+        { id: '__all__', name: '全部' },
+        ...groups.map(g => ({ id: g.id, name: g.name || '未命名' }))
+    ];
 });
 
 watch(activeBox, () => {
-    groupFilter.value = '全部';
+    const groups = activeGroups.value || [];
+    groupFilter.value = groups.length > 0 ? groups[0].id : '__all__';
 });
+// 切会话导致 activeGroups 变化时，若当前 groupFilter.id 已不存在，自动回退到第一个卷宗
+watch(activeGroups, () => {
+    const groups = activeGroups.value || [];
+    if (groupFilter.value === '__all__') return;
+    const exists = groups.some(g => g.id === groupFilter.value);
+    if (!exists) {
+        groupFilter.value = groups.length > 0 ? groups[0].id : '__all__';
+    }
+});
+
 watch(groupFilter, () => {
     nextTick(() => { if (window.lucide) lucide.createIcons(); });
 });
@@ -6738,8 +6753,10 @@ watch(groupFilter, () => {
 const visibleGroups = computed(() => {
     const list = filteredGroups.value || [];
     if (activeBox.value === '群聊' || activeBox.value === '红包备注') return list;
-    if (groupFilter.value === '全部') return list;
-    return list.filter(g => g.name === groupFilter.value);
+    // 有关键字时跨所有卷宗搜索（搜索场景忽略 tab）
+    if (libSearchQuery.value.trim()) return list;
+    if (groupFilter.value === '__all__') return list;
+    return list.filter(g => g.id === groupFilter.value);
 });
     // ===== 群聊箱子：隔板(群聊) 结构 =====
     // 隔板 = 当前角色被拉进的群聊（自动生成、不可删）。同步时保留已有隔板的内部卷宗，按群关系增删。
@@ -6852,6 +6869,9 @@ const exportSelectedBoxes = ref([]);
     const switchBox = (b) => {
     activeBox.value = b;
     boxSelectOpen.value = false;
+    // 默认选中第一个卷宗（只渲染它，避免几千张卡同时渲染）
+    const _gs = activeGroups.value || [];
+    groupFilter.value = _gs.length > 0 ? _gs[0].id : '__all__';
     if (b === '群聊') syncGroupPartitions(currentSession.value);
     if (b === '红包备注' && currentSession.value) ensureRedpacketPartitions(currentSession.value.corpus.boxes['红包备注']);
     nextTick(() => {
