@@ -8856,7 +8856,7 @@ const deleteEnvelope = (id) => {
     showToast('已删除留言');
   }
 };
-    watch([sessions, profiles, settings], debouncedSave, { deep: true });
+    watch([sessions, profiles, settings, money], debouncedSave, { deep: true });
 
     // ===== 全量备份：导出全部数据为 JSON 文件 / 从文件恢复 =====
     const collectAllData = () => {
@@ -8948,6 +8948,11 @@ const exportAllData = () => {
     watch(applyCSS);
     watch(() => currentSession.value?.customCSS, applyCSS);
     watch(() => settings.playerCSS, applyCSS);
+// 权重变化立即保存
+watch(() => JSON.stringify(settings.replyWeightMap), () => {
+    debouncedSave();
+});
+
     // 主题色应用到主屏图标色：accentColor 为 null(默认)时移除内联覆盖，跟随 :root 深浅模式；否则用所选色
     const applyNavIconColor = () => {
       const c = settings.accentColor;
@@ -10915,10 +10920,12 @@ const getPoolWeight = (scene, boxName) => {
     return pools ? (pools[boxName] || 0) : 0;
 };
 const setPoolWeight = (scene, boxName, v) => {
-    if (!settings.replyWeightMap) settings.replyWeightMap = {};
-    if (!settings.replyWeightMap[scene]) settings.replyWeightMap[scene] = { pools: {} };
-    if (!settings.replyWeightMap[scene].pools) settings.replyWeightMap[scene].pools = {};
-    settings.replyWeightMap[scene].pools[boxName] = Math.max(0, Math.min(100, Number(v) || 0));
+    const val = Math.max(0, Math.min(100, Number(v) || 0));
+    const newMap = JSON.parse(JSON.stringify(settings.replyWeightMap || {}));
+    if (!newMap[scene]) newMap[scene] = { pools: {} };
+    if (!newMap[scene].pools) newMap[scene].pools = {};
+    newMap[scene].pools[boxName] = val;
+    settings.replyWeightMap = newMap;
     debouncedSave();
 };
 const togglePool = (scene, boxName) => {
