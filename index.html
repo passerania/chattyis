@@ -8856,7 +8856,7 @@ const deleteEnvelope = (id) => {
     showToast('已删除留言');
   }
 };
-    watch([sessions, profiles, settings], debouncedSave, { deep: true });
+    watch([sessions, profiles, settings, ], debouncedSave, { deep: true });
 
     // ===== 全量备份：导出全部数据为 JSON 文件 / 从文件恢复 =====
     const collectAllData = () => {
