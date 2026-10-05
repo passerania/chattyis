@@ -5908,6 +5908,7 @@ const sendSystemDrawing = async (sess, mode) => {
             // 我的表情包（会话级独立，仅我使用，不进角色语料）
                    myEmotes: [],
         _lastAutoLetterAt: 0,
+        _nextAutoLetterAt: 0,
         _todayLetterCount: 0,
         _todayLetterDate: '',
         _todayReplyCount: 0,
@@ -6107,7 +6108,8 @@ const runAutoLetterCheck = () => {
     if (!settings.autoLetterEnabled) return;
     const now = Date.now();
     const today = _todayStr();
-    const minIntervalMs = Math.max(1, settings.autoLetterMinMin || 1) * 60 * 1000;
+    const minMs = Math.max(1, settings.autoLetterMinMin || 1) * 60 * 1000;
+    const maxMs = Math.max(minMs, (settings.autoLetterMaxMin || 480) * 60 * 1000);
     let anySent = false;
 
     sessions.value.forEach((s) => {
@@ -6120,10 +6122,14 @@ const runAutoLetterCheck = () => {
         }
         // 今天上限
         if ((s._todayLetterCount || 0) >= (settings.autoLetterMaxPerDay || 3)) return;
-        // 距上次不足最短间隔
-        if (now - (s._lastAutoLetterAt || 0) < minIntervalMs) return;
+        // 还没到「下次可发信时间」
+        if (s._nextAutoLetterAt && now < s._nextAutoLetterAt) return;
         // 掷骰子
-        if (Math.random() * 100 >= (settings.autoLetterProb || 0)) return;
+        if (Math.random() * 100 >= (settings.autoLetterProb || 0)) {
+            // 没命中：给一个"小间隔"再试（避免每 15 分钟都狂掷）
+            s._nextAutoLetterAt = now + 60 * 1000;
+            return;
+        }
 
         // 发信
         if (!s.envelopes) s.envelopes = [];
@@ -6143,6 +6149,8 @@ const runAutoLetterCheck = () => {
         });
         s._lastAutoLetterAt = now;
         s._todayLetterCount = (s._todayLetterCount || 0) + 1;
+        // 设定下一次可发信的随机时间
+        s._nextAutoLetterAt = now + minMs + Math.random() * (maxMs - minMs);
         anySent = true;
     });
 
@@ -10485,18 +10493,24 @@ const homePage = ref(0); // 0=会话 1=温馨空间 2=软件
 
 let _homeTouchX = 0;
 let _homeTouchY = 0;
+let _homeSwitching = false;   // 节流锁
 const onHomeTouchStart = (e) => {
     _homeTouchX = e.touches[0].clientX;
     _homeTouchY = e.touches[0].clientY;
 };
 const onHomeTouchEnd = (e) => {
+    if (_homeSwitching) return;   // 正在切换，忽略
     const dx = e.changedTouches[0].clientX - _homeTouchX;
     const dy = e.changedTouches[0].clientY - _homeTouchY;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0 && homePage.value < 2) homePage.value++;
-    else if (dx > 0 && homePage.value > 0) homePage.value--;
+    let next = homePage.value;
+    if (dx < 0 && homePage.value < 2) next = homePage.value + 1;
+    else if (dx > 0 && homePage.value > 0) next = homePage.value - 1;
+    if (next === homePage.value) return;
+    _homeSwitching = true;
+    homePage.value = next;
+    setTimeout(() => { _homeSwitching = false; }, 400);   // 400ms 内不接受新滑动
 };
-
 
 // ===== S2：温馨空间 =====
 const spaceMonthName = computed(() => {
@@ -10704,22 +10718,32 @@ const initAppsSortable = () => {
     if (appsSortable) { try { appsSortable.destroy(); } catch (e) {} appsSortable = null; }
     const el = document.getElementById('apps-grid');
     if (!el) return;
-    appsSortable = new Sortable(el, {
-        animation: 180,
-        onEnd: (evt) => {
-            const moved = settings.apps.splice(evt.oldIndex, 1)[0];
-            settings.apps.splice(evt.newIndex, 0, moved);
-            debouncedSave();
-        },
-    });
+    try {
+        appsSortable = new Sortable(el, {
+            animation: 180,
+            onEnd: (evt) => {
+                try {
+                    const moved = settings.apps.splice(evt.oldIndex, 1)[0];
+                    settings.apps.splice(evt.newIndex, 0, moved);
+                    debouncedSave();
+                } catch (e) { console.error('[apps-sort]', e); }
+            },
+        });
+    } catch (e) {
+        console.error('[apps-sort] 初始化失败：', e);
+        appsSortable = null;
+    }
 };
 watch(homePage, (v) => {
     if (v === 2) nextTick(() => {
-        initAppsSortable();
-        if (window.lucide) lucide.createIcons();
+        try {
+            initAppsSortable();
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.error('[homePage→2] 初始化失败：', e);
+        }
     });
 });
-
 
 // ===== 消息工具栏（普通消息用） =====
 const activeMsgId = ref(null);
@@ -14960,6 +14984,7 @@ sessions.value.forEach(s => {
 // 老档兼容：补全主动来信 + 回信 + 信封字段
 sessions.value.forEach((s) => {
     if (s._lastAutoLetterAt === undefined) s._lastAutoLetterAt = 0;
+if (s._nextAutoLetterAt === undefined) s._nextAutoLetterAt = 0;
     if (s._todayLetterCount === undefined) s._todayLetterCount = 0;
     if (s._todayLetterDate === undefined) s._todayLetterDate = '';
     if (s._todayReplyCount === undefined) s._todayReplyCount = 0;
