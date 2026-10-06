@@ -451,17 +451,34 @@ body { color: var(--color-text); }
               <!-- 建筑卡片列表：纵向滚动，每张卡一栋建筑 -->
               <div class="flex-1 overflow-y-auto px-4 py-2 space-y-2 min-h-0" ref="homeListEl">
                     <div v-for="session in visibleSessions" :key="session.id" :ref="el => setCardRef(session.id, el)"
-                         @click="openSession(session.id)"
-                         @contextmenu.prevent="hideSession(session.id)"
-                         @touchstart="cardTouchStart($event, session.id)" @touchend="cardTouchEnd" @touchmove="cardTouchEnd"
-                         class="p-4 rounded-xl bg-surface/60 border border-border/40 cursor-pointer hover:bg-surface transition select-none relative"
-                         :class="{ 'home-card-highlight': highlightId === session.id }">
-                        <span class="font-medium text-text">{{ session.name }}</span>
-                        <span v-if="session.type === 'group'" class="absolute top-2 right-2 text-[9px] tracking-widest text-muted bg-bg/60 px-1.5 py-0.5 rounded">群 · {{ session.members.length }}</span>
-                        <svg v-if="unreadOf(session) > 0" viewBox="0 0 24 24" fill="currentColor" class="absolute right-2 bottom-2 w-5 h-5" style="color:var(--nav-icon-color)">
-                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                        </svg>
-                    </div>
+     @click="openSession(session.id)"
+     @contextmenu.prevent="hideSession(session.id)"
+     @touchstart="cardTouchStart($event, session.id)" @touchend="cardTouchEnd" @touchmove="cardTouchEnd"
+     class="flex items-center gap-3 px-3 py-3 rounded-2xl bg-surface/60 border border-border/40 cursor-pointer hover:bg-surface transition select-none relative"
+     :class="{ 'home-card-highlight': highlightId === session.id }">
+    <!-- 头像 -->
+    <div class="shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-surface border border-border/50 flex items-center justify-center">
+        <img v-if="session.avatar" :src="session.avatar" class="w-full h-full object-cover">
+        <span v-else class="text-[18px] text-muted serif-text">{{ (session.name || '?').charAt(0) }}</span>
+    </div>
+    <!-- 中间 -->
+    <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="font-medium text-[14px] text-text truncate">{{ session.name }}</span>
+            <span v-if="session.type === 'group'" class="text-[9px] tracking-widest text-muted bg-bg/60 px-1.5 py-0.5 rounded shrink-0">群 · {{ session.members.length }}</span>
+        </div>
+        <div class="text-[12px] text-muted truncate">{{ lastMessagePreview(session) || '暂无消息' }}</div>
+    </div>
+    <!-- 右侧 -->
+    <div class="shrink-0 flex flex-col items-end gap-1.5">
+        <span class="text-[10px] text-muted tabular-nums">{{ formatSessionTime(session.messages.length ? session.messages[session.messages.length - 1].timestamp : 0) }}</span>
+        <span v-if="unreadOf(session) > 0"
+              class="min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] text-white flex items-center justify-center font-medium"
+              style="background: var(--nav-icon-color);">
+            {{ unreadOf(session) > 99 ? '99+' : unreadOf(session) }}
+        </span>
+    </div>
+</div>
                     <div v-if="!visibleSessions.length" class="text-center text-xs text-muted/60 py-8">主屏暂无聊天</div>
               </div>
 
@@ -1276,62 +1293,36 @@ body { color: var(--color-text); }
                    @input="e => { getFreeComposeSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }"
                    class="w-full" style="accent-color: var(--nav-icon-color);">
         </div>
-        <!-- 三源语料 -->
+                <!-- 语料来源（书册级，每会话独立） -->
         <div class="pt-1 border-t border-border/30 space-y-2">
-            <div class="text-[11px] text-muted tracking-widest">语料来源</div>
-            <!-- 自定义字卡 -->
-            <div class="flex items-center justify-between">
-                <span class="text-[12px] text-text">自定义字卡</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] text-muted w-8 text-right">{{ getFreeComposeSettings(currentSession.id).weightCustom }}</span>
-                    <button @click="getFreeComposeSettings(currentSession.id).srcCustom = !getFreeComposeSettings(currentSession.id).srcCustom; debouncedSave();"
-                            class="w-9 h-5 rounded-full relative transition-colors shrink-0"
-                            :class="getFreeComposeSettings(currentSession.id).srcCustom ? 'bg-text' : 'bg-border'">
-                        <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-surface rounded-full transition-transform"
-                             :class="getFreeComposeSettings(currentSession.id).srcCustom ? 'translate-x-4' : 'translate-x-0'"></div>
+            <div class="text-[11px] text-muted tracking-widest mb-1">语料来源</div>
+            <template v-for="grp in replySettingsGroups" :key="grp.catName">
+                <div class="flex items-center justify-between mt-2 mb-1 px-1">
+                    <span class="text-[10px] text-muted/70">{{ grp.catName }}</span>
+                    <button @click="toggleAllFreeComposeInCategory(grp.catName, grp.boxes)"
+                            class="text-[10px] text-muted hover:text-text">
+                        {{ grp.boxes.some(b => getFreeComposeWeight(b) > 0) ? '全不选' : '全选' }}
                     </button>
                 </div>
-            </div>
-            <input v-if="getFreeComposeSettings(currentSession.id).srcCustom" type="range" min="0" max="100"
-                   :value="getFreeComposeSettings(currentSession.id).weightCustom"
-                   @input="e => { getFreeComposeSettings(currentSession.id).weightCustom = Number(e.target.value); debouncedSave(); }"
-                   class="w-full" style="accent-color: var(--nav-icon-color);">
-            <!-- 默认聊天字卡 -->
-            <div class="flex items-center justify-between">
-                <span class="text-[12px] text-text">默认聊天字卡</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] text-muted w-8 text-right">{{ getFreeComposeSettings(currentSession.id).weightDefault }}</span>
-                    <button @click="getFreeComposeSettings(currentSession.id).srcDefault = !getFreeComposeSettings(currentSession.id).srcDefault; debouncedSave();"
-                            class="w-9 h-5 rounded-full relative transition-colors shrink-0"
-                            :class="getFreeComposeSettings(currentSession.id).srcDefault ? 'bg-text' : 'bg-border'">
-                        <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-surface rounded-full transition-transform"
-                             :class="getFreeComposeSettings(currentSession.id).srcDefault ? 'translate-x-4' : 'translate-x-0'"></div>
+                <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-2">
+                    <button @click="toggleFreeComposePool(boxName)"
+                            class="w-4 h-4 rounded border shrink-0 flex items-center justify-center"
+                            :class="getFreeComposeWeight(boxName) > 0 ? 'bg-text border-text' : 'border-border'">
+                        <svg v-if="getFreeComposeWeight(boxName) > 0" viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
                     </button>
+                    <span class="text-[12px] text-text w-20 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
+                    <input type="range" min="0" max="100"
+                           :value="getFreeComposeWeight(boxName)"
+                           @input="e => setFreeComposeWeight(boxName, e.target.value)"
+                           class="flex-1"
+                           :disabled="getFreeComposeWeight(boxName) === 0"
+                           :style="getFreeComposeWeight(boxName) === 0 ? 'opacity:0.3;' : ''">
+                    <span class="text-[10px] text-muted w-7 text-right tabular-nums shrink-0">{{ getFreeComposeWeight(boxName) }}</span>
                 </div>
-            </div>
-            <input v-if="getFreeComposeSettings(currentSession.id).srcDefault" type="range" min="0" max="100"
-                   :value="getFreeComposeSettings(currentSession.id).weightDefault"
-                   @input="e => { getFreeComposeSettings(currentSession.id).weightDefault = Number(e.target.value); debouncedSave(); }"
-                   class="w-full" style="accent-color: var(--nav-icon-color);">
-            <!-- 词典 -->
-            <div class="flex items-center justify-between">
-                <span class="text-[12px] text-text">词典</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] text-muted w-8 text-right">{{ getFreeComposeSettings(currentSession.id).weightDict }}</span>
-                    <button @click="getFreeComposeSettings(currentSession.id).srcDict = !getFreeComposeSettings(currentSession.id).srcDict; debouncedSave();"
-                            class="w-9 h-5 rounded-full relative transition-colors shrink-0"
-                            :class="getFreeComposeSettings(currentSession.id).srcDict ? 'bg-text' : 'bg-border'">
-                        <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-surface rounded-full transition-transform"
-                             :class="getFreeComposeSettings(currentSession.id).srcDict ? 'translate-x-4' : 'translate-x-0'"></div>
-                    </button>
-                </div>
-            </div>
-            <input v-if="getFreeComposeSettings(currentSession.id).srcDict" type="range" min="0" max="100"
-                   :value="getFreeComposeSettings(currentSession.id).weightDict"
-                   @input="e => { getFreeComposeSettings(currentSession.id).weightDict = Number(e.target.value); debouncedSave(); }"
-                   class="w-full" style="accent-color: var(--nav-icon-color);">
-            <div class="text-[10px] text-muted/60 leading-relaxed px-1">
-                权重按归一化计算，不必凑 100；权重 0 或开关关 = 该源不参与；三源全关 = 不触发
+            </template>
+            <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-2">
+                权重按归一化计算（不必凑 100）。权重 0 或未勾选 = 该源不参与。<br>
+                此设置仅对当前会话生效，点「保存设置至所有联系人」可同步到所有会话。
             </div>
         </div>
         <!-- 造句手法 -->
@@ -2262,7 +2253,39 @@ body { color: var(--color-text); }
                                         </div>
                                     </div>
                                 </section>
-
+                                <!-- ===== 信件语料来源 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">信件语料来源</h3>
+                                    <div class="flex gap-1 mb-3">
+                                        <button v-for="sc in ['主动来信','回信']" :key="sc"
+                                                @click="mailSourceScene = sc"
+                                                class="flex-1 py-1.5 rounded-full text-[11px] tracking-widest transition-colors"
+                                                :class="mailSourceScene === sc ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sc }}</button>
+                                    </div>
+                                    <div class="bg-surface border border-border/60 rounded-xl p-3 space-y-2">
+                                        <template v-for="grp in replySettingsGroups" :key="grp.catName">
+                                            <div class="text-[10px] text-muted/70 px-1">{{ grp.catName }}</div>
+                                            <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-2">
+                                                <button @click="togglePool(mailSourceScene, boxName)"
+                                                        class="w-4 h-4 rounded border shrink-0 flex items-center justify-center"
+                                                        :class="getPoolWeight(mailSourceScene, boxName) > 0 ? 'bg-text border-text' : 'border-border'">
+                                                    <svg v-if="getPoolWeight(mailSourceScene, boxName) > 0" viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+                                                </button>
+                                                <span class="text-[12px] text-text w-20 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
+                                                <input type="range" min="0" max="100"
+                                                       :value="getPoolWeight(mailSourceScene, boxName)"
+                                                       @input="e => setPoolWeight(mailSourceScene, boxName, e.target.value)"
+                                                       class="flex-1"
+                                                       :disabled="getPoolWeight(mailSourceScene, boxName) === 0"
+                                                       :style="getPoolWeight(mailSourceScene, boxName) === 0 ? 'opacity:0.3;' : ''">
+                                                <span class="text-[10px] text-muted w-7 text-right tabular-nums shrink-0">{{ getPoolWeight(mailSourceScene, boxName) }}</span>
+                                            </div>
+                                        </template>
+                                        <div class="text-[10px] text-muted/60 leading-relaxed px-1 pt-1">
+                                            权重按归一化计算。此设置全局生效，所有会话共用。
+                                        </div>
+                                    </div>
+                                </section>
                                 <!-- ===== 信件内容 ===== -->
                                 <section class="mb-4">
                                     <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">信件内容</h3>
@@ -6028,13 +6051,24 @@ return items;
           return items;
         };
         // 抽 n 句字卡：每一句都独立随机、允许重复（像每次独立从一叠卡里摸一张）
-        const drawEnvelopeCards = (n, session) => {
-          const pool = envelopeCardPool(session);
-          if (!pool.length) return [];
-          const count = n || (5 + Math.floor(Math.random() * 10)); // 5~14 句
+               const drawEnvelopeCards = (n, session, situation) => {
+          const sit = situation || '信封回复';
+          const count = n || (5 + Math.floor(Math.random() * 10));
+          const items = drawWeightedCards(session, sit, count);
+          if (!items.length) {
+            // 兜底：走旧逻辑
+            const pool = envelopeCardPool(session);
+            if (!pool.length) return [];
+            const result = [];
+            for (let i = 0; i < count; i++) {
+              result.push(pool[Math.floor(Math.random() * pool.length)]);
+            }
+            return result;
+          }
           const result = [];
           for (let i = 0; i < count; i++) {
-            result.push(pool[Math.floor(Math.random() * pool.length)]);
+            const item = items[Math.floor(Math.random() * items.length)];
+            if (item.text) result.push(item.text);
           }
           return result;
         };
@@ -6074,7 +6108,7 @@ return items;
                 const minC = Math.max(1, settings.letterMinCards || 20);
                 const maxC = Math.max(minC, settings.letterMaxCards || 50);
                 const count = minC + Math.floor(Math.random() * (maxC - minC + 1));
-                e.cards = drawEnvelopeCards(count, s);
+                 e.cards = drawEnvelopeCards(count, s, '回信');
                 e.status = 'arrived';
                 // 回填原信的 repliedBy
                 if (e.replyTo) {
@@ -6136,7 +6170,7 @@ const runAutoLetterCheck = () => {
         const minCards = Math.max(1, settings.letterMinCards || 20);
         const maxCards = Math.max(minCards, settings.letterMaxCards || 50);
         const count = minCards + Math.floor(Math.random() * (maxCards - minCards + 1));
-        const cards = drawEnvelopeCards(count, s);
+        const cards = drawEnvelopeCards(count, s, '主动来信');
         const arriveAt = now;
         s.envelopes.push({
             id: 'd_' + now + '_' + s.id,
@@ -7175,8 +7209,16 @@ const drawWeightedCards = (session, situation, n) => {
     );
 
     // 主屏只显示未隐藏的聊天室
-    const visibleSessions = computed(() => sessions.value.filter((s) => !s.hidden));
-
+const visibleSessions = computed(() => {
+    return sessions.value
+        .filter((s) => !s.hidden)
+        .slice()
+        .sort((a, b) => {
+            const aLast = a.messages && a.messages.length ? a.messages[a.messages.length - 1].timestamp : 0;
+            const bLast = b.messages && b.messages.length ? b.messages[b.messages.length - 1].timestamp : 0;
+            return bLast - aLast;
+        });
+});
     // 模板里继续用 messages，但它现在指向当前 session 的数据
     const messages = computed(() => (currentSession.value ? currentSession.value.messages : []));
 
@@ -7740,10 +7782,11 @@ const saveFreeComposeSettingsToAll = async () => {
     if (!s) return;
     if (!(await appConfirm('把当前会话的「词典拼字」「梦角自由造句」「卷宗管理」「吐槽」设置复制到所有会话？', '保存设置至所有联系人'))) return;
 
-    const copyDict = JSON.parse(JSON.stringify(getDictSpellSettings(s.id)));
+        const copyDict = JSON.parse(JSON.stringify(getDictSpellSettings(s.id)));
     const copyFree = JSON.parse(JSON.stringify(getFreeComposeSettings(s.id)));
     const copyGroup = JSON.parse(JSON.stringify(getFreeComposeGroupSettings(s.id)));
     const copyTease = JSON.parse(JSON.stringify(getTeaseSettings(s.id)));
+    const copyWeights = JSON.parse(JSON.stringify(s.freeComposeWeightMap || defaultFreeComposeWeightMap()));
 
     let count = 0;
     sessions.value.forEach(other => {
@@ -7752,11 +7795,13 @@ const saveFreeComposeSettingsToAll = async () => {
         freeComposeSettingsMap[other.id] = JSON.parse(JSON.stringify(copyFree));
         freeComposeGroupSettingsMap[other.id] = JSON.parse(JSON.stringify(copyGroup));
         teaseSettingsMap[other.id] = JSON.parse(JSON.stringify(copyTease));
+        other.freeComposeWeightMap = JSON.parse(JSON.stringify(copyWeights));
         count++;
     });
     debouncedSave();
     showToast(`已复制到 ${count} 个会话`);
 };
+
 // ===== 从词典抽语录（核心函数） =====
 const drawQuotesFromDict = (session, count) => {
     if (!session) return [];
@@ -7813,75 +7858,14 @@ const drawQuotesFromDict = (session, count) => {
 };
 
 
-// ===== 从三源按权重抽一条源句 =====
+// ===== 抽一条源句（走会话自己的 freeComposeWeightMap） =====
 const drawSourceSentence = (session) => {
     if (!session) return null;
-    const settings = getFreeComposeSettings(session.id);
-    const pool = [];
-
-    // 1. 自定义字卡（私聊书册里 isSystem !== true）
-    if (settings.srcCustom && settings.weightCustom > 0) {
-        const box = session.corpus?.boxes?.['私聊'];
-        (box?.groups || []).forEach(g => {
-            (g.replies || []).forEach(r => {
-                if (r.enabled === false || r.image) return;
-                const t = (r.text || '').trim();
-                if (!t || t.length < 4) return;    // 至少 4 字
-                if (r.isSystem === true) return;    // 排除系统预设
-                pool.push({ text: t, weight: settings.weightCustom });
-            });
-        });
-    }
-
-    // 2. 默认聊天字卡（私聊书册里 isSystem === true）
-    if (settings.srcDefault && settings.weightDefault > 0) {
-        const box = session.corpus?.boxes?.['私聊'];
-        (box?.groups || []).forEach(g => {
-            (g.replies || []).forEach(r => {
-                if (r.enabled === false || r.image) return;
-                const t = (r.text || '').trim();
-                if (!t || t.length < 4) return;
-                if (r.isSystem !== true) return;
-                pool.push({ text: t, weight: settings.weightDefault });
-            });
-        });
-    }
-
-    // 3. 词典（语录 + 词库，词库过短的过滤）
-    if (settings.srcDict && settings.weightDict > 0) {
-        const box = sharedBoxes['词典'];
-        (box?.groups || []).forEach(g => {
-            const name = g.name || '';
-            const isQuote = name.includes('语录');
-            const isWord = name.includes('词库') || name.includes('基础') ||
-                          name.includes('日常') || name.includes('饮食') ||
-                          name.includes('行动') || name.includes('物件') ||
-                          name.includes('水果');
-            if (!isQuote && !isWord) return;
-            (g.replies || []).forEach(r => {
-                if (r.enabled === false) return;
-                const t = (r.text || '').trim();
-                if (!t) return;
-                // 语录：至少 4 字；词：至少 2 字
-                if (isQuote && t.length < 4) return;
-                if (isWord && t.length < 2) return;
-                pool.push({ text: t, weight: settings.weightDict });
-            });
-        });
-    }
-
-    if (!pool.length) return null;
-
-    // 按权重抽一条
-    const totalWeight = pool.reduce((s, x) => s + x.weight, 0);
-    if (totalWeight <= 0) return null;
-    let r = Math.random() * totalWeight;
-    for (const item of pool) {
-        r -= item.weight;
-        if (r <= 0) return item.text;
-    }
-    return pool[pool.length - 1].text;
+    const text = drawFreeComposeCard(session);
+    if (!text || text.length < 4) return null;
+    return text;
 };
+
 // ===== 从所有书册抽一个词（给手法 2a 用） =====
 const drawWordFromAllBoxes = (session) => {
     if (!session) return null;
@@ -8497,7 +8481,7 @@ const mailFilter = reactive({
 
 // ===== 信箱 4 tab =====
 const mailboxTab = ref('inbox');  // 'inbox' | 'outbox' | 'write' | 'data'
-
+const mailSourceScene = ref('主动来信');
 // 写信草稿
 const letterDraft = reactive({
     to: '',
@@ -8838,6 +8822,7 @@ sharedBoxes: JSON.parse(JSON.stringify(sharedBoxes)),
 dictSpellSettingsMap: JSON.parse(JSON.stringify(dictSpellSettingsMap)),
 freeComposeSettingsMap: JSON.parse(JSON.stringify(freeComposeSettingsMap)),
 freeComposeGroupSettingsMap: JSON.parse(JSON.stringify(freeComposeGroupSettingsMap)),
+teaseSettingsMap: JSON.parse(JSON.stringify(teaseSettingsMap)),
           };
           await localforage.setItem('liubai_v2_db', fullData);
           // ===== localStorage 双保险镜像：localforage 之外再存一份，防止 IndexedDB 被清而丢档 =====
@@ -9543,17 +9528,18 @@ const selectTag = (type, text) => {
       { key: 'library', label: '字卡' },
       { key: 'yiqu', label: '意趣' },
     ];
-    const onNavIconUpload = (key, e) => {
+        const onNavIconUpload = async (key, e) => {
       const file = e.target.files && e.target.files[0];
       const s = currentSession.value;
       if (!file || !s) return;
       if (!s.navIcons) s.navIcons = { library: '', insight: '', yiqu: '' };
-      const fr = new FileReader();
-      fr.onload = (ev) => {
-        s.navIcons[key] = ev.target.result;
+      try {
+        const compressed = await compressImage(file, 128, 0.85);
+        s.navIcons[key] = compressed;
         debouncedSave();
-      };
-      fr.readAsDataURL(file);
+      } catch (err) {
+        console.error('[导航图标压缩失败]', err);
+      }
       e.target.value = '';
     };
     const clearNavIcon = (key) => {
@@ -10937,6 +10923,102 @@ const togglePool = (scene, boxName) => {
 const toggleAllInCategory = (scene, catName, boxes) => {
     const anyOn = boxes.some(b => getPoolWeight(scene, b) > 0);
     boxes.forEach(b => setPoolWeight(scene, b, anyOn ? 0 : 50));
+};
+// ===== P2：梦角自由造句 · 语料来源（每会话独立） =====
+const defaultFreeComposeWeightMap = () => ({
+    pools: { '私聊': 50, '公共': 30, '词典': 20 }
+});
+
+const getFreeComposeWeight = (boxName) => {
+    const s = currentSession.value;
+    if (!s) return 0;
+    if (!s.freeComposeWeightMap) s.freeComposeWeightMap = defaultFreeComposeWeightMap();
+    return s.freeComposeWeightMap.pools?.[boxName] || 0;
+};
+const setFreeComposeWeight = (boxName, v) => {
+    const s = currentSession.value;
+    if (!s) return;
+    if (!s.freeComposeWeightMap) s.freeComposeWeightMap = defaultFreeComposeWeightMap();
+    const newMap = JSON.parse(JSON.stringify(s.freeComposeWeightMap));
+    if (!newMap.pools) newMap.pools = {};
+    newMap.pools[boxName] = Math.max(0, Math.min(100, Number(v) || 0));
+    s.freeComposeWeightMap = newMap;
+    debouncedSave();
+};
+const toggleFreeComposePool = (boxName) => {
+    const cur = getFreeComposeWeight(boxName);
+    setFreeComposeWeight(boxName, cur > 0 ? 0 : 50);
+};
+const toggleAllFreeComposeInCategory = (catName, boxes) => {
+    const anyOn = boxes.some(b => getFreeComposeWeight(b) > 0);
+    boxes.forEach(b => setFreeComposeWeight(b, anyOn ? 0 : 50));
+};
+
+// 从会话的 freeComposeWeightMap 抽一条源句
+const drawFreeComposeCard = (session) => {
+    const s = session || currentSession.value;
+    if (!s) return null;
+    if (!s.freeComposeWeightMap) s.freeComposeWeightMap = defaultFreeComposeWeightMap();
+    const pools = s.freeComposeWeightMap.pools || {};
+    const valid = [];
+    let totalW = 0;
+    Object.entries(pools).forEach(([boxName, weight]) => {
+        if (!weight || weight <= 0) return;
+        const box = isSharedBox(boxName) ? sharedBoxes[boxName] : s.corpus?.boxes?.[boxName];
+        if (!box || !Array.isArray(box.groups)) return;
+        const nonEmpty = box.groups.some(g => Array.isArray(g.replies) && g.replies.length > 0);
+        if (!nonEmpty) return;
+        valid.push({ boxName, weight, box });
+        totalW += weight;
+    });
+    if (!valid.length) return null;
+    let r = Math.random() * totalW;
+    let picked = valid[valid.length - 1];
+    for (const v of valid) {
+        r -= v.weight;
+        if (r <= 0) { picked = v; break; }
+    }
+    const groupsWithCards = (picked.box.groups || []).filter(g => Array.isArray(g.replies) && g.replies.length > 0);
+    if (!groupsWithCards.length) return null;
+    const g = groupsWithCards[Math.floor(Math.random() * groupsWithCards.length)];
+    const enabled = g.replies.filter(x => x.enabled !== false && ((x.text && x.text.trim()) || x.image));
+    if (!enabled.length) return null;
+    const card = enabled[Math.floor(Math.random() * enabled.length)];
+    const text = (card.text || '').trim();
+    return text || null;
+};
+
+
+// ===== 会话卡：最后消息预览 =====
+const lastMessagePreview = (session) => {
+    if (!session || !session.messages || !session.messages.length) return '';
+    const m = session.messages[session.messages.length - 1];
+    if (m.content && m.content.trim()) return m.content;
+    return '[消息]';
+};
+
+// ===== 会话卡：时间格式化（微信风格） =====
+const formatSessionTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const ymd = (x) => `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
+    const today = ymd(now);
+    const target = ymd(d);
+    if (target === today) return `${p(d.getHours())}:${p(d.getMinutes())}`;
+    const yesterday = ymd(new Date(now.getTime() - 86400000));
+    if (target === yesterday) return '昨天';
+    const dow = now.getDay() === 0 ? 7 : now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (dow - 1));
+    monday.setHours(0, 0, 0, 0);
+    if (d >= monday) {
+        const wk = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+        return wk[d.getDay()];
+    }
+    const sameYear = d.getFullYear() === now.getFullYear();
+    return sameYear ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 };
 
 const hideSession = (sessionId) => {
@@ -14313,6 +14395,36 @@ const monthlyBudgetRemain = (monthStr) => {
     currentSession.value.messages = currentSession.value.messages.filter((m) => m.id !== id);
     debouncedSave();
 };
+// ===== 上传图片自动压缩 =====
+const compressImage = (file, maxSize = 256, quality = 0.85) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let w = img.width, h = img.height;
+                    if (w > maxSize || h > maxSize) {
+                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else { w = Math.round(w * maxSize / h); h = maxSize; }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const out = canvas.toDataURL('image/jpeg', quality);
+                    resolve(out);
+                } catch (e) { reject(e); }
+            };
+            img.onerror = reject;
+            img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
     const editAvatar = async (role) => {
       const s = currentSession.value;
       const isGroup = s && s.type === 'group';
@@ -14323,19 +14435,21 @@ const monthlyBudgetRemain = (monthStr) => {
         else if (s) s.avatar = '';
         return;
       }
-      const input = document.createElement('input');
+            const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      input.onchange = (e) => {
+      input.onchange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-          const fr = new FileReader();
-          fr.onload = (ev) => {
-            if (targetIsMe) profiles.me.avatar = ev.target.result;
-            else if (s) s.avatar = ev.target.result;
-            debouncedSave();
-          };
-          fr.readAsDataURL(file);
+        if (!file) return;
+        try {
+          const compressed = await compressImage(file, 256, 0.85);
+          if (targetIsMe) profiles.me.avatar = compressed;
+          else if (s) s.avatar = compressed;
+          debouncedSave();
+          showToast('头像已更新');
+        } catch (err) {
+          console.error('[头像压缩失败]', err);
+          showToast('图片处理失败，换一张试试');
         }
       };
       input.click();
@@ -14940,6 +15054,9 @@ if (stored.mailReadStatus) {
 if (stored.freeComposeGroupSettingsMap) {
     Object.assign(freeComposeGroupSettingsMap, stored.freeComposeGroupSettingsMap);
 }
+if (stored.teaseSettingsMap) {
+    Object.assign(teaseSettingsMap, stored.teaseSettingsMap);
+}
                 if (stored.sessions && stored.sessions.length > 0) {
                     sessions.value = stored.sessions.map((s) => ({
                         ...s,
@@ -14992,6 +15109,9 @@ sessions.value.forEach(s => {
 
 // 老档兼容：补全主动来信 + 回信 + 信封字段
 sessions.value.forEach((s) => {
+    if (!s.freeComposeWeightMap || typeof s.freeComposeWeightMap !== 'object') {
+        s.freeComposeWeightMap = defaultFreeComposeWeightMap();
+    }
     if (s._lastAutoLetterAt === undefined) s._lastAutoLetterAt = 0;
 if (s._nextAutoLetterAt === undefined) s._nextAutoLetterAt = 0;
     if (s._todayLetterCount === undefined) s._todayLetterCount = 0;
@@ -15204,7 +15324,7 @@ removeGroupMember,
       createGroup,
       privateSessions,
       openSession,
-      hideSession,
+      hideSession,lastMessagePreview, formatSessionTime,
       cardTouchStart,
       cardTouchEnd,
       editSessionName,
@@ -15267,7 +15387,7 @@ removeGroupMember,
       handleSend,
       forceReply,
       deleteMsg,
-      editAvatar,
+      editAvatar,compressImage,
       shouldShowAvatar,
       senderName,
       senderAvatar,
@@ -15610,7 +15730,7 @@ getMailReadIds,
 markMailRead,
 isMailRead,
 mailFilter,
-mailboxTab, letterDraft, openMailboxWrite, sendLetterFromTab, openLetterDivination,
+mailboxTab, mailSourceScene, letterDraft, openMailboxWrite, sendLetterFromTab, openLetterDivination,
     inboxList, outboxList, filteredInbox, filteredOutbox, mailSessionOptions,
 mailDetail, openMailDetail, closeMailDetail,
     toggleFavoriteMail, deleteMailDetail, replyFromMailDetail,clearLetterQuote,favoritedMailList,
@@ -15711,7 +15831,8 @@ triggerFreeCompose,
 saveFreeComposedSentence,
 saveFreeComposeSettingsToAll,
 freeComposeGroupSettingsMap,
-getFreeComposeGroupSettings,
+getFreeComposeGroupSettings,setFreeComposeWeight, toggleFreeComposePool,
+      toggleAllFreeComposeInCategory, drawFreeComposeCard, defaultFreeComposeWeightMap,
 exportDialogOpen,
 exportSelectedBoxes,
 openExportDialog,
