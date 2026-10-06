@@ -542,28 +542,34 @@ body { color: var(--color-text); }
             </div>
 
             <!-- 照片卡 -->
-            <label class="block relative w-full rounded-2xl overflow-hidden mb-4 cursor-pointer group" style="aspect-ratio: 4/3; background: rgba(0,0,0,0.04);">
-                <img v-if="settings.spacePhoto" :src="settings.spacePhoto" class="absolute inset-0 w-full h-full object-cover">
-                <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted/50">
-                    <i data-lucide="image" class="w-6 h-6"></i>
-                    <div class="text-[12px] tracking-widest">收藏，和你有关的瞬间</div>
-                    <div class="text-[10px] opacity-70">轻点放入一张照片</div>
+                        <!-- 照片卡（相册轮播） -->
+            <label class="block relative w-full rounded-2xl overflow-hidden mb-4 cursor-pointer group" style="aspect-ratio: 16/9; background: rgba(0,0,0,0.04);">
+                <img v-if="currentSpacePhoto" :src="currentSpacePhoto" class="absolute inset-0 w-full h-full object-cover">
+                <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted/50">
+                    <i data-lucide="image" class="w-5 h-5"></i>
+                    <div class="text-[11px] tracking-widest">收藏，和你有关的瞬间</div>
+                    <div class="text-[9px] opacity-70">轻点放入一张照片（可多选）</div>
                 </div>
-                <input type="file" accept="image/*" class="hidden" @change="uploadSpacePhoto">
-                <button v-if="settings.spacePhoto" @click.prevent.stop="settings.spacePhoto = ''; debouncedSave()"
-                        class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 text-white text-xs flex items-center justify-center">✕</button>
+                <input type="file" accept="image/*" multiple class="hidden" @change="uploadSpacePhoto">
+                <div v-if="(settings.spacePhotos || []).length > 1"
+                     class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                    <span v-for="(_, i) in settings.spacePhotos" :key="i"
+                          @click.prevent.stop="settings.spacePhotoIndex = i; debouncedSave();"
+                          class="w-1.5 h-1.5 rounded-full cursor-pointer transition-all"
+                          :class="i === (settings.spacePhotoIndex % settings.spacePhotos.length) ? 'bg-white w-3' : 'bg-white/50'"></span>
+                </div>
             </label>
             <!-- 头像行 -->
             <div class="flex items-center justify-between mb-4 px-1">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="flex -space-x-3 shrink-0">
-                        <div class="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
+                                        <div class="flex -space-x-4 shrink-0">
+                        <div class="w-16 h-16 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
                             <img v-if="profiles.me.avatar" :src="profiles.me.avatar" class="w-full h-full object-cover">
-                            <span v-else class="w-full h-full flex items-center justify-center text-[12px] text-muted serif-text">{{ (profiles.me.name || '我').charAt(0) }}</span>
+                            <span v-else class="w-full h-full flex items-center justify-center text-[20px] text-muted serif-text">{{ (profiles.me.name || '我').charAt(0) }}</span>
                         </div>
-                        <div class="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
+                        <div class="w-16 h-16 rounded-full border-2 border-white overflow-hidden bg-surface shadow-sm">
                             <img v-if="currentSession?.avatar" :src="currentSession.avatar" class="w-full h-full object-cover">
-                            <span v-else class="w-full h-full flex items-center justify-center text-[12px] text-muted serif-text">{{ (currentSession?.name || '?').charAt(0) }}</span>
+                            <span v-else class="w-full h-full flex items-center justify-center text-[20px] text-muted serif-text">{{ (currentSession?.name || '?').charAt(0) }}</span>
                         </div>
                     </div>
                     <div class="flex flex-col min-w-0">
@@ -1715,6 +1721,7 @@ body { color: var(--color-text); }
         <div v-if="deduplicateMenuOpen" class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg p-1 z-10 min-w-[120px]">
             <div @click="runDeduplicate('exact')" class="px-3 py-2 hover:bg-bg rounded text-[12px] cursor-pointer">精确去重</div>
             <div @click="runDeduplicate('fuzzy')" class="px-3 py-2 hover:bg-bg rounded text-[12px] cursor-pointer">模糊去重</div>
+<div @click="deduplicateMenuOpen = false; globalDeduplicate()" class="px-3 py-2 hover:bg-bg rounded text-[12px] cursor-pointer border-t border-border/40 mt-1 pt-2">全局去重（公共 vs 私聊）</div>
         </div>
     </div>
 
@@ -1888,7 +1895,9 @@ body { color: var(--color-text); }
 </button>
 <!-- 分隔线 -->
 <div class="border-t border-border/40 my-2"></div>
-
+<button @click="splitLargeGroups(); libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
+    <i data-lucide="scissors" class="w-4 h-4 stroke-[1.5]"></i> 自动切分大卷宗
+</button>
 <!-- 一键整理 -->
 <button @click="reorganizeFreeCompose('梦角自由造句')" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
     <i data-lucide="sparkles" class="w-4 h-4 stroke-[1.5]"></i> 整理个人版造句
@@ -3016,14 +3025,32 @@ body { color: var(--color-text); }
         </div>
         <main class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             <div v-if="!filteredOutbox.length" class="mt-20 text-center text-xs text-muted/60">还没有寄出的信</div>
-                       <div v-for="item in filteredOutbox" :key="item.id"
-                 @click="markMailRead(item.sessionId, item.id); openMailDetail(item)"
-                 class="bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-bg/40 transition-colors">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] font-medium text-text">寄给 {{ item.sessionName }}</span>
-                    <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+                                   <div v-for="item in filteredOutbox" :key="item.id"
+                 class="bg-surface border border-border rounded-xl p-4">
+                <div @click="markMailRead(item.sessionId, item.id); openMailDetail(item)" class="cursor-pointer">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-medium text-text">寄给 {{ item.sessionName }}</span>
+                        <span class="text-[10px] text-muted">{{ formatMailTime(item.timestamp) }}</span>
+                    </div>
+                    <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap line-clamp-3">{{ item.body }}</div>
                 </div>
-                <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap line-clamp-3">{{ item.body }}</div>
+                <!-- 嵌套的回信 -->
+                <div v-if="getRepliesForLetter(item.id, item.sessionId).length" class="mt-3 pt-3 border-t border-border/30 space-y-2">
+                    <div class="text-[10px] text-muted tracking-widest">回信 · {{ getRepliesForLetter(item.id, item.sessionId).length }} 封</div>
+                    <div v-for="reply in getRepliesForLetter(item.id, item.sessionId)" :key="reply.id"
+                         @click="markMailRead(reply.sessionId, reply.id); openMailDetail(reply)"
+                         class="rounded-lg border border-border/40 p-3 cursor-pointer hover:bg-bg/40 transition-colors"
+                         :style="!reply.read ? 'background: rgba(0,0,0,0.02);' : ''">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] text-text">来自 {{ reply.sessionName }}</span>
+                                <span v-if="!reply.read" class="text-[9px] tracking-widest px-1.5 py-0.5 rounded-full bg-text text-white">新</span>
+                            </div>
+                            <span class="text-[10px] text-muted">{{ formatMailTime(reply.timestamp) }}</span>
+                        </div>
+                        <div class="text-[12px] text-text leading-relaxed whitespace-pre-wrap line-clamp-2">{{ reply.body }}</div>
+                    </div>
+                </div>
             </div>
         </main>
     </template>
@@ -6054,7 +6081,7 @@ return items;
                const drawEnvelopeCards = (n, session, situation) => {
           const sit = situation || '信封回复';
           const count = n || (5 + Math.floor(Math.random() * 10));
-          const items = drawWeightedCards(session, sit, count);
+          const items = drawWeightedCards(session, sit, count, { allowRepeat: true });
           if (!items.length) {
             // 兜底：走旧逻辑
             const pool = envelopeCardPool(session);
@@ -7135,7 +7162,109 @@ const getPublicTexts = () => {
     return items;
 };
 
-// ===== 权重抽取：书册 → 卷宗 → 单卡（O(1) 三级下钻） =====
+// ===== 抽卡系统：扁平池 + 绝对权重 =====
+const _poolCache = {};
+
+const _clearPoolCache = (sid) => {
+    if (sid) {
+        Object.keys(_poolCache).forEach(k => { if (k.includes('__' + sid + '__')) delete _poolCache[k]; });
+    } else {
+        Object.keys(_poolCache).forEach(k => delete _poolCache[k]);
+    }
+};
+
+// 从书册收集卡（支持书册级 / 卷宗级）
+const _collectCards = (box, boxName, out, perCardWeight) => {
+    const isParted = (boxName === '群聊' || boxName === '红包备注');
+    (box.groups || []).forEach(g => {
+        if (isParted) {
+            (g.groups || []).forEach(inner => {
+                (inner.replies || []).forEach(r => {
+                    if (r.enabled === false) return;
+                    const t = (r.text || '').trim();
+                    if (!t && !r.image) return;
+                    out.push({ text: t, image: r.image || null, _w: perCardWeight || 1 });
+                });
+            });
+        } else {
+            (g.replies || []).forEach(r => {
+                if (r.enabled === false) return;
+                const t = (r.text || '').trim();
+                if (!t && !r.image) return;
+                out.push({ text: t, image: r.image || null, _w: perCardWeight || 1 });
+            });
+        }
+    });
+};
+
+// 构建池：① 固定书册列表（卡数加权） ② 按 weightMap（绝对权重）
+const _buildPool = (session, opts) => {
+    const s = session || currentSession.value;
+    if (!s) return [];
+    const out = [];
+    if (opts.boxNames) {
+        // 固定书册：每张卡权重相等 = 1（卡数加权）
+        opts.boxNames.forEach(bn => {
+            const box = isSharedBox(bn) ? sharedBoxes[bn] : s.corpus?.boxes?.[bn];
+            if (!box) return;
+            _collectCards(box, bn, out, 1);
+        });
+    } else if (opts.situation) {
+        const wm = settings.replyWeightMap && settings.replyWeightMap[opts.situation];
+        if (!wm || !wm.pools) return [];
+        Object.entries(wm.pools).forEach(([bn, weight]) => {
+            if (!weight || weight <= 0) return;
+            const box = isSharedBox(bn) ? sharedBoxes[bn] : s.corpus?.boxes?.[bn];
+            if (!box) return;
+            // 先统计卡数，再算单卡权重
+            const temp = [];
+            _collectCards(box, bn, temp, 1);
+            if (!temp.length) return;
+            const perCard = weight / temp.length;
+            temp.forEach(c => { c._w = perCard; out.push(c); });
+        });
+    }
+    return out;
+};
+
+// 从池抽 N 张（allowRepeat=false 时不重复）
+const _drawFromPool = (pool, n, allowRepeat) => {
+    if (!pool || !pool.length) return [];
+    const out = [];
+    if (allowRepeat) {
+        // 有放回
+        for (let i = 0; i < n; i++) {
+            const totalW = pool.reduce((sum, c) => sum + (c._w || 1), 0);
+            if (totalW <= 0) break;
+            let r = Math.random() * totalW;
+            let pick = pool[pool.length - 1];
+            for (const c of pool) {
+                r -= (c._w || 1);
+                if (r <= 0) { pick = c; break; }
+            }
+            out.push({ text: pick.text, image: pick.image });
+        }
+    } else {
+        // 无放回
+        const work = pool.map(c => ({ text: c.text, image: c.image, _w: c._w || 1 }));
+        const maxN = Math.min(n, work.length);
+        for (let i = 0; i < maxN; i++) {
+            const totalW = work.reduce((sum, c) => sum + c._w, 0);
+            if (totalW <= 0) break;
+            let r = Math.random() * totalW;
+            let idx = work.length - 1;
+            for (let j = 0; j < work.length; j++) {
+                r -= work[j]._w;
+                if (r <= 0) { idx = j; break; }
+            }
+            const picked = work[idx];
+            out.push({ text: picked.text, image: picked.image });
+            work.splice(idx, 1);
+        }
+    }
+    return out;
+};
+
 const _pickRandomBook = (session, situation) => {
     const s = session || currentSession.value;
     if (!s) return null;
@@ -7177,22 +7306,23 @@ const drawWeightedCard = (session, situation) => {
     return { text: (r.text || '').trim(), image: r.image || null };
 };
 
-// 抽 N 张不重复（用于拼接模式）
-const drawWeightedCards = (session, situation, n) => {
-    const out = [];
-    const seen = new Set();
-    let tries = 0;
-    const maxTries = Math.max(n * 8, 20);
-    while (out.length < n && tries < maxTries) {
-        tries++;
-        const c = drawWeightedCard(session, situation);
-        if (!c) break;
-        const key = c.text || c.image || '';
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        out.push(c);
+// ===== 抽 N 张（opts.boxNames=固定书册；opts.allowRepeat=允许重复） =====
+const drawWeightedCards = (session, situation, n, opts = {}) => {
+    const s = session || currentSession.value;
+    if (!s) return [];
+    const allowRepeat = !!opts.allowRepeat;
+    const boxNames = opts.boxNames;
+    const cacheKey = boxNames
+        ? `__boxes__${boxNames.join(',')}__${s.id}__`
+        : `__sit__${situation}__${s.id}__`;
+    // 缓存池
+    if (!_poolCache[cacheKey]) {
+        _poolCache[cacheKey] = _buildPool(s, {
+            situation: boxNames ? null : situation,
+            boxNames,
+        });
     }
-    return out;
+    return _drawFromPool(_poolCache[cacheKey], n, allowRepeat);
 };
 
     const sessions = ref(createDefaultSessions());
@@ -7484,7 +7614,8 @@ const exportSelectedBoxes = ref([]);
       navCollapsed: false, // 主屏顶部图标收纳（字卡/意趣 收起）
       playerCSS: '',                // 我的气泡刺绣（全局，群聊私聊通用）    // 空白回复（通用）
 enableCardStitch: false,//拼字卡
-spacePhoto: '',
+spacePhotos: [],       // 相册多张
+      spacePhotoIndex: 0,    // 当前轮播到第几张
       spaceMemo: '',
 spacePlaylistId: '14273792576',
       apps: [],
@@ -8538,10 +8669,22 @@ const allMailItems = computed(() => {
     return uniqueItems.sort((a, b) => b.timestamp - a.timestamp);
 });
 
+
 // 收信 / 寄信 分开
-const inboxList = computed(() => allMailItems.value.filter(m => m.sender === 'them'));
+// 收到 = 主动来信（没有 replyTo 的）
+// 寄出 = 用户寄出的信
+// 回信不显示在收件箱，会嵌在寄出的信下面
+const inboxList = computed(() =>
+    allMailItems.value.filter(m => m.sender === 'them' && !m.raw?.replyTo)
+);
 const outboxList = computed(() => allMailItems.value.filter(m => m.sender === 'me'));
 
+// 给寄出的信找到它的回信（可能多条）
+const getRepliesForLetter = (letterId, sessionId) => {
+    return allMailItems.value.filter(m =>
+        m.sender === 'them' && m.sessionId === sessionId && m.raw?.replyTo === letterId
+    );
+};
 // 应用筛选（会话 + 状态）
 const _applyMailFilter = (list) => {
     let out = list;
@@ -9472,20 +9615,19 @@ const selectTag = (type, text) => {
     }
 };
     // 面板内添加表情包（仅进我的列表，不进语料）
-    const handleEmoteAdd = (e) => {
+        const handleEmoteAdd = async (e) => {
       const files = e.target.files;
       if (!files || !files.length) return;
       const s = currentSession.value;
       if (!s) return;
       if (!Array.isArray(s.myEmotes)) s.myEmotes = [];
       for (const file of files) {
-        const fr = new FileReader();
-        fr.onload = (ev) => {
-          s.myEmotes.push(ev.target.result);
-          debouncedSave();
-        };
-        fr.readAsDataURL(file);
+        try {
+          const compressed = await compressImage(file, 480, 0.80);
+          s.myEmotes.push(compressed);
+        } catch (err) { console.error('[表情包压缩失败]', err); }
       }
+      debouncedSave();
       e.target.value = '';
     };
     // 长按删除表情包（仅删我的列表，不动语料）
@@ -9972,8 +10114,11 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
         if (settings.blankReplyEnabled && Math.random() < 0.1) {
             acts.push(() => sendMessage('them', ' ', { blank: true, session: cur }));
         } else {
-                                              // ===== 用权重抽卡（书册 → 卷宗 → 单卡） =====
-            const pool = drawWeightedCards(cur, '私聊', 30);
+                                                                    // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
+            const _concatCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
+            const pool = _concatCfg.concatEnabled
+                ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '公共'] })
+                : drawWeightedCards(cur, '私聊', 30);
             if (pool.length) {
                 const marked = settings.markEnabled && Math.random() < 0.15;
                 const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
@@ -10115,8 +10260,11 @@ const opts = { marked, session: cur };
       }
       // ===== 拍一拍逻辑结束 =====
 
-            // ===== 用群聊场景的权重抽卡（成员语料自动被抽到的话就带上） =====
-      let pool = drawWeightedCards(group, '群聊', 20);
+                 // ===== 拼接模式固定「群聊+公共」；非拼接走权重 =====
+      const _gCfg = group ? getSessionSettings(group.id) : { concatEnabled: true };
+      let pool = _gCfg.concatEnabled
+        ? drawWeightedCards(group, null, 20, { boxNames: ['群聊', '公共'] })
+        : drawWeightedCards(group, '群聊', 20);
       // 兼容：如果群聊权重没配或抽不到，回退到成员个人语料
       if (!pool.length) {
         const privateBox = member.corpus?.boxes?.['私聊'];
@@ -10469,8 +10617,9 @@ if (Math.random() < 0.1) {
     };
 
     const openSession = (sessionId) => {
-      const s = sessions.value.find((x) => x.id === sessionId);
-      if (!s) return;
+    const s = sessions.value.find((x) => x.id === sessionId);
+    if (!s) return;
+    _clearPoolCache();   // 切会话清池子
       // 从云笺册点进来时，自动解除隐藏，让它回到主屏
       if (s.hidden) {
         s.hidden = false;
@@ -10506,6 +10655,7 @@ const onHomeTouchEnd = (e) => {
 };
 
 // ===== S2：温馨空间 =====
+
 const spaceMonthName = computed(() => {
     const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
     return months[new Date().getMonth()];
@@ -10515,18 +10665,59 @@ const spaceWeekday = computed(() => {
     const w = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
     return w[new Date().getDay()];
 });
+// ===== 温馨空间：相册轮播 =====
+const _spacePhotoTimer = ref(null);
+const currentSpacePhoto = computed(() => {
+    const arr = settings.spacePhotos || [];
+    if (!arr.length) return settings.spacePhoto || '';
+    const i = (settings.spacePhotoIndex || 0) % arr.length;
+    return arr[i] || '';
+});
+const rotateSpacePhoto = () => {
+    const arr = settings.spacePhotos || [];
+    if (arr.length <= 1) return;
+    let next = settings.spacePhotoIndex || 0;
+    for (let i = 0; i < 10; i++) {
+        const r = Math.floor(Math.random() * arr.length);
+        if (r !== next) { next = r; break; }
+    }
+    settings.spacePhotoIndex = next;
+};
+const startSpacePhotoRotate = () => {
+    if (_spacePhotoTimer.value) clearInterval(_spacePhotoTimer.value);
+    _spacePhotoTimer.value = setInterval(() => { rotateSpacePhoto(); }, 5000);
+};
+const stopSpacePhotoRotate = () => {
+    if (_spacePhotoTimer.value) { clearInterval(_spacePhotoTimer.value); _spacePhotoTimer.value = null; }
+};
+
 const uploadSpacePhoto = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const fr = new FileReader();
-    fr.onload = (ev) => {
-        settings.spacePhoto = ev.target.result;
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const arr = Array.isArray(settings.spacePhotos) ? settings.spacePhotos.slice() : [];
+    const _handle = async () => {
+        for (const file of files) {
+            try {
+                const compressed = await compressImage(file, 750, 0.80);
+                arr.push(compressed);
+            } catch (err) { console.error('[相册压缩失败]', err); }
+        }
+        settings.spacePhotos = arr;
         debouncedSave();
+        if (arr.length > 1) startSpacePhotoRotate();
     };
-    fr.readAsDataURL(file);
+    _handle();
     e.target.value = '';
 };
 
+const removeSpacePhoto = (idx) => {
+    const arr = (settings.spacePhotos || []).slice();
+    arr.splice(idx, 1);
+    settings.spacePhotos = arr;
+    if (settings.spacePhotoIndex >= arr.length) settings.spacePhotoIndex = 0;
+    debouncedSave();
+    if (arr.length <= 1) stopSpacePhotoRotate();
+};
 // ===== T1：温馨空间日历卡 =====
 const spaceTodayStr = computed(() => {
     const d = new Date();
@@ -10728,6 +10919,8 @@ const initAppsSortable = () => {
     }
 };
 watch(homePage, (v) => {
+    if (v === 1) startSpacePhotoRotate();
+    else stopSpacePhotoRotate();
     if (v === 2) nextTick(() => {
         try {
             initAppsSortable();
@@ -10914,6 +11107,7 @@ const setPoolWeight = (scene, boxName, v) => {
     if (!newMap[scene].pools) newMap[scene].pools = {};
     newMap[scene].pools[boxName] = val;
     settings.replyWeightMap = newMap;
+    _clearPoolCache();
     debouncedSave();
 };
 const togglePool = (scene, boxName) => {
@@ -10941,8 +11135,9 @@ const setFreeComposeWeight = (boxName, v) => {
     if (!s.freeComposeWeightMap) s.freeComposeWeightMap = defaultFreeComposeWeightMap();
     const newMap = JSON.parse(JSON.stringify(s.freeComposeWeightMap));
     if (!newMap.pools) newMap.pools = {};
-    newMap.pools[boxName] = Math.max(0, Math.min(100, Number(v) || 0));
+        newMap.pools[boxName] = Math.max(0, Math.min(100, Number(v) || 0));
     s.freeComposeWeightMap = newMap;
+    _clearPoolCache(s.id);
     debouncedSave();
 };
 const toggleFreeComposePool = (boxName) => {
@@ -11392,20 +11587,20 @@ if (window.lucide) lucide.createIcons();
       bulkForm.show = true;
     };
     // 批量上传图片作表情包字卡
-    const handleExprUpload = (e) => {
+        const handleExprUpload = async (e) => {
       const files = e.target.files;
       if (!files || !files.length) return;
       const g = findGroupById(exprForm.groupId);
       if (!g) return;
       for (const file of files) {
-        const fr = new FileReader();
-        fr.onload = (ev) => {
-          g.replies.push({ id: genId(), text: '', image: ev.target.result, enabled: true });
-          debouncedSave();
-        };
-        fr.readAsDataURL(file);
+        try {
+          const compressed = await compressImage(file, 480, 0.80);
+          g.replies.push({ id: genId(), text: '', image: compressed, enabled: true });
+        } catch (err) { console.error('[字卡图片压缩失败]', err); }
       }
+      debouncedSave();
       nextTick(initSortable);
+      e.target.value = '';
     };
     // 批量加字卡：textarea 一行一条
    const submitBulk = () => {
@@ -11667,6 +11862,130 @@ const openMochiImport = () => {
     };
     input.click();
 };
+// ===== 全局去重（公共 vs 私聊） =====
+const globalDeduplicate = async () => {
+    const sess = currentSession.value;
+    if (!sess) return;
+
+    // 计算一下当前情况
+    const publicBox = sharedBoxes['公共'];
+    const chatBox = sess.corpus?.boxes?.['私聊'];
+    if (!publicBox && !chatBox) { showToast('没有可去重的书册'); return; }
+
+    if (!(await appConfirm(
+        '全局去重规则：\n\n' +
+        '· 公共书册内部：跨卷宗去重\n' +
+        '· 私聊书册内部：跨卷宗去重\n' +
+        '· 私聊里和公共重复的：删除私聊的，保留公共的\n' +
+        '· 精确匹配（区分标点）\n\n' +
+        '确定继续？',
+        '全局去重'
+    ))) return;
+
+    // 1. 先处理公共书册内部跨卷宗去重
+    const publicTexts = new Set();
+    let publicRemoved = 0;
+    if (publicBox && publicBox.groups) {
+        publicBox.groups.forEach(g => {
+            if (!g.replies) return;
+            const unique = [];
+            g.replies.forEach(r => {
+                const t = (r.text || '').trim();
+                if (!t && !r.image) { unique.push(r); return; }
+                if (!t && r.image) {
+                    // 图片字卡：单独按 image 去重
+                    if (!publicTexts.has('__img__' + r.image)) {
+                        publicTexts.add('__img__' + r.image);
+                        unique.push(r);
+                    } else {
+                        publicRemoved++;
+                    }
+                    return;
+                }
+                if (publicTexts.has(t)) {
+                    publicRemoved++;
+                } else {
+                    publicTexts.add(t);
+                    unique.push(r);
+                }
+            });
+            g.replies = unique;
+        });
+    }
+
+    // 2. 处理私聊书册：删除和公共书册重复的 + 私聊内部跨卷宗去重
+    const privateTexts = new Set();
+    let privateRemoved = 0;
+    if (chatBox && chatBox.groups) {
+        chatBox.groups.forEach(g => {
+            if (!g.replies) return;
+            const unique = [];
+            g.replies.forEach(r => {
+                const t = (r.text || '').trim();
+                if (!t && !r.image) { unique.push(r); return; }
+                if (!t && r.image) {
+                    // 图片
+                    if (publicTexts.has('__img__' + r.image) || privateTexts.has('__img__' + r.image)) {
+                        privateRemoved++;
+                    } else {
+                        privateTexts.add('__img__' + r.image);
+                        unique.push(r);
+                    }
+                    return;
+                }
+                // 文本字卡
+                if (publicTexts.has(t) || privateTexts.has(t)) {
+                    privateRemoved++;
+                } else {
+                    privateTexts.add(t);
+                    unique.push(r);
+                }
+            });
+            g.replies = unique;
+        });
+    }
+
+    debouncedSave();
+    nextTick(() => {
+        if (window.lucide) lucide.createIcons();
+        initSortable();
+    });
+    showToast(`去重完成 · 公共删除 ${publicRemoved} 条 · 私聊删除 ${privateRemoved} 条`);
+};
+// ===== 自动切分超过 200 条的卷宗 =====
+const splitLargeGroups = async () => {
+    const sess = currentSession.value;
+    if (!sess) return;
+    const boxName = activeBox.value;
+    const box = isSharedBox(boxName) ? sharedBoxes[boxName] : sess.corpus?.boxes?.[boxName];
+    if (!box || !box.groups) { showToast('当前书册不存在'); return; }
+
+    const MAX = 200;
+    const newGroups = [];
+    let splitCount = 0;
+
+    box.groups.forEach(g => {
+        const replies = g.replies || [];
+        if (replies.length <= MAX) { newGroups.push(g); return; }
+        const parts = Math.ceil(replies.length / MAX);
+        for (let i = 0; i < parts; i++) {
+            newGroups.push({
+                id: genId(),
+                name: `${g.name}(${i + 1})`,
+                replies: replies.slice(i * MAX, (i + 1) * MAX),
+            });
+        }
+        splitCount++;
+    });
+
+    if (splitCount === 0) { showToast('没有需要切分的卷宗（都 ≤200 条）'); return; }
+    if (!(await appConfirm(`发现 ${splitCount} 个卷宗超过 200 条，将自动切分。确定继续？`, '自动切分'))) return;
+
+    box.groups = newGroups;
+    debouncedSave();
+    nextTick(() => { if (window.lucide) lucide.createIcons(); initSortable(); });
+    showToast(`已切分 ${splitCount} 个卷宗`);
+};
 // ===== 智能导入：执行导入 =====
 const executeMochiImport = () => {
     const payload = mochiImportData.value;
@@ -11694,37 +12013,50 @@ const executeMochiImport = () => {
     };
 
     // ===== 分发 1：mochi JSON =====
+       // ===== 分发 1：mochi JSON（导入到当前打开的书册） =====
     if (payload.type === 'json') {
         const data = payload.data;
+        // 目标书册 = 当前打开的书册
+        const targetBoxName = activeBox.value;
+        const targetBox = isSharedBox(targetBoxName) ? sharedBoxes[targetBoxName] : sess.corpus?.boxes?.[targetBoxName];
+        if (!targetBox) { showToast('当前书册不可导入'); return; }
+        const defaultGroupMap = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji' };
+
         ['ccPub', 'ccOwn'].forEach(key => {
             const lib = data[key];
             if (!lib) return;
-            const targetBoxName = key === 'ccPub' ? '公共' : '私聊';
-            const targetBox = isSharedBox(targetBoxName) ? sharedBoxes[targetBoxName] : sess.corpus?.boxes?.[targetBoxName];
-            if (!targetBox) return;
-            const fieldMap = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji' };
+
+            // text / kaomoji / emoji → 当前书册，用源分组名建卷宗
             ['text', 'kaomoji', 'emoji'].forEach(field => {
                 const groups = lib[field];
                 if (!Array.isArray(groups) || !groups.length) return;
-                groups.forEach(([, texts]) => {
+                groups.forEach(([srcName, texts]) => {
                     if (!Array.isArray(texts)) return;
+                    let groupName = (srcName || '').trim();
+                    if (!groupName || groupName === '未分组') groupName = defaultGroupMap[field];
                     texts.forEach(text => {
-                        if (pushToBox(targetBox, fieldMap[field], text)) stats[field]++;
+                        if (pushToBox(targetBox, groupName, text)) stats[field]++;
                     });
                 });
             });
+
+            // poke → 拍一拍书册（固定映射）
             const pokeGroups = lib.poke;
             if (Array.isArray(pokeGroups) && pokeGroups.length) {
                 const pokeBox = sess.corpus?.boxes?.['拍一拍'];
                 if (pokeBox) {
-                    pokeGroups.forEach(([, texts]) => {
+                    pokeGroups.forEach(([srcName, texts]) => {
                         if (!Array.isArray(texts)) return;
+                        let groupName = (srcName || '').trim();
+                        if (!groupName || groupName === '未分组') groupName = '默认';
                         texts.forEach(text => {
-                            if (pushToBox(pokeBox, '默认', text)) stats.poke++;
+                            if (pushToBox(pokeBox, groupName, text)) stats.poke++;
                         });
                     });
                 }
             }
+
+            // sticker / image → 我的表情包
             ['sticker', 'image'].forEach(field => {
                 const groups = lib[field];
                 if (!Array.isArray(groups) || !groups.length) return;
@@ -11742,22 +12074,24 @@ const executeMochiImport = () => {
         });
     }
 
-    // ===== 分发 2：mochi JS =====
+    // ===== 分发 2：mochi JS（导入到当前打开的书册） =====
     else if (payload.type === 'js') {
-        const chatBox = sess.corpus?.boxes?.['私聊'];
-        (payload.jsMain || []).forEach(([groupName, texts]) => {
-            if (!Array.isArray(texts)) return;
-            texts.forEach(text => {
-                if (pushToBox(chatBox, groupName || '未分组', text)) stats.jsMain++;
+        const targetBoxName = activeBox.value;
+        const targetBox = isSharedBox(targetBoxName) ? sharedBoxes[targetBoxName] : sess.corpus?.boxes?.[targetBoxName];
+        if (targetBox) {
+            (payload.jsMain || []).forEach(([groupName, texts]) => {
+                if (!Array.isArray(texts)) return;
+                texts.forEach(text => {
+                    if (pushToBox(targetBox, groupName || '未分组', text)) stats.jsMain++;
+                });
             });
-        });
-        const dictBox = sharedBoxes['词典'];
-        (payload.jsDictExt || []).forEach(([groupName, texts]) => {
-            if (!Array.isArray(texts)) return;
-            texts.forEach(text => {
-                if (pushToBox(dictBox, groupName || '未分组', text, { isSystem: false, dictType: 'word' })) stats.jsDictExt++;
+            (payload.jsDictExt || []).forEach(([groupName, texts]) => {
+                if (!Array.isArray(texts)) return;
+                texts.forEach(text => {
+                    if (pushToBox(targetBox, groupName || '未分组', text, { isSystem: false, dictType: 'word' })) stats.jsDictExt++;
+                });
             });
-        });
+        }
     }
 
     // ===== 分发 3：空境三合一 =====
@@ -15057,6 +15391,7 @@ if (stored.freeComposeGroupSettingsMap) {
 if (stored.teaseSettingsMap) {
     Object.assign(teaseSettingsMap, stored.teaseSettingsMap);
 }
+if ((settings.spacePhotos || []).length > 1) startSpacePhotoRotate();
                 if (stored.sessions && stored.sessions.length > 0) {
                     sessions.value = stored.sessions.map((s) => ({
                         ...s,
@@ -15511,7 +15846,7 @@ moneySubTab,
       openDay,
       toggleDay,
       isDayOpen,
-     
+     splitLargeGroups,
       settleFlow,
       settleNext,
       settleBack,
@@ -15731,7 +16066,7 @@ markMailRead,
 isMailRead,
 mailFilter,
 mailboxTab, mailSourceScene, letterDraft, openMailboxWrite, sendLetterFromTab, openLetterDivination,
-    inboxList, outboxList, filteredInbox, filteredOutbox, mailSessionOptions,
+        inboxList, outboxList, filteredInbox, filteredOutbox, mailSessionOptions, getRepliesForLetter,
 mailDetail, openMailDetail, closeMailDetail,
     toggleFavoriteMail, deleteMailDetail, replyFromMailDetail,clearLetterQuote,favoritedMailList,
     filteredMailList,     // ← 必须有
@@ -15750,7 +16085,9 @@ toggleConcatEmoji,
 adjustConcatCount,
 deleteCurrentSession,
 // Step E
-dailyAppModal, closeDailyAppManage, startAddApp, startEditApp, cancelAppEdit, saveApp, deleteApp,DAILY_CATEGORIES, dailyAddModal, closeDailyAdd, switchDailyAddTab, saveDailyAdd, deleteDailyRecord,dailyBudgetModal, closeDailyBudgetEdit, saveDailyBudget, toggleInstallmentPaid,homePage, onHomeTouchStart, onHomeTouchEnd,spaceMonthName, spaceDay, spaceWeekday, uploadSpacePhoto,
+dailyAppModal, closeDailyAppManage, startAddApp, startEditApp, cancelAppEdit, saveApp, deleteApp,DAILY_CATEGORIES, dailyAddModal, closeDailyAdd, switchDailyAddTab, saveDailyAdd, deleteDailyRecord,dailyBudgetModal, closeDailyBudgetEdit, saveDailyBudget, toggleInstallmentPaid,homePage, onHomeTouchStart, onHomeTouchEnd, spaceMonthName, spaceDay, spaceWeekday,
+      uploadSpacePhoto, removeSpacePhoto, currentSpacePhoto, rotateSpacePhoto,
+      startSpacePhotoRotate, stopSpacePhotoRotate,
 mutedMembers,THEMES, applyTheme,
 spaceTodayStr, spaceInstallmentsToday, spacePeriodDay,
 isMuted,
@@ -15772,6 +16109,7 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,
   settingsTab, replySubTab, boxHasCards,adjustSetting,
       replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,
 countBoxCards, countCategoryCards, countGroupCards,
+_clearPoolCache,
 muteMember,
 unmuteMember,
 tagPickerOpen,
@@ -15834,6 +16172,7 @@ freeComposeGroupSettingsMap,
 getFreeComposeGroupSettings,setFreeComposeWeight, toggleFreeComposePool,
       toggleAllFreeComposeInCategory, drawFreeComposeCard, defaultFreeComposeWeightMap,
  getFreeComposeWeight, exportDialogOpen,
+     
 exportSelectedBoxes,
 openExportDialog,
 exportSelectCurrent,
@@ -15873,6 +16212,7 @@ ymdToMonth,
 installmentForMonth,
 monthlyInstallmentTotal,
 monthlyBudgetRemain,
+globalDeduplicate,
       deleteEnvelope
     };
   },
