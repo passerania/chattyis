@@ -161,6 +161,8 @@ body { color: var(--color-text); }
         .navfade-enter-from, .navfade-leave-to { opacity: 0; transform: translateY(-4px); }
         /* 输入中：三个跳动的点 */
         @keyframes typingDot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+        @keyframes spinSlow { to { transform: rotate(360deg); } }
+        @keyframes bobFloat { 0%, 100% { transform: translateY(0); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
         .typing-dot { width: 6px; height: 6px; border-radius: 9999px; display: inline-block; animation: typingDot 1.1s infinite ease-in-out; }
 
         .intro-overlay { position: fixed; inset: 0; z-index: 100; background: #ffffff; display: flex; align-items: center; justify-content: center; }
@@ -751,15 +753,9 @@ body { color: var(--color-text); }
 
     <!-- 未拆且未过期红包 -->
     <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex flex-col gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-       <button @click.stop="msgMenuQuote2" class="px-2.5 py-1 text-[12px] text-white hover:bg-white/10 rounded">引用</button>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
             <div class="px-4 py-3 text-white text-center">
                 <div class="text-lg mb-1">🧧</div>
                 <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
@@ -770,14 +766,9 @@ body { color: var(--color-text); }
 
     <!-- 已过期红包 -->
     <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt <= Date.now()" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface opacity-60">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface opacity-60">
             <div class="px-4 py-3 text-center">
                 <div class="text-sm mb-1">🧧</div>
                 <div class="text-[13px] font-medium text-muted tracking-wider">{{ msg.content }}</div>
@@ -788,14 +779,9 @@ body { color: var(--color-text); }
 
     <!-- 已拆红包 -->
     <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'opened'" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-border/40 bg-surface">
             <div class="px-4 py-3 text-center">
                 <div class="text-sm mb-1">🎁</div>
                 <div class="text-lg font-bold text-text">¥{{ msg.amount.toFixed(2) }}</div>
@@ -807,14 +793,9 @@ body { color: var(--color-text); }
 
     <!-- 问卷卡片 -->
 <div v-else-if="msg.type === 'survey'" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
             <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷 · {{ msg.status === 'answered' ? (msg.declined ? 'TA未作答' : '已作答') : '待TA作答' }}</div>
             <div class="px-4 py-3 space-y-2">
                 <div v-for="(q, qi) in msg.questions" :key="qi" class="text-[12px]">
@@ -827,13 +808,9 @@ body { color: var(--color-text); }
 
     <!-- 问卷作答结果 -->
 <div v-else-if="msg.type === 'surveyResult'" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+    
         <div class="w-64 rounded-xl overflow-hidden shadow-md border border-border/50 bg-surface">
             <div class="px-4 py-2.5 text-[11px] tracking-widest text-muted border-b border-border/40">问卷作答</div>
             <div v-if="msg.declined" class="px-4 py-5 text-center text-[12px] text-muted/70 tracking-wider">TA选择不答</div>
@@ -897,14 +874,9 @@ body { color: var(--color-text); }
 
     <!-- 我发的红包（靠右） -->
 <div v-else-if="msg.sender === 'me' && msg.type === 'redpacket'" class="mb-4 flex justify-end group relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="flex items-center gap-2">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="flex items-center gap-2">
             <button @click="deleteMsg(msg.id)" class="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
             <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
                 <div class="px-4 py-3 text-white">
@@ -923,14 +895,9 @@ body { color: var(--color-text); }
 
     <!-- 群聊抢红包 -->
 <div v-else-if="msg.type === 'grabPacket'" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-        <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+            <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
             <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;">
                 <div class="text-lg mb-1">🧧</div>
                 <div class="text-[13px] font-medium tracking-wider">抢红包</div>
@@ -959,14 +926,9 @@ body { color: var(--color-text); }
 
 <!-- 吐槽卡片 -->
 <div v-else-if="msg.type === 'tease'" class="flex justify-center mb-4 relative"
-     @contextmenu.prevent="openMsgMenu(msg)"
-     @touchstart="onMsgPressStart(msg)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-    <div v-if="msgMenu.show && msgMenu.msg && msgMenu.msg.id === msg.id"
-         class="msg-menu-bar absolute flex gap-0.5 bg-[#2c2c2c] rounded-lg px-1 py-1 shadow-xl z-[50] right-0"
-         style="bottom: 100%; margin-bottom: 6px;" @click.stop>
-        <button @click.stop="msgMenuDelete" class="px-2.5 py-1 text-[12px] text-red-400 hover:bg-white/10 rounded">删除</button>
-    </div>
-    <div @click="openTeaseReply(msg)" 
+     @contextmenu.prevent="openMsgMenu(msg, $event)"
+     @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+        <div @click="openTeaseReply(msg)" 
          class="w-72 rounded-2xl overflow-hidden shadow-md border border-border/60 bg-surface cursor-pointer hover:shadow-lg transition-all duration-300 p-4">
         <div v-if="msg.teaseCategory" class="text-[10px] tracking-widest text-muted/60 mb-1">
             {{ msg.teaseCategory }}
@@ -2120,7 +2082,7 @@ body { color: var(--color-text); }
                         <template v-if="settingsTab === '回复设置'">
                             <!-- 子 tab -->
                             <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
-                                <button v-for="sub in ['私聊','群聊','留言回复','主动留言']" :key="sub"
+                                <button v-for="sub in ['私聊','群聊','主动留言']" :key="sub"
                                         @click="replySubTab = sub"
                                         class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
                                         :class="replySubTab === sub ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sub }}</button>
@@ -2329,9 +2291,37 @@ body { color: var(--color-text); }
                         </template>
 
                         <!-- ===== Tab: 系统 ===== -->
+                                                
                         <template v-if="settingsTab === '系统'">
-                            <div class="text-center text-xs text-muted/60 py-10">系统设置 · 待建设</div>
+                            <section>
+                                                        <section class="mb-4">
+                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">卡顿自检</h3>
+                                <div class="bg-surface border border-border rounded-xl p-4">
+                                    <div class="text-[12px] text-muted leading-relaxed mb-3">
+                                        点开始后正常使用 10 秒（滚动、切页、打字都行）。<br>
+                                        结束后自动弹出报告，可一键优化。
+                                    </div>
+                                    <button v-if="!perfTest.running" @click="startPerfTest"
+                                            class="w-full py-2.5 rounded-lg text-white text-[13px] tracking-wider"
+                                            style="background:var(--nav-icon-color);">开始检测</button>
+                                    <div v-else class="text-center text-[11px] text-muted py-2.5">检测中，请正常操作…</div>
+                                </div>
+                            </section>
+                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">存储优化</h3>
+                                <div class="bg-surface border border-border rounded-xl p-4">
+                                    <div class="text-[12px] text-muted leading-relaxed mb-3">
+                                        扫描所有已存图片，把过大的压缩到合适尺寸。<br>
+                                        覆盖原图，不可撤销（建议先导出备份）。
+                                    </div>
+                                    <button @click="compressAllImages"
+                                            class="w-full py-2.5 rounded-lg text-white text-[13px] tracking-wider"
+                                            style="background:var(--nav-icon-color);">
+                                        一键压缩所有图片
+                                    </button>
+                                </div>
+                            </section>
                         </template>
+<!-- ===== 设置页大tab ===== -->
 </main>
             </div>
                         
@@ -4518,6 +4508,109 @@ body { color: var(--color-text); }
         </div>
     </div>
 </div>
+<!-- ===== 图片压缩 loading 弹窗 ===== -->
+<div v-if="compressProgress.show" class="fixed inset-0 z-[400] flex items-center justify-center" style="background: rgba(0,0,0,0.45);">
+    <div class="bg-surface rounded-2xl shadow-2xl px-6 py-5 flex flex-col items-center" style="width: 240px;">
+        <!-- 旋转图标 -->
+        <div class="relative w-12 h-12 mb-3">
+            <div class="absolute inset-0 rounded-full border-2" style="border-color: rgba(0,0,0,0.08);"></div>
+            <div class="absolute inset-0 rounded-full border-2" style="border-color: transparent; border-top-color: var(--nav-icon-color); animation: spinSlow 0.9s linear infinite;"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <i data-lucide="image" class="w-5 h-5 text-muted"></i>
+            </div>
+        </div>
+        <!-- 文字 -->
+<div class="text-[12px] tracking-widest text-text mb-1">
+            {{ compressProgress.total === 0 ? '正在扫描图片' : '正在压缩图片' }}
+        </div>
+        <div class="text-[10px] text-muted tabular-nums mb-3">
+            {{ compressProgress.current }} / {{ compressProgress.total }}
+        </div>
+        <!-- 进度条 -->
+        <div class="w-full h-1.5 rounded-full overflow-hidden mb-3" style="background: rgba(0,0,0,0.08);">
+            <div class="h-full transition-all duration-150"
+                 :style="{ width: (compressProgress.total ? Math.round(compressProgress.current / compressProgress.total * 100) : 0) + '%', background: 'var(--nav-icon-color)' }"></div>
+        </div>
+        <!-- 符号行 -->
+        <div class="flex items-center gap-2 text-[16px]">
+            <span style="animation: bobFloat 1.2s ease-in-out infinite;">🖼️</span>
+            <span style="animation: bobFloat 1.2s ease-in-out infinite 0.15s;">✨</span>
+            <span style="animation: bobFloat 1.2s ease-in-out infinite 0.3s;">📦</span>
+            <span style="animation: bobFloat 1.2s ease-in-out infinite 0.45s;">✨</span>
+        </div>
+    </div>
+</div>
+<!-- ===== 全局长按菜单（fixed 定位跟随坐标） ===== -->
+<div v-if="msgMenu.show"
+     class="msg-menu-bar fixed z-[400] bg-[#2c2c2c] rounded-lg shadow-xl px-1 py-1 flex flex-col gap-0.5"
+     :style="{ left: msgMenu.x + 'px', top: msgMenu.y + 'px' }"
+     @click.stop>
+    <button @click.stop="msgMenuQuote" class="px-3 py-1.5 text-[12px] text-white hover:bg-white/10 rounded text-left whitespace-nowrap">引用</button>
+    <button @click.stop="msgMenuDelete" class="px-3 py-1.5 text-[12px] text-red-400 hover:bg-white/10 rounded text-left whitespace-nowrap">删除</button>
+</div>
+<!-- ===== 卡顿自检：顶部悬浮条 ===== -->
+<transition name="navfade">
+    <div v-if="perfTest.running" class="fixed top-3 left-1/2 -translate-x-1/2 z-[400] pointer-events-none" style="width: calc(100% - 32px); max-width: 360px;">
+        <div class="rounded-full shadow-lg px-3 py-2 flex items-center gap-2"
+                          style="background: color-mix(in srgb, var(--nav-icon-color) 10%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid color-mix(in srgb, var(--nav-icon-color) 16%, transparent);">
+            <span class="w-2 h-2 rounded-full shrink-0" style="background: var(--nav-icon-color); animation: typingDot 1.1s infinite ease-in-out;"></span>
+            <span class="text-[11px] tracking-widest flex-1" style="color: var(--color-text);">检测中 · 请正常操作</span>
+            <span class="text-[11px] tabular-nums font-medium" style="color: var(--color-text);">{{ perfTest.progress }}%</span>
+        </div>
+        <div class="mt-1 h-1 rounded-full overflow-hidden mx-3" style="background: rgba(0,0,0,0.1);">
+            <div class="h-full transition-all duration-150" :style="{ width: perfTest.progress + '%', background: 'var(--nav-icon-color)' }"></div>
+        </div>
+    </div>
+</transition>
+
+<!-- ===== 卡顿自检：结果弹窗 ===== -->
+<transition name="fade">
+    <div v-if="perfTest.showResult && perfTest.report" class="fixed inset-0 z-[400] flex items-center justify-center" style="background: rgba(0,0,0,0.45);" @click.self="perfTest.showResult = false">
+        <div class="bg-surface rounded-2xl shadow-2xl flex flex-col" style="width: 92vw; max-width: 360px; max-height: 82vh;">
+            <div class="px-5 pt-4 pb-2 shrink-0">
+                <div class="text-[14px] font-medium text-text tracking-wider">检测完成</div>
+                <div class="text-[11px] text-muted mt-0.5">当前状态：{{ perfTest.report.level }}</div>
+            </div>
+            <div class="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-xl p-3 bg-bg/40 border border-border/30">
+                        <div class="text-[10px] text-muted tracking-widest mb-1">平均帧率</div>
+                        <div class="text-[18px] font-light tabular-nums text-text">{{ perfTest.report.fps }} <span class="text-[10px] text-muted">FPS</span></div>
+                    </div>
+                    <div class="rounded-xl p-3 bg-bg/40 border border-border/30">
+                        <div class="text-[10px] text-muted tracking-widest mb-1">掉帧率</div>
+                        <div class="text-[18px] font-light tabular-nums" :style="{ color: perfTest.report.dropRate >= 20 ? '#ef4444' : perfTest.report.dropRate >= 5 ? '#f59e0b' : 'var(--color-text)' }">{{ perfTest.report.dropRate }}<span class="text-[10px] text-muted">%</span></div>
+                    </div>
+                    <div class="rounded-xl p-3 bg-bg/40 border border-border/30">
+                        <div class="text-[10px] text-muted tracking-widest mb-1">数据体积</div>
+                        <div class="text-[18px] font-light tabular-nums text-text">{{ (perfTest.report.dataSize / 1024).toFixed(0) }} <span class="text-[10px] text-muted">KB</span></div>
+                    </div>
+                    <div class="rounded-xl p-3 bg-bg/40 border border-border/30">
+                        <div class="text-[10px] text-muted tracking-widest mb-1">图片总数</div>
+                        <div class="text-[18px] font-light tabular-nums text-text">{{ perfTest.report.imageCount }} <span class="text-[10px] text-muted">张</span></div>
+                    </div>
+                </div>
+                <div v-if="perfTest.report.sessionStats.length" class="rounded-xl p-3 bg-bg/40 border border-border/30">
+                    <div class="text-[10px] text-muted tracking-widest mb-2">占用排行（字卡 / 消息）</div>
+                    <div v-for="st in perfTest.report.sessionStats.slice(0, 5)" :key="st.name" class="flex justify-between text-[12px] py-1">
+                        <span class="text-text truncate pr-2">{{ st.name }}</span>
+                        <span class="text-muted tabular-nums shrink-0">{{ st.cards }} 卡 · {{ st.msgs }} 消息</span>
+                    </div>
+                </div>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1">
+                    一键优化会清内存缓存 + 压缩大图，不动任何数据。
+                </div>
+            </div>
+            <div class="shrink-0 px-4 py-3 border-t border-border/40 flex gap-2">
+                <button @click="perfTest.showResult = false"
+                        class="flex-1 py-2.5 rounded-xl border border-border text-[13px] text-muted">关闭</button>
+                <button @click="runPerfOptimize"
+                        class="flex-1 py-2.5 rounded-xl text-white text-[13px] tracking-wider"
+                        style="background:var(--nav-icon-color);">一键优化</button>
+            </div>
+        </div>
+    </div>
+</transition>
 
 <!-弹窗往上加->
 
@@ -10775,23 +10868,52 @@ const spaceInstallmentsToday = computed(() => installmentsDueToday(spaceTodayStr
 const spacePeriodDay = computed(() => periodDayNumber(spaceTodayStr.value));
 
 // ===== 长按消息菜单 =====
-const msgMenu = reactive({ show: false, msg: null });
+const msgMenu = reactive({ show: false, msg: null, x: 0, y: 0 });
 const pendingQuote = ref(null);
 let _msgPressTimer = null;
 
-const openMsgMenu = (msg) => {
+const openMsgMenu = (msg, eventOrPos) => {
     if (!msg) return;
+    let cx = 0, cy = 0;
+    if (eventOrPos) {
+        if (eventOrPos.clientX !== undefined) {
+            cx = eventOrPos.clientX;
+            cy = eventOrPos.clientY;
+        } else if (eventOrPos.touches && eventOrPos.touches[0]) {
+            cx = eventOrPos.touches[0].clientX;
+            cy = eventOrPos.touches[0].clientY;
+        }
+    }
+    if (!cx && !cy) {
+        cx = window.innerWidth / 2;
+        cy = window.innerHeight / 2;
+    }
+    // 菜单尺寸估计（约 90×90）
+    const MENU_W = 100;
+    const MENU_H = 90;
+    if (cx + MENU_W > window.innerWidth) cx = window.innerWidth - MENU_W - 8;
+    if (cy + MENU_H > window.innerHeight) cy = window.innerHeight - MENU_H - 8;
+    if (cx < 8) cx = 8;
+    if (cy < 8) cy = 8;
+    msgMenu.x = cx;
+    msgMenu.y = cy;
     msgMenu.msg = msg;
     msgMenu.show = true;
 };
+
 const closeMsgMenu = () => {
     msgMenu.show = false;
     msgMenu.msg = null;
 };
-const onMsgPressStart = (msg) => {
+let _pressX = 0, _pressY = 0;
+const onMsgPressStart = (msg, e) => {
+    if (e && e.touches && e.touches[0]) {
+        _pressX = e.touches[0].clientX;
+        _pressY = e.touches[0].clientY;
+    }
     if (_msgPressTimer) clearTimeout(_msgPressTimer);
     _msgPressTimer = setTimeout(() => {
-        openMsgMenu(msg);
+        openMsgMenu(msg, { clientX: _pressX, clientY: _pressY });
         _msgPressTimer = null;
     }, 500);
 };
@@ -14729,6 +14851,306 @@ const monthlyBudgetRemain = (monthStr) => {
     currentSession.value.messages = currentSession.value.messages.filter((m) => m.id !== id);
     debouncedSave();
 };
+
+// ===== 一键压缩所有已存图片 =====
+const compressAllImages = async () => {
+    if (!(await appConfirm('扫描所有已存图片，把过大的压缩到合适尺寸？\n\n会检查：头像 / 表情包 / 背景图 / 导航图标 / 字卡图片 / 相册。\n原图会被覆盖（不可撤销，建议先备份）。'))) return;
+
+    const THRESHOLD = 100000; // base64 长度阈值，约 75KB
+    const tasks = [];
+
+    const _add = (get, set, maxSize, quality) => {
+        const src = get();
+        if (src && typeof src === 'string' && src.startsWith('data:') && src.length >= THRESHOLD) {
+            tasks.push({ get, set, maxSize, quality });
+        }
+    };
+    const _forEachBox = (box, boxName) => {
+        if (!box || !Array.isArray(box.groups)) return;
+        const isParted = (boxName === '群聊' || boxName === '红包备注');
+        for (const g of box.groups) {
+            const innerList = isParted ? (g.groups || []) : [g];
+            for (const inner of innerList) {
+                if (!Array.isArray(inner.replies)) continue;
+                inner.replies.forEach((r, i) => {
+                    if (r.image) _add(() => r.image, v => { r.image = v; }, 480, 0.80);
+                });
+            }
+        }
+    };
+
+    // 我的头像
+    _add(() => profiles.me.avatar, v => { profiles.me.avatar = v; }, 256, 0.85);
+
+    // 会话相关
+    sessions.value.forEach((s) => {
+        _add(() => s.avatar, v => { s.avatar = v; }, 256, 0.85);
+        (s.myEmotes || []).forEach((e, i) => {
+            _add(() => s.myEmotes[i], v => { s.myEmotes[i] = v; }, 480, 0.80);
+        });
+        _add(() => s.bgImage, v => { s.bgImage = v; }, 750, 0.75);
+        (s.bgLibrary || []).forEach((b, i) => {
+            _add(() => s.bgLibrary[i], v => { s.bgLibrary[i] = v; }, 750, 0.75);
+        });
+        (s.callBgImages || []).forEach((b, i) => {
+            _add(() => s.callBgImages[i], v => { s.callBgImages[i] = v; }, 750, 0.75);
+        });
+        if (s.navIcons && typeof s.navIcons === 'object') {
+            Object.keys(s.navIcons).forEach(k => {
+                if (s.navIcons[k]) _add(() => s.navIcons[k], v => { s.navIcons[k] = v; }, 128, 0.85);
+            });
+        }
+        if (s.corpus && s.corpus.boxes) {
+            Object.keys(s.corpus.boxes).forEach(bk => _forEachBox(s.corpus.boxes[bk], bk));
+        }
+    });
+
+    // 共享书册
+    Object.keys(sharedBoxes).forEach(bk => _forEachBox(sharedBoxes[bk], bk));
+
+    // 全局设置里的图片
+    _add(() => settings.homeBgImage, v => { settings.homeBgImage = v; }, 750, 0.75);
+    (settings.homeBgLibrary || []).forEach((b, i) => {
+        _add(() => settings.homeBgLibrary[i], v => { settings.homeBgLibrary[i] = v; }, 750, 0.75);
+    });
+    _add(() => settings.checkBgImage, v => { settings.checkBgImage = v; }, 750, 0.75);
+    (settings.checkBgLibrary || []).forEach((b, i) => {
+        _add(() => settings.checkBgLibrary[i], v => { settings.checkBgLibrary[i] = v; }, 750, 0.75);
+    });
+    if (settings.allowanceBg && typeof settings.allowanceBg === 'object') {
+        Object.keys(settings.allowanceBg).forEach(k => {
+            if (settings.allowanceBg[k]) _add(() => settings.allowanceBg[k], v => { settings.allowanceBg[k] = v; }, 750, 0.75);
+        });
+    }
+    _add(() => settings.spacePhoto, v => { settings.spacePhoto = v; }, 750, 0.80);
+    (settings.spacePhotos || []).forEach((p, i) => {
+        _add(() => settings.spacePhotos[i], v => { settings.spacePhotos[i] = v; }, 750, 0.80);
+    });
+
+    // ===== 如果没任务，直接返回 =====
+    if (!tasks.length) {
+        await appAlert('没有需要压缩的图片（都很小）。', '压缩完成');
+        return;
+    }
+
+    // ===== 开始处理（显示 loading）=====
+    compressProgress.total = tasks.length;
+    compressProgress.current = 0;
+    compressProgress.show = true;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+
+    let compressed = 0;
+    let savedBytes = 0;
+
+    for (const t of tasks) {
+        try {
+            const src = t.get();
+            if (src && typeof src === 'string' && src.startsWith('data:')) {
+                const res = await fetch(src);
+                const blob = await res.blob();
+                const file = new File([blob], 'x.jpg', { type: blob.type || 'image/jpeg' });
+                const out = await compressImage(file, t.maxSize, t.quality);
+                if (out && out.length < src.length) {
+                    t.set(out);
+                    compressed++;
+                    savedBytes += (src.length - out.length);
+                }
+            }
+        } catch (e) { console.error('[批量压缩]', e); }
+        compressProgress.current++;
+        // 每处理 1 张让出主线程，保证 UI 刷新
+        await _sleepMs(0);
+    }
+
+    debouncedSave();
+    compressProgress.show = false;
+
+    const savedKB = Math.round(savedBytes / 1024);
+    const savedMB = (savedKB / 1024).toFixed(2);
+    await appAlert(
+        `扫描图片：${tasks.length} 张\n压缩图片：${compressed} 张\n节省空间：约 ${savedKB >= 1024 ? savedMB + ' MB' : savedKB + ' KB'}`,
+        '压缩完成'
+    );
+};
+// ===== 压缩进度状态 =====
+const compressProgress = reactive({
+    show: false,
+    current: 0,
+    total: 0,
+});
+const _sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ===== 卡顿自检 =====
+const perfTest = reactive({
+    running: false,
+    progress: 0,      // 0-100
+    report: null,     // { fps, frames, slowFrames, dataSize, sessionStats, imageCount, totalCards }
+    showResult: false,
+});
+let _perfRafId = null;
+
+const _estimateDataSize = () => {
+    try {
+        const raw = localStorage.getItem('__kj_mirror') || '';
+        return raw.length;
+    } catch (e) { return 0; }
+};
+
+const _countImagesInData = () => {
+    let n = 0;
+    const scan = (obj) => {
+        if (!obj) return;
+        if (typeof obj === 'string') { if (obj.startsWith('data:image')) n++; return; }
+        if (Array.isArray(obj)) { obj.forEach(scan); return; }
+        if (typeof obj === 'object') { Object.values(obj).forEach(scan); }
+    };
+    scan(sessions.value);
+    scan(sharedBoxes);
+    scan(settings);
+    return n;
+};
+
+const startPerfTest = async () => {
+    if (perfTest.running) return;
+    perfTest.running = true;
+    perfTest.progress = 0;
+    perfTest.report = null;
+    perfTest.showResult = false;
+    showToast('请正常使用 10 秒…');
+    await _sleepMs(50);
+
+    const start = performance.now();
+    let frames = 0;
+    let slowFrames = 0;
+    let lastT = start;
+    let cancelled = false;
+
+    const tick = (now) => {
+        if (!perfTest.running) return;
+        if (document.hidden) { _perfRafId = requestAnimationFrame(tick); return; }
+        const dt = now - lastT;
+        lastT = now;
+        frames++;
+        if (dt > 33) slowFrames++;
+        const elapsed = now - start;
+        perfTest.progress = Math.min(100, Math.round(elapsed / 100));
+        if (elapsed < 10000) {
+            _perfRafId = requestAnimationFrame(tick);
+        } else {
+            _perfRafId = null;
+            perfTest.running = false;
+            perfTest.progress = 100;
+            const fps = Math.round(frames / (elapsed / 1000));
+            const dropRate = frames ? (slowFrames / frames) * 100 : 0;
+            let level = '流畅';
+            if (dropRate >= 50) level = '重度卡顿';
+            else if (dropRate >= 20) level = '中度卡顿';
+            else if (dropRate >= 5) level = '轻度卡顿';
+
+            // 会话统计
+            const sessionStats = sessions.value.map((s) => {
+                let cardCount = 0;
+                if (s.corpus && s.corpus.boxes) {
+                    Object.keys(s.corpus.boxes).forEach(bk => {
+                        const box = s.corpus.boxes[bk];
+                        if (!box || !Array.isArray(box.groups)) return;
+                        const isParted = (bk === '群聊' || bk === '红包备注');
+                        box.groups.forEach(g => {
+                            const list = isParted ? (g.groups || []) : [g];
+                            list.forEach(inner => { cardCount += (inner.replies || []).length; });
+                        });
+                    });
+                }
+                return { name: s.name, cards: cardCount, msgs: s.messages?.length || 0 };
+            }).sort((a, b) => (b.cards + b.msgs * 5) - (a.cards + a.msgs * 5));
+
+            perfTest.report = {
+                fps,
+                dropRate: Math.round(dropRate),
+                slowFrames,
+                frames,
+                level,
+                dataSize: _estimateDataSize(),
+                imageCount: _countImagesInData(),
+                sessionStats,
+            };
+                        perfTest.showResult = true;
+            nextTick(() => { if (window.lucide) lucide.createIcons(); });
+            showToast('检测完成');
+        }
+    };
+    _perfRafId = requestAnimationFrame(tick);
+};
+
+const stopPerfTest = () => {
+    perfTest.running = false;
+    if (_perfRafId) { cancelAnimationFrame(_perfRafId); _perfRafId = null; }
+};
+
+// 一键优化：清缓存 + 压缩大图
+const runPerfOptimize = async () => {
+    // 立刻关掉报告弹窗，让 loading 立刻可见
+    perfTest.showResult = false;
+    // 1. 清缓存
+    _clearPoolCache();
+    Object.keys(_bgDarkCache).forEach(k => delete _bgDarkCache[k]);
+
+    // 2. 立即弹 loading（先让 UI 渲染，避免"卡住"感）
+    compressProgress.total = 0;
+    compressProgress.current = 0;
+    compressProgress.show = true;
+    nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    await _sleepMs(40);   // 让浏览器先渲染 loading
+
+    const THRESHOLD = 100000;
+    const tasks = [];
+    const _add = (get, set, maxSize, quality) => {
+        const src = get();
+        if (src && typeof src === 'string' && src.startsWith('data:') && src.length >= THRESHOLD) {
+            tasks.push({ get, set, maxSize, quality });
+        }
+    };
+    const _forEachBox = (box, boxName) => {
+        if (!box || !Array.isArray(box.groups)) return;
+        const isParted = (boxName === '群聊' || boxName === '红包备注');
+        box.groups.forEach(g => {
+            const list = isParted ? (g.groups || []) : [g];
+            list.forEach(inner => {
+                (inner.replies || []).forEach((r) => {
+                    if (r.image) _add(() => r.image, v => { r.image = v; }, 480, 0.80);
+                });
+            });
+        });
+    };
+    _add(() => profiles.me.avatar, v => { profiles.me.avatar = v; }, 256, 0.85);
+    sessions.value.forEach((s) => {
+        _add(() => s.avatar, v => { s.avatar = v; }, 256, 0.85);
+        (s.myEmotes || []).forEach((e, i) => _add(() => s.myEmotes[i], v => { s.myEmotes[i] = v; }, 480, 0.80));
+        (s.bgLibrary || []).forEach((b, i) => _add(() => s.bgLibrary[i], v => { s.bgLibrary[i] = v; }, 750, 0.75));
+        (s.callBgImages || []).forEach((b, i) => _add(() => s.callBgImages[i], v => { s.callBgImages[i] = v; }, 750, 0.75));
+        if (s.corpus && s.corpus.boxes) Object.keys(s.corpus.boxes).forEach(bk => _forEachBox(s.corpus.boxes[bk], bk));
+    });
+    Object.keys(sharedBoxes).forEach(bk => _forEachBox(sharedBoxes[bk], bk));
+    (settings.spacePhotos || []).forEach((p, i) => _add(() => settings.spacePhotos[i], v => { settings.spacePhotos[i] = v; }, 750, 0.80));
+
+    compressProgress.total = tasks.length;
+    if (!tasks.length) { compressProgress.show = false; showToast('优化完成，无需压缩图片'); return; }
+    for (const t of tasks) {
+        try {
+            const src = t.get();
+            const res = await fetch(src);
+            const blob = await res.blob();
+            const file = new File([blob], 'x.jpg', { type: blob.type || 'image/jpeg' });
+            const out = await compressImage(file, t.maxSize, t.quality);
+            if (out && out.length < src.length) t.set(out);
+        } catch (e) {}
+        compressProgress.current++;
+        await _sleepMs(0);
+    }
+    compressProgress.show = false;
+    debouncedSave();
+    showToast(`优化完成，共压缩 ${tasks.length} 张图片`);
+};
 // ===== 上传图片自动压缩 =====
 const compressImage = (file, maxSize = 256, quality = 0.85) => {
     return new Promise((resolve, reject) => {
@@ -15722,7 +16144,8 @@ removeGroupMember,
       handleSend,
       forceReply,
       deleteMsg,
-      editAvatar,compressImage,
+      editAvatar,compressImage, compressAllImages,compressProgress,
+perfTest, startPerfTest, stopPerfTest, runPerfOptimize,
       shouldShowAvatar,
       senderName,
       senderAvatar,
