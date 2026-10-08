@@ -129,6 +129,12 @@ body { color: var(--color-text); }
     background: var(--nav-icon-color) !important;
     color: #fff !important;
 }
+        /* 长聊天记录优化：屏外的消息跳过渲染，点进会话不再卡 */
+        #capture-area > div {
+            content-visibility: auto;
+            contain-intrinsic-size: 0 80px;
+        }
+
         /* 强化气泡玻璃拟态，稳定表现 */
         .msg-bubble {
             display: inline-block !important;
@@ -157,6 +163,9 @@ body { color: var(--color-text); }
         .view-leave-to { transform: translateX(-20%); opacity: 0; }
         .fade-enter-active, .fade-leave-active { transition: opacity 1.2s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
+        /* 应用内短弹窗：快速淡入淡出（0.12s，几乎无感） */
+        .dialogfade-enter-active, .dialogfade-leave-active { transition: opacity 0.12s ease; }
+        .dialogfade-enter-from, .dialogfade-leave-to { opacity: 0; }
         .navfade-enter-active, .navfade-leave-active { transition: opacity .25s ease, transform .25s ease; }
         .navfade-enter-from, .navfade-leave-to { opacity: 0; transform: translateY(-4px); }
         /* 输入中：三个跳动的点 */
@@ -267,6 +276,52 @@ body { color: var(--color-text); }
         .call-overlay.call-float { pointer-events: none; }
         .call-overlay.call-float .call-window { pointer-events: auto; }
 
+/* ===== 占卜 · 牌 ===== */
+.divi-card-back {
+    width: 56px; height: 84px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2c2c3a, #1a1a28);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.35);
+    font-size: 18px;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    user-select: none;
+}
+.divi-card-back.picked {
+    border-color: var(--nav-icon-color);
+    box-shadow: 0 0 0 2px var(--nav-icon-color), 0 6px 16px rgba(0,0,0,0.3);
+}
+@keyframes divShuffling {
+    0%, 100% { transform: translate(0,0) rotate(0deg); }
+    25% { transform: translate(-8px,-6px) rotate(-4deg); }
+    50% { transform: translate(8px,6px) rotate(4deg); }
+    75% { transform: translate(-6px,8px) rotate(-3deg); }
+}
+.divi-shuffling { animation: divShuffling 0.6s ease-in-out infinite; }
+@keyframes divRevealIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.divi-reveal-item { animation: divRevealIn 0.4s ease-out both; }
+.divi-msg-card {
+    width: 54px; height: 78px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2c2c3a, #1a1a28);
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 4px;
+    font-size: 11px;
+    line-height: 1.25;
+    color: rgba(255,255,255,0.92);
+    font-family: 'Noto Serif SC', serif;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+}
 /* 右侧滑入动画 */
 .slide-enter-active, .slide-leave-active {
     transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1), opacity 0.3s ease;
@@ -342,7 +397,7 @@ body { color: var(--color-text); }
     </transition>
 
     <!-- 提醒覆盖屏：进入时若有临近的纪念日/月经，显示半透明渐变 + 倒数 -->
-    <transition name="fade">
+    <transition name="dialogfade">
         <div v-if="remind.show" class="remind-overlay" @click="dismissRemind">
             <div class="remind-box">
                 <div v-if="remind.days > 0" class="remind-title">{{ remind.text }}</div>
@@ -354,7 +409,7 @@ body { color: var(--color-text); }
     </transition>
 
     <!-- 邀请居住弹窗（取代原生 prompt，避免 Edge 网页应用里原生弹窗中文乱码） -->
-    <transition name="fade">
+    <transition name="dialogfade">
         <div v-if="inviteModal.show" @click.self="inviteModal.show = false" style="position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;">
             <div class="w-[320px] max-w-[88vw] rounded-2xl bg-surface px-5 py-5 shadow-2xl border border-border" style="color: var(--color-text);">
                 <div class="text-center text-[15px] tracking-[0.2em] mb-4">想邀请谁来居住？</div>
@@ -368,7 +423,7 @@ body { color: var(--color-text); }
     </transition>
 
     <!-- 重命名弹窗（取代原生 prompt，私聊/群聊标题自动区分，避免中文乱码） -->
-    <transition name="fade">
+    <transition name="dialogfade">
         <div v-if="renameModal.show" @click.self="renameModal.show = false" style="position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;">
             <div class="w-[320px] max-w-[88vw] rounded-2xl bg-surface px-5 py-5 shadow-2xl border border-border" style="color: var(--color-text);">
                 <div class="text-center text-[15px] tracking-[0.2em] mb-4">{{ currentSession.type === 'group' ? '为群聊改名' : '为好友改昵称' }}</div>
@@ -382,7 +437,7 @@ body { color: var(--color-text); }
     </transition>
 
     <!-- 通用应用内弹窗（alert / confirm / prompt 统一替换原生弹窗，跟随主题色） -->
-    <transition name="fade">
+    <transition name="dialogfade">
         <div v-if="appDialog.open" @click.self="dialogDismiss" style="position: fixed; inset: 0; z-index: 320; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;">
             <div class="w-[320px] max-w-[88vw] rounded-2xl bg-surface px-5 py-5 shadow-2xl border border-border" style="color: var(--color-text);">
                 <div class="text-center text-[15px] tracking-[0.2em]">{{ appDialog.title }}</div>
@@ -392,6 +447,17 @@ body { color: var(--color-text); }
                     <button v-if="appDialog.type !== 'alert'" @click="dialogDismiss" class="flex-1 py-2.5 rounded-lg border border-border text-[13px] tracking-widest" style="color: var(--color-muted);">作罢</button>
                     <button @click="dialogConfirm" class="flex-1 py-2.5 rounded-lg text-[13px] tracking-[0.2em] text-white" style="background: var(--nav-icon-color);">{{ appDialog.type === 'alert' ? '好的' : '确定' }}</button>
                 </div>
+            </div>
+        </div>
+    </transition>
+    <!-- 版本更新公告 -->
+    <transition name="dialogfade">
+        <div v-if="updateNotice.show" @click.self="closeUpdateNotice" style="position: fixed; inset: 0; z-index: 330; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;">
+            <div class="w-[340px] max-w-[90vw] rounded-2xl bg-surface px-5 py-5 shadow-2xl border border-border" style="color: var(--color-text);">
+                <div class="text-center text-[15px] tracking-[0.2em] mb-1">版本更新</div>
+                <div class="text-[10px] text-muted tracking-widest text-center mb-4">{{ APP_VERSION }}</div>
+                <div class="text-[13px] leading-relaxed whitespace-pre-line max-h-[55vh] overflow-y-auto" style="color: var(--color-text);">{{ UPDATE_NOTES }}</div>
+                <button @click="closeUpdateNotice" class="w-full mt-5 py-2.5 rounded-lg text-[13px] tracking-[0.2em] text-white" style="background: var(--nav-icon-color);">知道了</button>
             </div>
         </div>
     </transition>
@@ -709,7 +775,7 @@ body { color: var(--color-text); }
 
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
                     <div id="capture-area" class="pb-10">
-                        <template v-for="(msg, index) in messages" :key="msg.id">
+                          <template v-for="(msg, index) in visibleMessages" :key="msg.id">
                 <!-- 撤回消息（正常消息外观） -->
     <div v-if="msg.retracted" :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
         <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
@@ -720,25 +786,53 @@ body { color: var(--color-text); }
                 </div>
             </div>
             <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
-                <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
-                    <button @click.stop="toggleRetractExpand(msg)"
-                            class="flex items-center gap-1 px-3 py-1 rounded-full border border-border/60 text-[12px] text-muted hover:bg-bg/50 transition-colors">
-                        <span>{{ retractLabel(msg) }}</span>
-                        <svg viewBox="0 0 24 24" class="w-3 h-3 transition-transform" :class="retractExpandedIds[msg.id] ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 9l6 6 6-6"/>
-                        </svg>
-                    </button>
-                    <div v-if="retractExpandedIds[msg.id]" class="mt-2 px-3 py-2 rounded-lg text-[13px] leading-relaxed space-y-1" style="background:rgba(0,0,0,0.05);">
-                        <div v-for="(c, ci) in retractContents(msg)" :key="ci">（已撤回）{{ c }}</div>
+                                <!-- 撤回半句：气泡显示剩余内容 + 下方小字 -->
+                <template v-if="msg.removedPart">
+                    <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
+                        <div class="leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
+                        <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">{{ msg.tag.type }}</span>
+                            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
+                        </div>
                     </div>
+                                        <button @click.stop="toggleRetractExpand(msg)"
+                            class="mt-1 inline-flex items-center gap-1 text-[10px] tracking-wider whitespace-nowrap self-start"
+                            :class="chatBgDark ? 'text-white/50' : 'text-muted/60'">
+                        <span class="shrink-0">⤺</span>
+                        <span>{{ msg.sender === 'me' ? '你' : senderName(msg.sender) }}撤回了一条消息（{{ retractExpandedIds[msg.id] ? '点击收起' : '点击展开' }}）</span>
+                    </button>
+                    <div v-if="retractExpandedIds[msg.id]" class="mt-1 px-3 py-2 rounded-lg text-[12px] leading-relaxed" style="background:rgba(0,0,0,0.05);">
+                        <span class="text-muted/70">被撤回：</span>{{ msg.removedPart }}
+                    </div>
+                </template>
+
+                <!-- 手动撤回：胶囊 + 展开原文（保持现状） -->
+                <template v-else>
+                    <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
+                        <button @click.stop="toggleRetractExpand(msg)"
+                                class="flex items-center gap-1 px-3 py-1 rounded-full border border-border/60 text-[12px] text-muted hover:bg-bg/50 transition-colors">
+                            <span>{{ retractLabel(msg) }}</span>
+                            <svg viewBox="0 0 24 24" class="w-3 h-3 transition-transform" :class="retractExpandedIds[msg.id] ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </button>
+                        <div v-if="retractExpandedIds[msg.id]" class="mt-2 px-3 py-2 rounded-lg text-[13px] leading-relaxed space-y-1" style="background:rgba(0,0,0,0.05);">
+                            <div v-for="(c, ci) in retractContents(msg)" :key="ci">（已撤回）{{ c }}</div>
+                        </div>
+                        <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">{{ msg.tag.type }}</span>
+                            <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
+                        </div>
+                    </div>
+                </template>
                     <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
                         <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">{{ msg.tag.type }}</span>
                         <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 mt-1 px-1">
-                    <span v-if="msg.dictTag" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
-                    <span v-if="msg.freeCompose" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
+                    <span v-if="msg.dictTag" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
+                    <span v-if="msg.freeCompose && !msg.retracted" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
                     <span class="text-[9px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
                 </div>
             </div>
@@ -920,6 +1014,28 @@ body { color: var(--color-text); }
             </div>
             <div class="bg-white/90 py-2 text-center">
                 <span class="text-[11px] text-muted">点击查看分享内容</span>
+            </div>
+        </div>
+    </div>
+    <!-- 占卜卡片 -->
+        <!-- 占卜卡片 -->
+    <div v-else-if="msg.type === 'divination'" class="flex justify-center mb-4 relative"
+         @contextmenu.prevent="openMsgMenu(msg, $event)"
+         @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
+        <div class="w-72 rounded-2xl overflow-hidden shadow-md border border-border/60 bg-surface p-4">
+            <div class="text-[10px] tracking-widest text-muted/60 mb-3 text-center">🔮 占卜 · {{ msg.diviDeckLabel || '' }}</div>
+            <div class="flex flex-wrap justify-center gap-2 mb-3">
+<div v-for="(c, ci) in (msg.diviCards || [])" :key="ci" class="divi-msg-card">
+    <div>{{ c.name }}</div>
+    <div v-if="c.reversed" class="text-[9px] opacity-60 mt-0.5">逆</div>
+</div>            </div>
+            <div v-if="msg.diviQuestion" class="mb-3">
+                <div class="text-[10px] text-muted/60 tracking-widest mb-1">问题</div>
+                <div class="text-[12px] text-text/90 leading-relaxed whitespace-pre-wrap">{{ msg.diviQuestion }}</div>
+            </div>
+            <div v-if="msg.diviReading" class="pt-3 border-t border-border/40">
+                <div class="text-[10px] text-muted/60 tracking-widest mb-1">我的解读</div>
+                <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap">{{ msg.diviReading }}</div>
             </div>
         </div>
     </div>
@@ -1106,9 +1222,9 @@ body { color: var(--color-text); }
                     </button>
                 </transition>
 
-                <!-- ===== 右侧侧拉面板 ===== -->
+                               <!-- ===== 右侧侧拉面板 ===== -->
                 <transition name="slide">
-                    <div v-if="settingsPanelOpen" class="absolute inset-0 z-[300] flex justify-end" @click.self="settingsPanelOpen = false">
+                    <div v-show="settingsPanelOpen" class="absolute inset-0 z-[300] flex justify-end" @click.self="settingsPanelOpen = false">
                         <!-- 背景遮罩 -->
                         <div class="absolute inset-0 bg-black/40" @click="settingsPanelOpen = false"></div>
                         <!-- 面板主体 -->
@@ -1239,100 +1355,114 @@ body { color: var(--color-text); }
 <!-- ===== 3.4 梦角自由造句（仅私聊） ===== -->
 <div v-if="currentSession && currentSession.type !== 'group'">
     <div class="text-[11px] text-muted tracking-widest mb-2">梦角自由造句</div>
-    <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
-        <!-- 开关 -->
-        <div class="flex items-center justify-between">
-            <span class="text-[13px] text-text">梦角自由造句</span>
-            <button @click="getFreeComposeSettings(currentSession.id).enabled = !getFreeComposeSettings(currentSession.id).enabled; debouncedSave();"
-                    class="w-10 h-5 rounded-full relative transition-colors"
-                    :class="getFreeComposeSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
-                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-                     :class="getFreeComposeSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
-            </button>
-        </div>
-        <!-- 触发概率 -->
-        <div>
-            <div class="flex justify-between text-[11px] text-muted mb-1">
-                <span>触发概率</span>
-                <span>{{ Math.round(getFreeComposeSettings(currentSession.id).prob * 100) }}%</span>
-            </div>
-            <input type="range" min="0" max="100"
-                   :value="getFreeComposeSettings(currentSession.id).prob * 100"
-                   @input="e => { getFreeComposeSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }"
-                   class="w-full" style="accent-color: var(--nav-icon-color);">
-        </div>
-                <!-- 语料来源（书册级，每会话独立） -->
-        <div class="pt-1 border-t border-border/30 space-y-2">
-            <div class="text-[11px] text-muted tracking-widest mb-1">语料来源</div>
-            <template v-for="grp in replySettingsGroups" :key="grp.catName">
-                <div class="flex items-center justify-between mt-2 mb-1 px-1">
-                    <span class="text-[10px] text-muted/70">{{ grp.catName }}</span>
-                    <button @click="toggleAllFreeComposeInCategory(grp.catName, grp.boxes)"
-                            class="text-[10px] text-muted hover:text-text">
-                        {{ grp.boxes.some(b => getFreeComposeWeight(b) > 0) ? '全不选' : '全选' }}
-                    </button>
-                </div>
-                <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-2">
-                    <button @click="toggleFreeComposePool(boxName)"
-                            class="w-4 h-4 rounded border shrink-0 flex items-center justify-center"
-                            :class="getFreeComposeWeight(boxName) > 0 ? 'bg-text border-text' : 'border-border'">
-                        <svg v-if="getFreeComposeWeight(boxName) > 0" viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
-                    </button>
-                    <span class="text-[12px] text-text w-20 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
-                    <input type="range" min="0" max="100"
-                           :value="getFreeComposeWeight(boxName)"
-                           @input="e => setFreeComposeWeight(boxName, e.target.value)"
-                           class="flex-1"
-                           :disabled="getFreeComposeWeight(boxName) === 0"
-                           :style="getFreeComposeWeight(boxName) === 0 ? 'opacity:0.3;' : ''">
-                    <span class="text-[10px] text-muted w-7 text-right tabular-nums shrink-0">{{ getFreeComposeWeight(boxName) }}</span>
-                </div>
-            </template>
-            <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-2">
-                权重按归一化计算（不必凑 100）。权重 0 或未勾选 = 该源不参与。<br>
-                此设置仅对当前会话生效，点「保存设置至所有联系人」可同步到所有会话。
-            </div>
-        </div>
-        <!-- 造句手法 -->
-<div class="pt-1 border-t border-border/30">
-    <div class="flex items-center justify-between mb-2">
-        <span class="text-[11px] text-muted">造句手法</span>
-        <div class="flex items-center gap-2">
-            <button @click="getFreeComposeSettings(currentSession.id).method = Math.max(0, getFreeComposeSettings(currentSession.id).method - 1); debouncedSave();"
-                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
-            <span class="w-8 text-center text-text font-medium">{{ getFreeComposeSettings(currentSession.id).method }}</span>
-            <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(4, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
-                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
-        </div>
-    </div>
-    <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
-        <div>0 = 语气词式：截词补语气词 / 句尾加语气词 / 加逗号 / 删句尾 / 换标点</div>
-        <div>1 = 撤回式：把后半句撤回，保留前缀</div>
-        <div>2 = 换词式：截掉一个词，从字卡里抽一个词补上</div>
-        <div>3 = 换句式：截掉一部分句子，从字卡里抽句子/词补上</div>
-        <div>4 = 混用：以上四种随机</div>
-    </div>
-</div>
+    <div class="bg-bg/50 rounded-xl p-3 border border-border/30">
 
-        <!-- 存公用库概率 -->
-        <div class="pt-1 border-t border-border/30">
-            <div class="flex justify-between text-[11px] text-muted mb-1">
-                <span>存公用库概率（多联系人）</span>
-                <span>{{ Math.round(getFreeComposeSettings(currentSession.id).publicRatio * 100) }}%</span>
-            </div>
-            <input type="range" min="0" max="100"
-                   :value="getFreeComposeSettings(currentSession.id).publicRatio * 100"
-                   @input="e => { getFreeComposeSettings(currentSession.id).publicRatio = e.target.value / 100; debouncedSave(); }"
-                   class="w-full" style="accent-color: var(--nav-icon-color);">
-                        <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
-                单会话时固定存个人版；多会话时按此概率存公共版或个人版
-            </div>
+        <!-- ===== 二级标签 ===== -->
+        <div class="flex gap-1 mb-3 bg-surface/60 border border-border/40 rounded-lg p-1">
+            <button @click="freeComposeSubTab = 'compose'"
+                    class="flex-1 py-1.5 rounded-md text-[11px] tracking-widest transition-colors"
+                    :class="freeComposeSubTab === 'compose' ? 'bg-text text-white' : 'text-muted hover:text-text'">造句手法</button>
+            <button @click="freeComposeSubTab = 'retract'"
+                    class="flex-1 py-1.5 rounded-md text-[11px] tracking-widest transition-colors"
+                    :class="freeComposeSubTab === 'retract' ? 'bg-text text-white' : 'text-muted hover:text-text'">撤回玩法</button>
         </div>
 
-        <!-- ===== 撤回半句 ===== -->
-        <div class="pt-2 border-t border-border/30">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[13px] text-text">启用撤回半句</span>
+        <!-- ========== 面板 A：造句手法 ========== -->
+        <div v-show="freeComposeSubTab === 'compose'" class="space-y-3">
+            <!-- 开关 -->
+            <div class="flex items-center justify-between">
+                <span class="text-[13px] text-text">梦角自由造句</span>
+                <button @click="getFreeComposeSettings(currentSession.id).enabled = !getFreeComposeSettings(currentSession.id).enabled; debouncedSave();"
+                        class="w-10 h-5 rounded-full relative transition-colors"
+                        :class="getFreeComposeSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
+                    <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                         :class="getFreeComposeSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                </button>
+            </div>
+            <!-- 触发概率 -->
+            <div>
+                <div class="flex justify-between text-[11px] text-muted mb-1">
+                    <span>触发概率</span>
+                    <span>{{ Math.round(getFreeComposeSettings(currentSession.id).prob * 100) }}%</span>
+                </div>
+                <input type="range" min="0" max="100"
+                       :value="getFreeComposeSettings(currentSession.id).prob * 100"
+                       @input="e => { getFreeComposeSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }"
+                       class="w-full" style="accent-color: var(--nav-icon-color);">
+            </div>
+            <!-- 语料来源 -->
+            <div class="pt-1 border-t border-border/30 space-y-2">
+                <div class="text-[11px] text-muted tracking-widest mb-1">语料来源</div>
+                <template v-for="grp in replySettingsGroups" :key="grp.catName">
+                    <div class="flex items-center justify-between mt-2 mb-1 px-1">
+                        <span class="text-[10px] text-muted/70">{{ grp.catName }}</span>
+                        <button @click="toggleAllFreeComposeInCategory(grp.catName, grp.boxes)"
+                                class="text-[10px] text-muted hover:text-text">
+                            {{ grp.boxes.some(b => getFreeComposeWeight(b) > 0) ? '全不选' : '全选' }}
+                        </button>
+                    </div>
+                    <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-2">
+                        <button @click="toggleFreeComposePool(boxName)"
+                                class="w-4 h-4 rounded border shrink-0 flex items-center justify-center"
+                                :class="getFreeComposeWeight(boxName) > 0 ? 'bg-text border-text' : 'border-border'">
+                            <svg v-if="getFreeComposeWeight(boxName) > 0" viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                        <span class="text-[12px] text-text w-20 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
+                        <input type="range" min="0" max="100"
+                               :value="getFreeComposeWeight(boxName)"
+                               @input="e => setFreeComposeWeight(boxName, e.target.value)"
+                               class="flex-1"
+                               :disabled="getFreeComposeWeight(boxName) === 0"
+                               :style="getFreeComposeWeight(boxName) === 0 ? 'opacity:0.3;' : ''">
+                        <span class="text-[10px] text-muted w-7 text-right tabular-nums shrink-0">{{ getFreeComposeWeight(boxName) }}</span>
+                    </div>
+                </template>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-2">
+                    权重按归一化计算（不必凑 100）。权重 0 或未勾选 = 该源不参与。<br>
+                    此设置仅对当前会话生效，点「保存设置至所有联系人」可同步到所有会话。
+                </div>
+            </div>
+            <!-- 造句手法 -->
+            <div class="pt-1 border-t border-border/30">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] text-muted">造句手法</span>
+                    <div class="flex items-center gap-2">
+                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.max(0, getFreeComposeSettings(currentSession.id).method - 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                        <span class="w-8 text-center text-text font-medium">{{ getFreeComposeSettings(currentSession.id).method }}</span>
+                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(4, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
+                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                    </div>
+                </div>
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                    <div>0 = 语气词式：截词补语气词 / 句尾加语气词 / 加逗号 / 删句尾 / 换标点</div>
+                    <div>1 = 撤回式：把后半句撤回，保留前缀</div>
+                    <div>2 = 换词式：截掉一个词，从字卡里抽一个词补上</div>
+                    <div>3 = 换句式：截掉一部分句子，从字卡里抽句子/词补上</div>
+                    <div>4 = 混用：以上四种随机</div>
+                </div>
+            </div>
+            <!-- 存公用库概率 -->
+            <div class="pt-1 border-t border-border/30">
+                <div class="flex justify-between text-[11px] text-muted mb-1">
+                    <span>存公用库概率（多联系人）</span>
+                    <span>{{ Math.round(getFreeComposeSettings(currentSession.id).publicRatio * 100) }}%</span>
+                </div>
+                <input type="range" min="0" max="100"
+                       :value="getFreeComposeSettings(currentSession.id).publicRatio * 100"
+                       @input="e => { getFreeComposeSettings(currentSession.id).publicRatio = e.target.value / 100; debouncedSave(); }"
+                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
+                    单会话时固定存个人版；多会话时按此概率存公共版或个人版
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 面板 B：撤回玩法 ========== -->
+        <div v-show="freeComposeSubTab === 'retract'" class="space-y-3">
+            <!-- 总开关 -->
+            <div class="flex items-center justify-between">
+                <span class="text-[13px] text-text">启用撤回玩法</span>
                 <button @click="getRetractSettings(currentSession.id).retractEnabled = !getRetractSettings(currentSession.id).retractEnabled; debouncedSave();"
                         class="w-10 h-5 rounded-full relative transition-colors"
                         :class="getRetractSettings(currentSession.id).retractEnabled ? 'bg-text' : 'bg-border'">
@@ -1340,34 +1470,73 @@ body { color: var(--color-text); }
                          :class="getRetractSettings(currentSession.id).retractEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
                 </button>
             </div>
-            <div v-if="getRetractSettings(currentSession.id).retractEnabled">
-                <div class="flex justify-between text-[11px] text-muted mb-1">
-                    <span>撤回概率</span>
-                    <span>{{ Math.round(getRetractSettings(currentSession.id).retractProb * 100) }}%</span>
-                </div>
-                <input type="range" min="0" max="100"
-                       :value="getRetractSettings(currentSession.id).retractProb * 100"
-                       @input="e => { getRetractSettings(currentSession.id).retractProb = e.target.value / 100; debouncedSave(); }"
-                       class="w-full mb-3" style="accent-color: var(--nav-icon-color);">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] text-muted">撤回手法</span>
-                    <div class="flex items-center gap-2">
-                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
-                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
-                        <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
-                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
-                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+
+            <template v-if="getRetractSettings(currentSession.id).retractEnabled">
+                <!-- 触发概率（独立于造句） -->
+                <div>
+                    <div class="flex justify-between text-[11px] text-muted mb-1">
+                        <span>触发概率（独立于造句）</span>
+                        <span>{{ Math.round((getRetractSettings(currentSession.id).retractTriggerProb || 0) * 100) }}%</span>
+                    </div>
+                    <input type="range" min="0" max="100"
+                           :value="(getRetractSettings(currentSession.id).retractTriggerProb || 0) * 100"
+                           @input="e => { getRetractSettings(currentSession.id).retractTriggerProb = e.target.value / 100; debouncedSave(); }"
+                           class="w-full" style="accent-color: var(--nav-icon-color);">
+                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
+                        每次 TA 回复时掷一次；中了走下面的模式，没中就照常走造句
                     </div>
                 </div>
-                <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
-                    <div>1 = 按所有标点拆，随机撤段</div>
-                    <div>2 = 按字数随机撤前/后</div>
-                    <div>3 = 混合（1 或 2 随机）</div>
+
+                                <!-- 撤回模式：数字选择 + i 说明 -->
+                <div class="pt-2 border-t border-border/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] text-muted">撤回模式</span>
+                            <button @click="showRetractModeHelp()"
+                                    class="w-4 h-4 rounded-full border border-border text-muted hover:text-text flex items-center justify-center text-[10px] leading-none shrink-0"
+                                    title="查看说明">i</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="getRetractSettings(currentSession.id).retractMode = Math.max(1, (getRetractSettings(currentSession.id).retractMode || 1) - 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                            <span class="w-10 text-center text-text font-medium">
+                                {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span>
+                            </span>
+                            <button @click="getRetractSettings(currentSession.id).retractMode = Math.min(4, (getRetractSettings(currentSession.id).retractMode || 1) + 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                               <!-- 撤回手法 -->
+                <div class="pt-2 border-t border-border/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] text-muted">撤回手法</span>
+                            <button @click="showRetractMethodHelp()"
+                                    class="w-4 h-4 rounded-full border border-border text-muted hover:text-text flex items-center justify-center text-[10px] leading-none shrink-0"
+                                    title="查看说明">i</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                            <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
+                            <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                        <div>1 = 按所有标点拆，随机撤段</div>
+                        <div>2 = 按字数随机撤前/后</div>
+                        <div>3 = 混合（1 或 2 随机）</div>
+                    </div>
+                </div>
+            </template>
         </div>
+
     </div>
 </div>
+
 <!-- ===== 3.4b 梦角自由造句·卷宗管理（仅私聊） ===== -->
 <div v-if="currentSession && currentSession.type !== 'group'">
     <div class="text-[11px] text-muted tracking-widest mb-2">卷宗管理</div>
@@ -1536,10 +1705,11 @@ body { color: var(--color-text); }
             抓取：TA 会把你的话收进「公共梦角自由造句」
         </div>
 
-        <!-- ===== 撤回半句 ===== -->
-        <div class="pt-2 border-t border-border/30">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[13px] text-text">启用撤回半句</span>
+                <!-- ===== 撤回玩法（群聊） ===== -->
+        <div class="pt-2 border-t border-border/30 space-y-3">
+            <!-- 总开关 -->
+            <div class="flex items-center justify-between">
+                <span class="text-[13px] text-text">启用撤回玩法</span>
                 <button @click="getRetractSettings(currentSession.id).retractEnabled = !getRetractSettings(currentSession.id).retractEnabled; debouncedSave();"
                         class="w-10 h-5 rounded-full relative transition-colors"
                         :class="getRetractSettings(currentSession.id).retractEnabled ? 'bg-text' : 'bg-border'">
@@ -1547,31 +1717,64 @@ body { color: var(--color-text); }
                          :class="getRetractSettings(currentSession.id).retractEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
                 </button>
             </div>
-            <div v-if="getRetractSettings(currentSession.id).retractEnabled">
-                <div class="flex justify-between text-[11px] text-muted mb-1">
-                    <span>撤回概率</span>
-                    <span>{{ Math.round(getRetractSettings(currentSession.id).retractProb * 100) }}%</span>
-                </div>
-                <input type="range" min="0" max="100"
-                       :value="getRetractSettings(currentSession.id).retractProb * 100"
-                       @input="e => { getRetractSettings(currentSession.id).retractProb = e.target.value / 100; debouncedSave(); }"
-                       class="w-full mb-3" style="accent-color: var(--nav-icon-color);">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] text-muted">撤回手法</span>
-                    <div class="flex items-center gap-2">
-                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
-                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
-                        <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
-                        <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
-                                class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+
+            <template v-if="getRetractSettings(currentSession.id).retractEnabled">
+                <!-- 触发概率（独立于造句） -->
+                <div>
+                    <div class="flex justify-between text-[11px] text-muted mb-1">
+                        <span>触发概率（独立于造句）</span>
+                        <span>{{ Math.round((getRetractSettings(currentSession.id).retractTriggerProb || 0) * 100) }}%</span>
+                    </div>
+                    <input type="range" min="0" max="100"
+                           :value="(getRetractSettings(currentSession.id).retractTriggerProb || 0) * 100"
+                           @input="e => { getRetractSettings(currentSession.id).retractTriggerProb = e.target.value / 100; debouncedSave(); }"
+                           class="w-full" style="accent-color: var(--nav-icon-color);">
+                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-1">
+                        每个群成员被掷到回复时，各自掷一次；中了走下面的模式，没中就照常走造句
                     </div>
                 </div>
-                <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
-                    <div>1 = 按所有标点拆，随机撤段</div>
-                    <div>2 = 按字数随机撤前/后</div>
-                    <div>3 = 混合（1 或 2 随机）</div>
+
+                <!-- 撤回模式：数字选择 + i 说明 -->
+                <div class="pt-2 border-t border-border/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] text-muted">撤回模式</span>
+                            <button @click="showRetractModeHelp()"
+                                    class="w-4 h-4 rounded-full border border-border text-muted hover:text-text flex items-center justify-center text-[10px] leading-none shrink-0"
+                                    title="查看说明">i</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="getRetractSettings(currentSession.id).retractMode = Math.max(1, (getRetractSettings(currentSession.id).retractMode || 1) - 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                            <span class="w-10 text-center text-text font-medium">
+                                {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span>
+                            </span>
+                            <button @click="getRetractSettings(currentSession.id).retractMode = Math.min(4, (getRetractSettings(currentSession.id).retractMode || 1) + 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- 撤回手法 -->
+                <div class="pt-2 border-t border-border/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] text-muted">撤回手法</span>
+                            <button @click="showRetractMethodHelp()"
+                                    class="w-4 h-4 rounded-full border border-border text-muted hover:text-text flex items-center justify-center text-[10px] leading-none shrink-0"
+                                    title="查看说明">i</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="getRetractSettings(currentSession.id).retractMethod = Math.max(1, getRetractSettings(currentSession.id).retractMethod - 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
+                            <span class="w-8 text-center text-text font-medium">{{ getRetractSettings(currentSession.id).retractMethod }}</span>
+                            <button @click="getRetractSettings(currentSession.id).retractMethod = Math.min(3, getRetractSettings(currentSession.id).retractMethod + 1); debouncedSave();"
+                                    class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+     
         </div>
     </div>
 </div>
@@ -1830,9 +2033,9 @@ body { color: var(--color-text); }
                     </main>
                 </div>
 
-                <!-- ===== 字卡页面的侧拉面板 ===== -->
+                                <!-- ===== 字卡页面的侧拉面板 ===== -->
                 <transition name="slide">
-                    <div v-if="libPanelOpen" class="absolute inset-0 z-[300] flex justify-end" @click.self="libPanelOpen = false">
+                    <div v-show="libPanelOpen" class="absolute inset-0 z-[300] flex justify-end" @click.self="libPanelOpen = false">
                         <div class="absolute inset-0 bg-black/40" @click="libPanelOpen = false"></div>
                         <div class="relative w-[300px] max-w-[85vw] h-full bg-surface shadow-2xl flex flex-col" style="background:var(--color-surface);z-index:1;">
                             <div class="flex items-center justify-between px-4 py-4 border-b border-border/50 shrink-0">
@@ -2456,6 +2659,191 @@ body { color: var(--color-text); }
             </div>
 
             <!--（洞察板块已移除）-->
+            <!-- 占卜 -->
+            <div v-else-if="currentView === 'divination'" key="divination" class="absolute inset-0 flex flex-col z-20 bg-bg">
+                <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
+                    <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
+                    <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text">占卜</span>
+                    <span class="w-9"></span>
+                </header>
+                <div class="shrink-0 bg-surface border-b border-border/40 px-3 py-2 flex gap-1.5 overflow-x-auto" style="scrollbar-width:none;">
+                    <button v-for="t in [{k:'draw',label:'现在抽牌'},{k:'records',label:'记录结果'},{k:'review',label:'复盘分析'},{k:'manage',label:'牌组管理'}]"
+                            :key="t.k"
+                            @click="divinationTab = t.k"
+                            class="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+                            :class="divinationTab === t.k ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
+                        {{ t.label }}
+                    </button>
+                </div>
+                <main class="flex-1 overflow-y-auto p-4">
+                                        <div v-if="divinationTab === 'draw'" class="space-y-4">
+                        <!-- setup -->
+                        <div v-if="divinationDraw.stage === 'setup'" class="space-y-4">
+                            <div class="bg-surface border border-border rounded-xl p-4">
+                                <div class="text-[11px] text-muted tracking-widest mb-2">选择牌组</div>
+                                <div class="flex gap-2">
+                                    <button @click="divinationDraw.deck = 'tarot'"
+                                            class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                            :class="divinationDraw.deck === 'tarot' ? 'bg-text text-white' : 'bg-bg text-muted'">塔罗</button>
+                                    <button @click="divinationDraw.deck = 'lenormand'"
+                                            class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                            :class="divinationDraw.deck === 'lenormand' ? 'bg-text text-white' : 'bg-bg text-muted'">雷诺曼</button>
+                                </div>
+                            </div>
+                            <div class="bg-surface border border-border rounded-xl p-4">
+                                <div class="text-[11px] text-muted tracking-widest mb-2">抽几张</div>
+                                <div class="flex gap-2">
+                                    <button v-for="n in [1, 3, 5]"
+                                            :key="'c' + n"
+                                            @click="divinationDraw.count = n"
+                                            class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                            :class="divinationDraw.count === n ? 'bg-text text-white' : 'bg-bg text-muted'">{{ n }} 张</button>
+                                </div>
+                            </div>
+                            <div class="bg-surface border border-border rounded-xl p-4">
+                                <div class="text-[11px] text-muted tracking-widest mb-2">这次想问什么（选填）</div>
+                                <textarea v-model="divinationDraw.question" rows="3"
+                                          class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none"
+                                          placeholder="例如：这段关系会往哪里走？"></textarea>
+                            </div>
+                            <button @click="startDivinationShuffle" class="w-full py-3 rounded-xl text-white text-[13px] tracking-widest" style="background:var(--nav-icon-color);">开始洗牌</button>
+                        </div>
+                        <!-- shuffling -->
+                        <div v-else-if="divinationDraw.stage === 'shuffling'" class="flex flex-col items-center justify-center py-20 gap-6">
+                            <div class="relative" style="width:120px; height:140px;">
+                                <div class="absolute divi-card-back divi-shuffling" style="left:20px; top:20px;"></div>
+                                <div class="absolute divi-card-back divi-shuffling" style="left:30px; top:20px; animation-delay:0.15s;"></div>
+                                <div class="absolute divi-card-back divi-shuffling" style="left:40px; top:20px; animation-delay:0.3s;"></div>
+                            </div>
+                            <div class="text-[12px] text-muted tracking-widest">洗牌中…</div>
+                        </div>
+                        <!-- pick -->
+                        <div v-else-if="divinationDraw.stage === 'pick'" class="space-y-4">
+                            <div class="text-center text-[12px] text-muted tracking-widest">
+                                选择 {{ divinationDraw.count }} 张 · 已选 {{ divinationDraw.picked.length }} / {{ divinationDraw.count }}
+                            </div>
+                            <div class="bg-surface border border-border rounded-xl p-3" style="min-height:300px;">
+                                <div class="flex flex-wrap justify-center gap-2">
+                                    <div v-for="(card, idx) in divinationDraw.shuffled" :key="card.id"
+                                         class="divi-card-back"
+                                         :class="{ picked: divinationDraw.picked.includes(idx) }"
+                                         :style="cardBackRandomStyle(idx)"
+                                         @click="togglePickCard(idx)">✦</div>
+                                </div>
+                            </div>
+                            <button @click="confirmDivinationDraw"
+                                    :disabled="divinationDraw.picked.length !== divinationDraw.count"
+                                    class="w-full py-3 rounded-xl text-white text-[13px] tracking-widest disabled:opacity-40"
+                                    style="background:var(--nav-icon-color);">确认抽牌</button>
+                        </div>
+                        <!-- reveal -->
+                        <div v-else-if="divinationDraw.stage === 'reveal'" class="space-y-4">
+                            <div v-for="(card, idx) in pickedCards" :key="card.id"
+                                 class="divi-reveal-item bg-surface border border-border rounded-xl p-4"
+                                 :style="{ animationDelay: (idx * 0.08) + 's' }">
+                                <div class="text-[16px] font-medium tracking-wider mb-2" style="font-family:'Noto Serif SC',serif;">
+    {{ card.name }}
+    <span v-if="card.reversed" class="text-[11px] text-muted ml-1 align-middle">· 逆位</span>
+    <span v-else class="text-[11px] text-muted ml-1 align-middle">· 正位</span>
+</div>
+                                <div class="space-y-2">
+                                    <div v-for="m in card.meanings" :key="m.id" class="text-[12px] leading-relaxed text-text/90">{{ m.text }}</div>
+                                    <div v-if="!card.meanings || !card.meanings.length" class="text-[11px] text-muted/60">（暂无牌意）</div>
+                                </div>
+                            </div>
+                            <div v-if="divinationDraw.question.trim()" class="bg-surface border border-border rounded-xl p-4">
+                                <div class="text-[11px] text-muted tracking-widest mb-2">我的问题</div>
+                                <div class="text-[13px] text-text leading-relaxed whitespace-pre-wrap">{{ divinationDraw.question }}</div>
+                            </div>
+                            <div class="bg-surface border border-border rounded-xl p-4">
+                                <div class="text-[11px] text-muted tracking-widest mb-2">我的解读</div>
+                                <textarea v-model="divinationDraw.userReading" rows="5"
+                                          class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none"
+                                          placeholder="写下此刻的想法…"></textarea>
+                            </div>
+                            <div class="bg-surface border border-border rounded-xl p-4 space-y-3">
+                                <label class="flex items-center justify-between cursor-pointer">
+                                    <span class="text-[13px] text-text">同步发送到聊天框</span>
+                                    <input type="checkbox" v-model="divinationDraw.syncToChat" class="accent-text">
+                                </label>
+                                <div v-if="divinationDraw.syncToChat" class="flex flex-wrap gap-2">
+                                    <button v-for="s in sessions" :key="s.id"
+                                            @click="toggleSyncTarget(s.id)"
+                                            class="px-3 py-1.5 rounded-full text-[11px] border transition-colors"
+                                            :class="divinationDraw.syncTargets.includes(s.id) ? 'border-text bg-bg text-text' : 'border-border text-muted'">{{ s.name }}</button>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="resetDivinationDraw" class="flex-1 py-3 rounded-xl border border-border text-[13px] text-muted">再来一次</button>
+                                <button @click="saveDivinationDraw" class="flex-1 py-3 rounded-xl text-white text-[13px] tracking-widest" style="background:var(--nav-icon-color);">保存记录</button>
+                            </div>
+                        </div>
+                    </div>
+                                        <div v-else-if="divinationTab === 'records'" class="space-y-4">
+                        <div class="flex gap-1.5 overflow-x-auto" style="scrollbar-width:none;">
+                            <button v-for="t in [{k:'tarot',label:'塔罗'},{k:'lenormand',label:'雷诺曼'},{k:'illuminism',label:'照明之秘'}]"
+                                    :key="t.k"
+                                    @click="divinationRecordsTab = t.k"
+                                    class="shrink-0 px-3 py-1.5 rounded-full text-[11px] tracking-widest transition-colors"
+                                    :class="divinationRecordsTab === t.k ? 'bg-text text-white' : 'bg-surface border border-border text-muted hover:text-text'">{{ t.label }}</button>
+                        </div>
+                        <button v-if="divinationRecordsTab === 'illuminism'"
+                                @click="openIllumRecord"
+                                class="w-full py-2.5 rounded-lg border border-dashed border-border text-[12px] text-muted hover:text-text hover:border-muted transition-colors flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[1.5]"></i> 手动补录
+                        </button>
+                        <div v-if="!filteredDivinationRecords.length" class="text-center text-xs text-muted/60 py-16">暂无记录</div>
+                        <div v-for="r in filteredDivinationRecords" :key="r.id"
+                             class="bg-surface border border-border rounded-xl p-4 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] tracking-widest text-muted/70">{{ r.deckLabel || r.deck }}</span>
+                                <span class="text-[10px] text-muted/70 tabular-nums">{{ formatDiviTime(r.drawnAt) }}</span>
+                            </div>
+                            <div v-if="r.question" class="text-[12px] text-text/80 leading-relaxed">
+                                <span class="text-muted/60 mr-1">问：</span>{{ r.question }}
+                            </div>
+                            <div class="text-[13px] text-text font-medium leading-relaxed" style="font-family:'Noto Serif SC',serif;">{{ diviRecordCardLine(r) }}</div>
+                            <div v-if="r.userReading" class="pt-2 border-t border-border/40">
+                                <div class="text-[10px] text-muted/60 tracking-widest mb-1">我的解读</div>
+                                <div class="text-[12px] text-text/90 leading-relaxed whitespace-pre-wrap">{{ r.userReading }}</div>
+                            </div>
+                            <div class="flex justify-end pt-1">
+                                <button @click="deleteDivinationRecord(r.id)"
+                                        class="text-[11px] text-red-400 hover:text-red-500">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                                        <div v-else-if="divinationTab === 'review'" class="space-y-4">
+                        <div class="text-[11px] text-muted/70 leading-relaxed px-1">点击记录里的牌名，可以为这张牌补充牌意或案例。任意牌的管理在「牌组管理」。</div>
+                        <div v-if="!divination.records.length" class="text-center text-xs text-muted/60 py-16">暂无记录</div>
+                        <div v-for="r in divination.records.slice().sort((a,b) => b.drawnAt - a.drawnAt)" :key="r.id"
+                             class="bg-surface border border-border rounded-xl p-4 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] tracking-widest text-muted/70">{{ r.deckLabel || r.deck }}</span>
+                                <span class="text-[10px] text-muted/70 tabular-nums">{{ formatDiviTime(r.drawnAt) }}</span>
+                            </div>
+                            <div v-if="r.question" class="text-[12px] text-text/80 leading-relaxed">
+                                <span class="text-muted/60 mr-1">问：</span>{{ r.question }}
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="(c, ci) in (r.cards || [])" :key="ci"
+                                        @click="openCardReview(r.deck, c.cardId)"
+                                        class="px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+                                        :class="c.cardId ? 'border-border bg-bg text-text hover:border-text' : 'border-border text-muted'"
+                                        style="font-family:'Noto Serif SC',serif;">
+                                    {{ c.name }}<span v-if="c.reversed" class="text-[10px] opacity-60 ml-0.5">逆</span>
+                                </button>
+                            </div>
+                            <div v-if="r.userReading" class="pt-2 border-t border-border/40">
+                                <div class="text-[10px] text-muted/60 tracking-widest mb-1">我的解读</div>
+                                <div class="text-[12px] text-text/90 leading-relaxed whitespace-pre-wrap">{{ r.userReading }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else-if="divinationTab === 'manage'" class="text-center text-xs text-muted/60 py-20">牌组管理 · 待实现</div>
+                </main>
+            </div>
+
 
            <!-- 荷包视图（钱） -->
 <div v-else-if="currentView === 'money'" key="money" class="absolute inset-0 flex flex-col z-20 bg-bg">
@@ -4540,6 +4928,82 @@ body { color: var(--color-text); }
         </div>
     </div>
 </div>
+<!-- ===== 复盘：牌意编辑弹窗 ===== -->
+<div v-if="divinationReviewModal.show" class="redpacket-overlay" style="z-index:280;" @click.self="divinationReviewModal.show = false">
+    <div class="redpacket-card" style="width:360px;max-width:92vw;max-height:85vh;display:flex;flex-direction:column;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;flex-shrink:0;">
+            <div class="text-white text-sm font-medium tracking-wider">{{ reviewCardRef ? reviewCardRef.name : '牌' }}</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:14px;overflow-y:auto;flex:1;">
+            <template v-if="reviewCardRef">
+                <div class="text-[10px] text-muted tracking-widest mb-2">现有牌意 · {{ (reviewCardRef.meanings || []).length }} 条</div>
+                <div v-if="!(reviewCardRef.meanings || []).length" class="text-[12px] text-muted/60 text-center py-4">还没有牌意</div>
+                <div v-for="m in (reviewCardRef.meanings || [])" :key="m.id"
+                     class="border border-border/50 rounded-lg p-3 mb-2 bg-bg/40">
+                    <div class="text-[13px] text-text leading-relaxed">{{ m.text }}</div>
+                    <div v-if="(m.cases || []).length" class="mt-2 pt-2 border-t border-border/30 space-y-1">
+                        <div v-for="(cs, csIdx) in m.cases" :key="csIdx" class="flex items-start gap-1.5 text-[11px]">
+                            <span class="text-muted/60 shrink-0">{{ formatCaseDate(cs.date) }}</span>
+                            <span class="text-text/80 flex-1">{{ cs.note }}</span>
+                            <button @click="deleteCaseFromMeaning(m.id, csIdx)" class="text-red-400 shrink-0">×</button>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between">
+                        <button @click="startAddCase(m.id)" class="text-[11px] text-text underline underline-offset-2">
+                            {{ divinationReviewModal.newCaseFor === m.id ? '取消' : '加案例' }}
+                        </button>
+                        <button @click="deleteMeaningFromCard(m.id)" class="text-[11px] text-red-400">删除牌意</button>
+                    </div>
+                    <div v-if="divinationReviewModal.newCaseFor === m.id" class="mt-2 flex gap-2">
+                        <input v-model="divinationReviewModal.newCaseText" type="text"
+                               class="flex-1 bg-surface border border-border rounded-lg px-2 py-1.5 text-[12px]"
+                               placeholder="这次的案例…">
+                        <button @click="saveCaseToMeaning" class="px-3 py-1.5 rounded-lg text-white text-[12px]" style="background:var(--nav-icon-color);">保存</button>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-border/40">
+                    <div class="text-[10px] text-muted tracking-widest mb-2">加一条新牌意</div>
+                    <textarea v-model="divinationReviewModal.newMeaningText" rows="3"
+                              class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-2"
+                              placeholder="写下对这张牌的理解…"></textarea>
+                    <button @click="addMeaningToCard" class="w-full py-2 rounded-lg text-white text-[12px] tracking-widest" style="background:var(--nav-icon-color);">加入牌意库</button>
+                </div>
+            </template>
+            <template v-else>
+                <div class="text-center text-[12px] text-muted/60 py-6">牌组里找不到这张牌</div>
+            </template>
+        </div>
+        <div class="px-4 pb-4 flex-shrink-0">
+            <button @click="divinationReviewModal.show = false" class="w-full py-2.5 rounded-lg text-[13px] border border-border text-muted">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ===== 照明之秘 手动补录弹窗 ===== -->
+<div v-if="illumRecordModal.show" class="redpacket-overlay" style="z-index:280;" @click.self="illumRecordModal.show = false">
+    <div class="redpacket-card" style="width:340px;">
+        <div class="redpacket-card-top" style="padding-bottom:12px;">
+            <div class="text-white text-sm font-medium tracking-wider">照明之秘 · 补录</div>
+        </div>
+        <div class="redpacket-card-bottom" style="text-align:left;padding:14px;max-height:70vh;overflow-y:auto;">
+            <div class="text-[10px] text-muted mb-1">问题（选填）</div>
+            <textarea v-model="illumRecordModal.question" rows="2"
+                      class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-3"
+                      placeholder="这次想问什么…"></textarea>
+            <div class="text-[10px] text-muted mb-1">牌名（一行一张，可带方向，如「昕旦 · 正」）</div>
+            <textarea v-model="illumRecordModal.namesText" rows="5"
+                      class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-3"
+                      placeholder="昕旦&#10;第二张&#10;…"></textarea>
+            <div class="text-[10px] text-muted mb-1">我的解读（选填）</div>
+            <textarea v-model="illumRecordModal.reading" rows="4"
+                      class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-4"
+                      placeholder="写下此刻的想法…"></textarea>
+            <div class="flex gap-2">
+                <button @click="illumRecordModal.show = false" class="flex-1 py-2.5 rounded-lg text-[13px] border border-border text-muted">取消</button>
+                <button @click="saveIllumRecord" class="flex-1 py-2.5 rounded-lg text-white text-[13px] tracking-wider" style="background:var(--nav-icon-color);">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- ===== 全局长按菜单（fixed 定位跟随坐标） ===== -->
 <div v-if="msgMenu.show"
      class="msg-menu-bar fixed z-[400] bg-[#2c2c2c] rounded-lg shadow-xl px-1 py-1 flex flex-col gap-0.5"
@@ -4564,7 +5028,7 @@ body { color: var(--color-text); }
 </transition>
 
 <!-- ===== 卡顿自检：结果弹窗 ===== -->
-<transition name="fade">
+<transition name="dialogfade">
     <div v-if="perfTest.showResult && perfTest.report" class="fixed inset-0 z-[400] flex items-center justify-center" style="background: rgba(0,0,0,0.45);" @click.self="perfTest.showResult = false">
         <div class="bg-surface rounded-2xl shadow-2xl flex flex-col" style="width: 92vw; max-width: 360px; max-height: 82vh;">
             <div class="px-5 pt-4 pb-2 shrink-0">
@@ -4892,6 +5356,84 @@ if (typeof Vue === 'undefined') {
 }
 const { createApp, ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
 const genId = () => Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 6);
+
+const DIVINATION_DECKS_DATA = {
+  tarot: {
+    label: '塔罗',
+    cards: [
+      { id: 't-0', name: '愚者', meanings: [{ id: 't-0-m1', text: '新的开始、纯真无邪、冒险精神、自由自在。你正站在一段旅程的起点，前方未知但充满可能。放下过往包袱，以开放心态迎接。提醒你不要过分算计，相信直觉与命运。', cases: [] }] },
+      { id: 't-1', name: '魔术师', meanings: [{ id: 't-1-m1', text: '创造力、行动力、资源整合、专注。你拥有实现目标所需的一切工具与能力，现在是把想法变为行动的时刻。集中注意力，自信地展示自己，别浪费天赋。', cases: [] }] },
+      { id: 't-2', name: '女祭司', meanings: [{ id: 't-2-m1', text: '直觉、潜意识、内在智慧、神秘。答案不在外部，而在你内心深处。适合静心、冥想、倾听内在声音。也代表隐藏的信息或未说出口的真相。', cases: [] }] },
+      { id: 't-3', name: '皇后', meanings: [{ id: 't-3-m1', text: '丰盛、母性、创造力、感官享受。代表滋养与关怀，也代表物质与情感的丰收。适合享受生活、照顾自己或他人，孕育新的可能，让丰盛自然流动。', cases: [] }] },
+      { id: 't-4', name: '皇帝', meanings: [{ id: 't-4-m1', text: '权威、秩序、结构、掌控。代表稳定的领导力与规则的建立。你需要在混乱中建立秩序，用理性与纪律来推动事情，但也要避免过于僵化。', cases: [] }] },
+      { id: 't-5', name: '教皇', meanings: [{ id: 't-5-m1', text: '传统、信仰、指导、团体。代表遵循既有的规范与智慧，或寻求一位导师的指引。也提醒你尊重传统，但不要被教条束缚，找到自己的信仰。', cases: [] }] },
+      { id: 't-6', name: '恋人', meanings: [{ id: 't-6-m1', text: '爱情、结合、选择、价值观。代表一段深刻的关系或一个重大的选择。你的决定应基于内心真实的价值，而非外在压力。也代表灵魂层面的共鸣。', cases: [] }] },
+      { id: 't-7', name: '战车', meanings: [{ id: 't-7-m1', text: '意志力、前进、胜利、掌控方向。你有足够的力量克服障碍，只要保持专注与决心。代表通过自律取得的成功，方向明确就别回头。', cases: [] }] },
+      { id: 't-8', name: '力量', meanings: [{ id: 't-8-m1', text: '内在力量、勇气、耐心、温柔的掌控。不是靠蛮力，而是靠柔软与坚持来驯服困难。代表对自我情绪与欲望的掌控，用爱而非强制去化解。', cases: [] }] },
+      { id: 't-9', name: '隐者', meanings: [{ id: 't-9-m1', text: '独处、内省、寻求真理、内在指引。适合退一步、远离喧嚣，寻找自己的答案。代表一位智者或一段孤独但充实的时期，独处不等于孤单。', cases: [] }] },
+      { id: 't-10', name: '命运之轮', meanings: [{ id: 't-10-m1', text: '转折、循环、命运、机会。事情正在发生变化，可能是好运也可能是挑战。代表一个周期的结束与新的开始，顺势而为，别逆流而上。', cases: [] }] },
+      { id: 't-11', name: '正义', meanings: [{ id: 't-11-m1', text: '公平、平衡、因果、诚实。你的行为会带来相应的结果。代表需要做出公正的判断，或面对法律、合约等事务。诚实面对自己，也诚实面对他人。', cases: [] }] },
+      { id: 't-12', name: '倒吊人', meanings: [{ id: 't-12-m1', text: '暂停、牺牲、新视角、等待。代表暂时的停滞是为了更好的转机。换一个角度看问题，可能会有新的领悟，别急着推进。', cases: [] }] },
+      { id: 't-13', name: '死神', meanings: [{ id: 't-13-m1', text: '结束、转变、放下、重生。代表一个阶段的彻底结束，为新的事物腾出空间。虽然痛苦，但必要。放下旧的，才能迎接新的。', cases: [] }] },
+      { id: 't-14', name: '节制', meanings: [{ id: 't-14-m1', text: '平衡、耐心、调和、中庸。代表不同力量的融合与调适。适合放慢脚步，找到内心的平衡点，别走极端。', cases: [] }] },
+      { id: 't-15', name: '恶魔', meanings: [{ id: 't-15-m1', text: '束缚、欲望、物质主义、阴影。代表被某种东西控制——可能是习惯、关系、金钱或恐惧。提醒你审视自己的执念，看见即解脱的开始。', cases: [] }] },
+      { id: 't-16', name: '高塔', meanings: [{ id: 't-16-m1', text: '突变、崩塌、觉醒、解放。代表突然的冲击或意外的改变，虽然痛苦，但会打破旧的、不健康的结构，为真相让路。', cases: [] }] },
+      { id: 't-17', name: '星星', meanings: [{ id: 't-17-m1', text: '希望、治愈、信念、灵感。代表在困难之后的平静与希望。你正在走向正确的方向，保持信心，宇宙在支持你。', cases: [] }] },
+      { id: 't-18', name: '月亮', meanings: [{ id: 't-18-m1', text: '幻觉、恐惧、潜意识、不确定。代表事情并不像表面看起来那样，有隐藏的信息或情绪。适合倾听直觉，但不要被恐惧支配。', cases: [] }] },
+      { id: 't-19', name: '太阳', meanings: [{ id: 't-19-m1', text: '喜悦、成功、活力、光明。代表一段充满能量与快乐的时期。事情会顺利，你也会被看见与肯定。享受当下，分享快乐。', cases: [] }] },
+      { id: 't-20', name: '审判', meanings: [{ id: 't-20-m1', text: '觉醒、重生、召唤、宽恕。代表一个重大的转折点，你需要面对过去、做出决定，迎接新的使命。原谅别人，也原谅自己。', cases: [] }] },
+      { id: 't-21', name: '世界', meanings: [{ id: 't-21-m1', text: '完成、圆满、整合、成就。代表一个周期的圆满完成。你达到了目标，可以庆祝，也可以准备下一段旅程。一切都在它该在的位置。', cases: [] }] },
+    ],
+  },
+  lenormand: {
+    label: '雷诺曼',
+    cards: [
+      { id: 'l-1', name: '骑士', meanings: [{ id: 'l-1-m1', text: '快速的消息、访客、新信息。代表某事正在向你走来，可能是好消息、一封邮件、一次拜访。也代表行动与速度，别迟疑。', cases: [] }] },
+      { id: 'l-2', name: '幸运草', meanings: [{ id: 'l-2-m1', text: '小幸运、短期的好机会、意外之喜。代表生活中突然出现的小确幸，但要注意它是短暂的，要及时把握，别错过窗口。', cases: [] }] },
+      { id: 'l-3', name: '船', meanings: [{ id: 'l-3-m1', text: '旅行、远行、改变、探索。代表一段旅途或人生方向的转变。也可能指远方的人或事，或对未知的渴望。', cases: [] }] },
+      { id: 'l-4', name: '房子', meanings: [{ id: 'l-4-m1', text: '家、安全、稳定、家庭关系。代表你的根与归属，或与家人、不动产相关的事。提醒你关注内心真正安稳的地方。', cases: [] }] },
+      { id: 'l-5', name: '树', meanings: [{ id: 'l-5-m1', text: '健康、成长、根源、长久。代表缓慢但稳定的成长，或与家族、健康相关的议题。提醒你耐心，一切都需要时间沉淀。', cases: [] }] },
+      { id: 'l-6', name: '云', meanings: [{ id: 'l-6-m1', text: '困惑、不确定、隐瞒、情绪波动。代表暂时的迷雾与混乱，事情尚不明朗。需要耐心等待云开见日，别急于下判断。', cases: [] }] },
+      { id: 'l-7', name: '蛇', meanings: [{ id: 'l-7-m1', text: '欺骗、诱惑、曲折、竞争者。代表一个心怀不轨的人或复杂的局面。也提醒你注意嫉妒与背叛，保持清醒。', cases: [] }] },
+      { id: 'l-8', name: '棺材', meanings: [{ id: 'l-8-m1', text: '结束、哀悼、转变、放下。代表某事的终结，可能伴随失落，但也意味着新的开始。适合告别与疗愈。', cases: [] }] },
+      { id: 'l-9', name: '花束', meanings: [{ id: 'l-9-m1', text: '礼物、惊喜、美丽、欣赏。代表一份来自他人的善意或生活中的美好。也代表收到邀请或赞美，享受这份愉悦。', cases: [] }] },
+      { id: 'l-10', name: '镰刀', meanings: [{ id: 'l-10-m1', text: '突然的结束、快速的决定、割断。代表一个猝不及防的变化或需要果断行动的时刻。提醒你不要犹豫，该断则断。', cases: [] }] },
+      { id: 'l-11', name: '鞭子', meanings: [{ id: 'l-11-m1', text: '争吵、重复、努力、锻炼。代表反复出现的冲突或持续的付出。也提醒你需要通过努力来解决问题，别指望侥幸。', cases: [] }] },
+      { id: 'l-12', name: '鸟', meanings: [{ id: 'l-12-m1', text: '沟通、聊天、焦虑、小消息。代表一段对话、一通电话，或两只鸟成对出现。也可能是内心的紧张与不安。', cases: [] }] },
+      { id: 'l-13', name: '小孩', meanings: [{ id: 'l-13-m1', text: '新的开始、天真、小的事物、孩子。代表一件小事、一个新阶段，或与孩子相关的事。提醒你以小见大，从简单处开始。', cases: [] }] },
+      { id: 'l-14', name: '狐狸', meanings: [{ id: 'l-14-m1', text: '狡猾、聪明、策略、欺骗。代表一个精明的人或需要动脑筋的局面。提醒你不要轻信，也要保护自己的利益。', cases: [] }] },
+      { id: 'l-15', name: '熊', meanings: [{ id: 'l-15-m1', text: '力量、财富、保护、权威。代表一位有影响力的人（常指年长女性），或财务、权力相关的事。也提醒你要有自信。', cases: [] }] },
+      { id: 'l-16', name: '星星', meanings: [{ id: 'l-16-m1', text: '希望、指引、网络、传播。代表梦想、灵感或群体的连接。适合放眼长远，规划未来，让愿景指引方向。', cases: [] }] },
+      { id: 'l-17', name: '鹳', meanings: [{ id: 'l-17-m1', text: '变化、搬迁、升级、怀孕。代表一次积极的转变，可能是搬家、换工作、或生活状态的改善。迎接新的阶段。', cases: [] }] },
+      { id: 'l-18', name: '狗', meanings: [{ id: 'l-18-m1', text: '忠诚、朋友、信任、支持。代表一段真诚的友谊或一位可靠的伙伴。也提醒你要对他人真诚，也允许自己被支持。', cases: [] }] },
+      { id: 'l-19', name: '塔', meanings: [{ id: 'l-19-m1', text: '机构、权威、独立、距离。代表一个与政府、公司相关的机构，或一段疏离感。也代表一种官方立场或长远视角。', cases: [] }] },
+      { id: 'l-20', name: '花园', meanings: [{ id: 'l-20-m1', text: '社交、公开、聚会、社区。代表一个公开的场合或群体活动。也可能代表网络、公众形象、社交圈。', cases: [] }] },
+      { id: 'l-21', name: '山', meanings: [{ id: 'l-21-m1', text: '障碍、延迟、阻隔、挑战。代表一个难以跨越的困难，需要耐心与毅力。提醒你不要急于求成，绕道也是路。', cases: [] }] },
+      { id: 'l-22', name: '十字路口', meanings: [{ id: 'l-22-m1', text: '选择、决定、分叉路。代表一个需要做出决定的时刻，你面临不同的方向。提醒你要慎重选择，一旦选定就坚定。', cases: [] }] },
+      { id: 'l-23', name: '老鼠', meanings: [{ id: 'l-23-m1', text: '损失、压力、消耗、焦虑。代表逐渐失去的东西，可能是金钱、时间或精力。提醒你及时止损，修补漏洞。', cases: [] }] },
+      { id: 'l-24', name: '心', meanings: [{ id: 'l-24-m1', text: '爱、感情、热情、关心。代表一段深厚的感情或真诚的心意。也可能代表你喜欢的事或人，让心做主。', cases: [] }] },
+      { id: 'l-25', name: '戒指', meanings: [{ id: 'l-25-m1', text: '承诺、合约、婚姻、循环。代表一段稳定的关系或一份正式的协议。也代表一个循环的完成或新的约定。', cases: [] }] },
+      { id: 'l-26', name: '书', meanings: [{ id: 'l-26-m1', text: '知识、秘密、学习、隐私。代表一本未打开的书，有隐藏的信息。适合学习、研究或保守秘密，别急着翻开。', cases: [] }] },
+      { id: 'l-27', name: '信', meanings: [{ id: 'l-27-m1', text: '文书、消息、信件、沟通。代表一份正式的文件或一封重要的信。也代表书面沟通，文字的力量。', cases: [] }] },
+      { id: 'l-28', name: '男人', meanings: [{ id: 'l-28-m1', text: '男性、丈夫、提问者（若提问者为女）。代表一个具体的男性人物，或男性特质（主动、理性、行动力）。', cases: [] }] },
+      { id: 'l-29', name: '女人', meanings: [{ id: 'l-29-m1', text: '女性、妻子、提问者（若提问者为男）。代表一个具体的女性人物，或女性特质（包容、感性、直觉）。', cases: [] }] },
+      { id: 'l-30', name: '百合', meanings: [{ id: 'l-30-m1', text: '智慧、平和、成熟、季节。代表一位年长的人或一种从容的状态。也代表冬季、性、王权，象征成熟的美。', cases: [] }] },
+      { id: 'l-31', name: '太阳', meanings: [{ id: 'l-31-m1', text: '成功、光明、活力、快乐。代表一段充满能量的时期或一件确定的好事。是雷诺曼中最正的牌之一，享受这份光。', cases: [] }] },
+      { id: 'l-32', name: '月亮', meanings: [{ id: 'l-32-m1', text: '名声、荣誉、创意、情感。代表被认可、被看见，或一段浪漫的感情。也可能代表名声与荣耀，以及内在的感性。', cases: [] }] },
+      { id: 'l-33', name: '钥匙', meanings: [{ id: 'l-33-m1', text: '答案、解决、关键、开启。代表一件事将会有明确的答案，或你找到了关键的突破口。门已经为你打开。', cases: [] }] },
+      { id: 'l-34', name: '鱼', meanings: [{ id: 'l-34-m1', text: '金钱、流动、贸易、丰盛。代表财务上的流动性，或与商业、金钱相关的事。也代表独立自主，资源正在流动。', cases: [] }] },
+      { id: 'l-35', name: '锚', meanings: [{ id: 'l-35-m1', text: '稳定、停靠、信任、坚持。代表一段稳定的状态或长期的目标。提醒你要扎根，不要轻易动摇，稳住就能赢。', cases: [] }] },
+      { id: 'l-36', name: '十字架', meanings: [{ id: 'l-36-m1', text: '痛苦、考验、信仰、负担。代表一段艰难但必要的经历，或与宗教、信仰相关的事。也提醒你学会放下，背负的重量是考验也是成长。', cases: [] }] },
+      { id: 'l-37', name: '灵体', meanings: [{ id: 'l-37-m1', text: '精神世界、祖先、无形的存在。代表来自另一世界的指引，或无形的影响。提醒你关注精神层面，也许有人正在看顾你。', cases: [] }] },
+      { id: 'l-38', name: '香炉', meanings: [{ id: 'l-38-m1', text: '净化、祈祷、祭祀、转化。代表一种神圣的仪式或内心的净化。适合冥想、祈祷、放下旧事，让心沉淀。', cases: [] }] },
+      { id: 'l-39', name: '床', meanings: [{ id: 'l-39-m1', text: '休息、私密、亲密、休养。代表一段需要休息的时期，或与亲密关系、健康相关的事。提醒你先照顾好自己的身体。', cases: [] }] },
+      { id: 'l-40', name: '市场', meanings: [{ id: 'l-40-m1', text: '交易、商业、交换、繁忙。代表一个热闹的场所或一次重要的交易。也代表日常的买卖与互动，凡事都有交换。', cases: [] }] },
+    ],
+  },
+  illuminism: { label: '照明之秘', cards: [] },
+};
+
+
 const randomMs = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const randomSec = (min, max) => randomMs(min * 1000, max * 1000);
 const formatCallDuration = (seconds) => {
@@ -7444,6 +7986,13 @@ const visibleSessions = computed(() => {
 });
     // 模板里继续用 messages，但它现在指向当前 session 的数据
     const messages = computed(() => (currentSession.value ? currentSession.value.messages : []));
+    // ===== 只渲染最近 N 条消息（往上滚再补） =====
+    const chatRenderLimit = ref(50);
+    const visibleMessages = computed(() => {
+      const msgs = messages.value;
+      if (msgs.length <= chatRenderLimit.value) return msgs;
+      return msgs.slice(msgs.length - chatRenderLimit.value);
+    });
 
     // 语料库 corpus 声明已上移至 sessions 初始化之前（避免 TDZ：Cannot access before initialization）
 
@@ -7807,6 +8356,8 @@ const getDictSpellSettings = (sessionId) => {
 
 // ===== 梦角自由造句设置（每个会话独立） =====
 const freeComposeSettingsMap = reactive({});
+// 二级标签：'compose'=造句手法 / 'retract'=撤回玩法
+const freeComposeSubTab = ref('compose');
 
 const getFreeComposeSettings = (sessionId) => {
     if (!freeComposeSettingsMap[sessionId]) {
@@ -7860,6 +8411,8 @@ const getRetractSettings = (sessionId) => {
     if (s.retractEnabled === undefined) s.retractEnabled = false;
     if (s.retractProb === undefined) s.retractProb = 0.5;
     if (s.retractMethod === undefined) s.retractMethod = 1;
+    if (s.retractTriggerProb === undefined) s.retractTriggerProb = 0.5; // 撤回玩法触发概率
+    if (s.retractMode === undefined) s.retractMode = 1;                 // 1/2/3
     return s;
 };
 
@@ -7879,10 +8432,12 @@ const retractSentence = (text, method) => {
             const j = Math.floor(Math.random() * (i + 1));
             [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
         }
-        const keepIdx = idxs.slice(0, keepCount).sort((a, b) => a - b);
+                const keepIdx = idxs.slice(0, keepCount).sort((a, b) => a - b);
+        const removedIdx = idxs.slice(keepCount).sort((a, b) => a - b);
         const remaining = keepIdx.map(i => segs[i]).join('').trim();
+        const removed = removedIdx.map(i => segs[i]).join('').trim();
         if (!remaining) return null;
-        return { remaining, original: text };
+        return { remaining, original: text, removed };
     }
 
     if (method === 2) {
@@ -7892,9 +8447,10 @@ const retractSentence = (text, method) => {
         const maxCut = Math.min(5, len - 2);
         const cutLen = 1 + Math.floor(Math.random() * maxCut);
         const fromFront = Math.random() < 0.5;
-        const remaining = fromFront ? text.slice(cutLen).trim() : text.slice(0, len - cutLen).trim();
+                const remaining = fromFront ? text.slice(cutLen).trim() : text.slice(0, len - cutLen).trim();
+        const removed = fromFront ? text.slice(0, cutLen) : text.slice(len - cutLen);
         if (!remaining) return null;
-        return { remaining, original: text };
+        return { remaining, original: text, removed };
     }
 
     if (method === 3) {
@@ -7903,6 +8459,27 @@ const retractSentence = (text, method) => {
     }
 
     return null;
+};
+
+// ===== 撤回玩法 · 说明弹窗 =====
+const showRetractModeHelp = () => {
+    appAlert(
+        '撤回模式说明：\n\n' +
+        '1 = 抽卡 → 撤回 → 直接发送\n' +
+        '2 = 抽卡 → 造句 → 撤回 → 发送\n' +
+        '3 = 抽卡 → 撤回 → 造句 → 发送\n' +
+        '4 = 随机（每次 1/2/3 随机）',
+        '撤回模式'
+    );
+};
+const showRetractMethodHelp = () => {
+    appAlert(
+        '撤回手法说明：\n\n' +
+        '1 = 按标点拆（按逗号句号切开，随机保留几段）\n' +
+        '2 = 按字数撤（从开头或结尾截掉一段）\n' +
+        '3 = 混合（上面两种随机）',
+        '撤回手法'
+    );
 };
 
 const retractContents = (msg) => {
@@ -8247,6 +8824,69 @@ const saveGroupFreeComposedSentence = (sentence) => {
     g.replies.push({ id: genId(), text: sentence, enabled: true, isSystem: false });
     debouncedSave();
 };
+// ===== 群聊撤回玩法（独立判定，优先于造句） =====
+const triggerGroupRetractPlay = (member, group) => {
+    if (!member || !group) return false;
+    const rs = getRetractSettings(group.id);
+    if (!rs.retractEnabled) return false;
+    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
+
+    // 群聊抽卡：群聊池 + 该成员私聊池
+    const groupPool = envelopeCardItems(group, '群聊', group.id);
+    const privatePool = envelopeCardItems(member, '私聊');
+    const pool = [...groupPool, ...privatePool];
+    if (!pool.length) return false;
+    const src = (pool[Math.floor(Math.random() * pool.length)].text || '').trim();
+    if (!src) return false;
+
+    let mode = rs.retractMode || 1;
+    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
+    const method = rs.retractMethod || 1;
+    const baseOpts = { session: group };
+
+    if (mode === 1) {
+        const r = retractSentence(src, method);
+        if (!r || !r.remaining) return false;
+        sendMessage(member.id, r.remaining, {
+            ...baseOpts,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+        });
+        return true;
+    }
+    if (mode === 2) {
+        const composed = composeSentence(src, member);
+        if (!composed) return false;
+        const r = retractSentence(composed, method);
+        if (!r || !r.remaining) return false;
+        sendMessage(member.id, r.remaining, {
+            ...baseOpts,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+            freeCompose: true,
+        });
+        saveGroupFreeComposedSentence(r.remaining);
+        return true;
+    }
+    if (mode === 3) {
+        const r = retractSentence(src, method);
+        if (!r || !r.remaining) return false;
+        const composed = composeSentence(r.remaining, member);
+        const finalSend = composed || r.remaining;
+        sendMessage(member.id, finalSend, {
+            ...baseOpts,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+            freeCompose: !!composed,
+        });
+        if (composed) saveGroupFreeComposedSentence(finalSend);
+        return true;
+    }
+    return false;
+};
 
 const triggerGroupFreeCompose = (member, group) => {
     if (!member || !group) return false;
@@ -8270,9 +8910,10 @@ const triggerGroupFreeCompose = (member, group) => {
     }
 
     const opts = { session: group, freeCompose: true };
-        if (retractInfo) {
+           if (retractInfo) {
         opts.retracted = true;
         opts.originalContents = [retractInfo.original];
+        opts.removedPart = retractInfo.removed || '';
     }
     sendMessage(member.id, finalSend, opts);
     saveGroupFreeComposedSentence(finalSend);
@@ -8348,6 +8989,72 @@ const saveFreeComposedSentence = (sentence, session) => {
     debouncedSave();
 };
 
+// ===== 撤回玩法（独立判定，不依赖造句成功） =====
+const triggerRetractPlay = (session) => {
+    if (!session) return false;
+    const rs = getRetractSettings(session.id);
+    if (!rs.retractEnabled) return false;
+    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false; // 没中，让原流程继续
+
+    // 抽源句
+    const src = drawSourceSentence(session);
+    if (!src) return false;
+
+        let mode = rs.retractMode || 1;
+    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3); // 模式 4 = 在 1/2/3 里随机
+    const method = rs.retractMethod || 1;
+
+    // ---------- 模式 1：抽卡 → 撤回 → 直接发送 ----------
+    if (mode === 1) {
+        const r = retractSentence(src, method);
+        if (!r || !r.remaining) return false;
+        sendMessage('them', r.remaining, {
+            session,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+        });
+        return true;
+    }
+
+    // ---------- 模式 2：抽卡 → 造句 → 撤回 → 发送 ----------
+    if (mode === 2) {
+        const composed = composeSentence(src, session);
+        if (!composed) return false;
+        const r = retractSentence(composed, method);
+        if (!r || !r.remaining) return false;
+        sendMessage('them', r.remaining, {
+            session,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+            freeCompose: true,
+        });
+        saveFreeComposedSentence(r.remaining, session);
+        return true;
+    }
+
+    // ---------- 模式 3：抽卡 → 撤回 → 造句 → 发送 ----------
+    if (mode === 3) {
+        const r = retractSentence(src, method);
+        if (!r || !r.remaining) return false;
+        const composed = composeSentence(r.remaining, session);
+        // 造句失败：直接发撤回后的源句（不白走一趟）
+        const finalSend = composed || r.remaining;
+        sendMessage('them', finalSend, {
+            session,
+            retracted: true,
+            originalContents: [r.original],
+            removedPart: r.removed || '',
+            freeCompose: !!composed,
+        });
+        if (composed) saveFreeComposedSentence(finalSend, session);
+        return true;
+    }
+
+    return false;
+};
+
 // ===== 梦角自由造句触发 =====
 const triggerFreeCompose = (session) => {
     if (!session) return false;
@@ -8382,9 +9089,10 @@ const triggerFreeCompose = (session) => {
 
     // 发送
     const opts = { session, freeCompose: true };
-            if (retractInfo) {
+                if (retractInfo) {
         opts.retracted = true;
         opts.originalContents = [retractInfo.original];
+        opts.removedPart = retractInfo.removed || '';
     }
     sendMessage('them', finalSend, opts);
 
@@ -9028,6 +9736,7 @@ const checkMailArrival = () => {
             profiles: JSON.parse(JSON.stringify(profiles)),
             settings: JSON.parse(JSON.stringify(settings)),
             money: JSON.parse(JSON.stringify(money)),
+ divination: JSON.parse(JSON.stringify(divination)),
             boardMessages: JSON.parse(JSON.stringify(boardMessages.value)),
             boardPeriod: JSON.parse(JSON.stringify(boardPeriod.value)),
             boardMoodMarks: JSON.parse(JSON.stringify(boardMoodMarks.value)),
@@ -9062,7 +9771,9 @@ const deleteEnvelope = (id) => {
     showToast('已删除留言');
   }
 };
-    watch([sessions, profiles, settings, ], debouncedSave, { deep: true });
+    // ⚠️ 这个 watch 只能放「声明位置在上面的变量」    // 晚声明的容器（money / divination 等）请勿加进来，在它们各自声明之后单独写 watch。
+    watch([sessions, profiles, settings], debouncedSave, { deep: true });
+
 
     // ===== 全量备份：导出全部数据为 JSON 文件 / 从文件恢复 =====
     const collectAllData = () => {
@@ -9081,6 +9792,7 @@ const deleteEnvelope = (id) => {
         profiles: JSON.parse(JSON.stringify(profiles)),
         settings: JSON.parse(JSON.stringify(settings)),
         money: JSON.parse(JSON.stringify(money)),
+divination: JSON.parse(JSON.stringify(divination)),
         boardMessages: JSON.parse(JSON.stringify(boardMessages.value)),
         boardPeriod: JSON.parse(JSON.stringify(boardPeriod.value)),
         boardMoodMarks: JSON.parse(JSON.stringify(boardMoodMarks.value)),
@@ -9151,7 +9863,6 @@ const exportAllData = () => {
       const playerCSS = (settings.playerCSS || '').replace(/\.custom-css-target/g, '.custom-css-player');
       document.getElementById('custom-css-injection').innerHTML = charCSS + '\n' + playerCSS;
     };
-    watch(applyCSS);
     watch(() => currentSession.value?.customCSS, applyCSS);
     watch(() => settings.playerCSS, applyCSS);
 // 权重变化立即保存
@@ -9245,8 +9956,9 @@ const newMsg = {
     ...extraOpts,              // 👈 关键：把 type、teaseContent 等一并带进去
     id: genId(),
     sender,
-        retracted: !!opts.retracted,
+            retracted: !!opts.retracted,
     originalContents: opts.originalContents || (opts.originalContent ? [opts.originalContent] : []),
+    removedPart: opts.removedPart || '',
     content: '',
     timestamp: Date.now(),
     status: sender === 'me' ? 'sent' : 'read',
@@ -9932,10 +10644,18 @@ const patLongPressEnd = () => {
       return `${name}：${quote.content || '…'}`;
     };
     // 点击引用跳转到被引用消息
-    const jumpToQuote = (id) => {
+      const jumpToQuote = (id) => {
       if (!id) return;
-      const el = document.getElementById('msg-' + id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const allMsgs = messages.value;
+      const targetIdx = allMsgs.findIndex(m => m.id === id);
+      if (targetIdx >= 0) {
+        const needed = allMsgs.length - targetIdx;
+        if (needed > chatRenderLimit.value) chatRenderLimit.value = needed + 10;
+      }
+      nextTick(() => {
+        const el = document.getElementById('msg-' + id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
     };
     // 从专属书册（拍一拍/问号/状态）抽一条启用的字卡文本；书册空返回 null
     const drawFromSpecialBox = (session, boxName) => {
@@ -10112,11 +10832,16 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
     delete typingSessions[cur.id];
     return;
 }
-// ===== 梦角自由造句：第二优先 =====
-if (cur.type !== 'group' && triggerFreeCompose(cur)) {
-    delete typingSessions[cur.id];
-    return;
-}
+        // ===== 撤回玩法：独立判定（不依赖造句） =====
+        if (cur.type !== 'group' && triggerRetractPlay(cur)) {
+            delete typingSessions[cur.id];
+            return;
+        }
+        // ===== 梦角自由造句：第二优先 =====
+        if (cur.type !== 'group' && triggerFreeCompose(cur)) {
+            delete typingSessions[cur.id];
+            return;
+        }
         const acts = [];
         let totalChars = 0;
         if (cur.type !== 'group') {
@@ -10361,7 +11086,12 @@ const opts = { marked, session: cur };
       } else {
         prob = 0.6;
       }
-           if (Math.random() >= prob) return;
+               if (Math.random() >= prob) return;
+
+      // ===== 撤回玩法（独立判定，优先于造句） =====
+      if (triggerGroupRetractPlay(member, group)) {
+          return;
+      }
 
       // ===== 群聊梦角自由造句：先掷造句概率 =====
       const _gcs = getGroupFreeComposeSettings(group.id);
@@ -10430,25 +11160,39 @@ if (Math.random() < 0.1) {
       manageActiveTimer();
       debouncedSave();
     };
-    const scrollToBottom = () => {
-  const el = document.getElementById('chat-container');
-  if (!el) return;
-  // 使用双重 nextTick + 延迟，确保 DOM 完全更新
+               const scrollToBottom = () => {
+  // 先 nextTick：等聊天视图 DOM 渲染出来（v-if 刚切时容器还不存在）
   nextTick(() => {
+    const doScroll = () => {
+      const e = document.getElementById('chat-container');
+      if (e) e.scrollTop = e.scrollHeight;
+    };
+    // 立刻滚一次 + 后续补两段，兜住布局/图片晚到
+    doScroll();
     requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-      // 二次修正：有时渲染还没完，再补一次
-      setTimeout(() => {
-        el.scrollTop = el.scrollHeight;
-      }, 50);
+      doScroll();
+      setTimeout(doScroll, 30);
+      setTimeout(doScroll, 120);
     });
   });
 };
+
     // 是否已滚动到聊天底部（用于「到达最新消息」按钮的显隐）
     const chatAtBottom = ref(true);
-    const onChatScroll = () => {
+        const onChatScroll = () => {
       const el = document.getElementById('chat-container');
       if (!el) return;
+      // 往上滚接近顶部：补更多历史消息
+      if (el.scrollTop < 80 && messages.value.length > chatRenderLimit.value) {
+        const oldScrollHeight = el.scrollHeight;
+        const oldScrollTop = el.scrollTop;
+        chatRenderLimit.value += 30;
+        nextTick(() => {
+          // 补偿滚动位置，避免内容插入顶部后视口跳动
+          const newEl = document.getElementById('chat-container');
+          if (newEl) newEl.scrollTop = newEl.scrollHeight - oldScrollHeight + oldScrollTop;
+        });
+      }
       chatAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     };
     const jumpToLatest = () => {
@@ -10501,10 +11245,19 @@ if (Math.random() < 0.1) {
         (chatState.currentIdx + dir + chatState.results.length) % chatState.results.length;
       jumpToMsg();
     };
-    const jumpToMsg = () => {
+        const jumpToMsg = () => {
       const id = chatState.results[chatState.currentIdx];
-      const el = document.getElementById('msg-' + id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // 若目标消息还没渲染，先扩大渲染范围
+      const allMsgs = messages.value;
+      const targetIdx = allMsgs.findIndex(m => m.id === id);
+      if (targetIdx >= 0) {
+        const needed = allMsgs.length - targetIdx;
+        if (needed > chatRenderLimit.value) chatRenderLimit.value = needed + 10;
+      }
+      nextTick(() => {
+        const el = document.getElementById('msg-' + id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
     };
     const highlightText = (text, typing) => {
       let out = text;
@@ -10964,6 +11717,7 @@ const AVAILABLE_APPS = [
     { view: 'money',       label: '荷包',   icon: 'wallet' },
     { view: 'board',       label: '字笺',   icon: 'notebook-pen' },
     { view: 'mailbox',     label: '留言板', icon: 'mail' },
+    { view: 'divination',  label: '占卜',   icon: 'sparkles' },
     { view: 'preferences', label: '设置',   icon: 'settings' },
 ];
 const defaultApps = () => AVAILABLE_APPS.map(a => ({ id: genId(), ...a }));
@@ -11086,7 +11840,10 @@ watch(activeMsgId, (v) => {
 });
 
 // 切换会话 / 离开聊天视图时，清空待引用
-watch(currentSessionId, () => { pendingQuote.value = null; });
+ watch(currentSessionId, () => {
+      pendingQuote.value = null;
+      chatRenderLimit.value = 50; // 切会话重置为最近 50 条
+    });
 watch(() => currentView.value, (v) => { if (v !== 'chat') pendingQuote.value = null; });
 
 // ===== T3：主题配色（6 套） =====
@@ -11293,10 +12050,10 @@ const drawFreeComposeCard = (session) => {
 const lastMessagePreview = (session) => {
     if (!session || !session.messages || !session.messages.length) return '';
     const m = session.messages[session.messages.length - 1];
+    if (m.type === 'divination') return `[占卜 · ${m.diviDeckLabel || ''}]`;
     if (m.content && m.content.trim()) return m.content;
     return '[消息]';
 };
-
 // ===== 会话卡：时间格式化（微信风格） =====
 const formatSessionTime = (ts) => {
     if (!ts) return '';
@@ -11616,6 +12373,36 @@ const removeGroupMember = (mid) => {
       appDialog._resolve = null;
       if (resolve) resolve(ret);
     };
+
+    // ===== 版本更新公告 =====
+    // 想再弹一次公告：改这个版本号即可（日期格式最直观）
+    const APP_VERSION = '2026.10.08';
+    const UPDATE_NOTES =
+        '本次更新：\n\n' +
+        '· 撤回玩法独立化\n' +
+        '  撤回不再依赖造句，可单独触发。私聊 / 群聊都支持。\n\n' +
+        '· 三种撤回模式 + 随机\n' +
+        '  1 = 抽卡 → 撤回 → 直接发送\n' +
+        '  2 = 抽卡 → 造句 → 撤回 → 发送\n' +
+        '  3 = 抽卡 → 撤回 → 造句 → 发送\n' +
+        '  4 = 随机\n\n' +
+        '· 撤回说明\n' +
+        '  侧拉面板「梦角自由造句 → 撤回玩法」里，\n' +
+        '  模式 / 手法旁有 ⓘ 可看说明。\n\n' +
+        '· 性能优化\n' +
+        '  侧拉面板秒开，进入会话秒进，往上滚动自动补历史。';
+    const updateNotice = reactive({ show: false });
+    const checkUpdateNotice = () => {
+        try {
+            const last = localStorage.getItem('__kj_last_seen_version');
+            if (last !== APP_VERSION) updateNotice.show = true;
+        } catch (e) {}
+    };
+    const closeUpdateNotice = () => {
+        updateNotice.show = false;
+        try { localStorage.setItem('__kj_last_seen_version', APP_VERSION); } catch (e) {}
+    };
+
 
     const addGroup = async () => {
     const name = await appPrompt({
@@ -12954,6 +13741,289 @@ const availableExportBoxes = computed(() => {
       sessionName: '',
     });
 
+const divination = reactive({
+  decks: JSON.parse(JSON.stringify(DIVINATION_DECKS_DATA)),
+  records: [],
+});
+const divinationTab = ref('draw');
+const divinationRecordsTab = ref('tarot');
+const divinationReviewModal = reactive({
+  show: false,
+  deck: '',
+  cardId: '',
+  newMeaningText: '',
+  newCaseFor: '',
+  newCaseText: '',
+});
+const illumRecordModal = reactive({
+  show: false,
+  question: '',
+  namesText: '',
+  reading: '',
+});
+const divinationDraw = reactive({
+  deck: 'tarot',
+  count: 3,
+  stage: 'setup',
+  question: '',
+  shuffled: [],
+  picked: [],
+  userReading: '',
+  syncToChat: false,
+  syncTargets: [],
+});
+const _diviLayout = {};
+
+const _shuffleArray = (arr) => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const startDivinationShuffle = () => {
+  const deck = divination.decks[divinationDraw.deck];
+  if (!deck || !deck.cards || !deck.cards.length) { showToast('牌组为空'); return; }
+  if (divinationDraw.count > deck.cards.length) { showToast('牌不够这么多张'); return; }
+  divinationDraw.stage = 'shuffling';
+  divinationDraw.picked = [];
+  divinationDraw.userReading = '';
+  divinationDraw.syncToChat = false;
+  divinationDraw.syncTargets = [];
+  Object.keys(_diviLayout).forEach(k => delete _diviLayout[k]);
+  setTimeout(() => {
+    divinationDraw.shuffled = _shuffleArray(deck.cards);
+    // 随机定正逆位：每张牌 50% 正位 / 50% 逆位
+    divinationDraw.shuffled.forEach(c => { c.reversed = Math.random() < 0.5; });
+    divinationDraw.stage = 'pick';
+  }, 1500);
+};
+
+const cardBackRandomStyle = (idx) => {
+  const k = 'c' + idx;
+  if (!_diviLayout[k]) {
+    _diviLayout[k] = {
+      rotate: (Math.random() - 0.5) * 24,
+      dy: (Math.random() - 0.5) * 10,
+    };
+  }
+  const l = _diviLayout[k];
+  return { transform: `rotate(${l.rotate}deg) translateY(${l.dy}px)` };
+};
+
+const togglePickCard = (idx) => {
+  const arr = divinationDraw.picked;
+  const i = arr.indexOf(idx);
+  if (i >= 0) arr.splice(i, 1);
+  else if (arr.length < divinationDraw.count) arr.push(idx);
+};
+
+const confirmDivinationDraw = () => {
+  if (divinationDraw.picked.length !== divinationDraw.count) return;
+  divinationDraw.stage = 'reveal';
+};
+
+const pickedCards = computed(() =>
+  divinationDraw.picked.map(i => divinationDraw.shuffled[i]).filter(Boolean)
+);
+
+const resetDivinationDraw = () => {
+  divinationDraw.stage = 'setup';
+  divinationDraw.question = '';
+  divinationDraw.shuffled = [];
+  divinationDraw.picked = [];
+  divinationDraw.userReading = '';
+  divinationDraw.syncToChat = false;
+  divinationDraw.syncTargets = [];
+};
+
+const toggleSyncTarget = (sid) => {
+  const arr = divinationDraw.syncTargets;
+  const i = arr.indexOf(sid);
+  if (i >= 0) arr.splice(i, 1);
+  else arr.push(sid);
+};
+
+const saveDivinationDraw = () => {
+  const cards = pickedCards.value;
+  if (!cards.length) return;
+  const deckLabel = divination.decks[divinationDraw.deck].label;
+  const question = divinationDraw.question.trim();
+  const reading = divinationDraw.userReading.trim();
+  const record = {
+    id: genId(),
+    deck: divinationDraw.deck,
+    deckLabel,
+    question,
+    cards: cards.map(c => ({ cardId: c.id, name: c.name, reversed: !!c.reversed })),
+    userReading: reading,
+    drawnAt: Date.now(),
+    source: 'self',
+    syncedToChat: false,
+  };
+
+  if (divinationDraw.syncToChat && divinationDraw.syncTargets.length) {
+    divinationDraw.syncTargets.forEach(sid => {
+      const s = sessions.value.find(x => x.id === sid);
+      if (!s) return;
+      sendMessage('me', '', {
+        session: s,
+        type: 'divination',
+        diviDeck: divinationDraw.deck,
+        diviDeckLabel: deckLabel,
+        diviCards: cards.map(c => ({ name: c.name, reversed: !!c.reversed })),
+        diviQuestion: question,
+        diviReading: reading,
+      });
+    });
+    record.syncedToChat = true;
+    record.syncTargets = divinationDraw.syncTargets.slice();
+  }
+
+  divination.records.push(record);
+  debouncedSave();
+  showToast('已保存占卜记录');
+  resetDivinationDraw();
+};
+
+const filteredDivinationRecords = computed(() => {
+  const list = (divination.records || []).filter(r => r.deck === divinationRecordsTab.value);
+  return list.slice().sort((a, b) => b.drawnAt - a.drawnAt);
+});
+
+const deleteDivinationRecord = async (id) => {
+  if (!(await appConfirm('删除这条占卜记录？'))) return;
+  divination.records = divination.records.filter(r => r.id !== id);
+  debouncedSave();
+  showToast('已删除');
+};
+
+const openIllumRecord = () => {
+  illumRecordModal.question = '';
+  illumRecordModal.namesText = '';
+  illumRecordModal.reading = '';
+  illumRecordModal.show = true;
+  nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const saveIllumRecord = () => {
+  const names = (illumRecordModal.namesText || '').split('\n').map(t => t.trim()).filter(Boolean);
+  if (!names.length) { showToast('至少写一张牌名'); return; }
+  const record = {
+    id: genId(),
+    deck: 'illuminism',
+    deckLabel: '照明之秘',
+    question: illumRecordModal.question.trim(),
+    cards: names.map(n => ({ name: n })),
+    userReading: illumRecordModal.reading.trim(),
+    drawnAt: Date.now(),
+    source: 'self',
+    syncedToChat: false,
+  };
+  divination.records.push(record);
+  debouncedSave();
+  illumRecordModal.show = false;
+  showToast('已补录');
+};
+
+const diviRecordCardLine = (r) => {
+  const names = (r.cards || []).map(c => c.name + (c.reversed ? '（逆）' : '')).join(' · ');
+  return names || '（无牌）';
+};
+
+const formatDiviTime = (ts) => {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const reviewCardRef = computed(() => {
+  const { deck, cardId } = divinationReviewModal;
+  if (!deck || !cardId) return null;
+  const deckObj = divination.decks[deck];
+  if (!deckObj) return null;
+  return (deckObj.cards || []).find(c => c.id === cardId) || null;
+});
+
+const openCardReview = (deck, cardId) => {
+  if (!cardId) { showToast('该牌未关联牌组'); return; }
+  const deckObj = divination.decks[deck];
+  const card = deckObj && (deckObj.cards || []).find(c => c.id === cardId);
+  if (!card) { showToast('牌组里找不到这张牌'); return; }
+  divinationReviewModal.deck = deck;
+  divinationReviewModal.cardId = cardId;
+  divinationReviewModal.newMeaningText = '';
+  divinationReviewModal.newCaseFor = '';
+  divinationReviewModal.newCaseText = '';
+  divinationReviewModal.show = true;
+  nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+
+const addMeaningToCard = () => {
+  const card = reviewCardRef.value;
+  if (!card) return;
+  const t = divinationReviewModal.newMeaningText.trim();
+  if (!t) return;
+  if (!Array.isArray(card.meanings)) card.meanings = [];
+  card.meanings.push({ id: genId(), text: t, createdAt: Date.now(), cases: [] });
+  divinationReviewModal.newMeaningText = '';
+  debouncedSave();
+  showToast('已加牌意');
+};
+
+const deleteMeaningFromCard = async (meaningId) => {
+  const card = reviewCardRef.value;
+  if (!card) return;
+  if (!(await appConfirm('删除这条牌意？'))) return;
+  card.meanings = (card.meanings || []).filter(m => m.id !== meaningId);
+  debouncedSave();
+};
+
+const startAddCase = (meaningId) => {
+  if (divinationReviewModal.newCaseFor === meaningId) {
+    divinationReviewModal.newCaseFor = '';
+  } else {
+    divinationReviewModal.newCaseFor = meaningId;
+  }
+  divinationReviewModal.newCaseText = '';
+};
+
+const saveCaseToMeaning = () => {
+  const card = reviewCardRef.value;
+  if (!card) return;
+  const mid = divinationReviewModal.newCaseFor;
+  if (!mid) return;
+  const m = (card.meanings || []).find(x => x.id === mid);
+  if (!m) return;
+  const t = divinationReviewModal.newCaseText.trim();
+  if (!t) return;
+  if (!Array.isArray(m.cases)) m.cases = [];
+  m.cases.push({ date: Date.now(), note: t });
+  divinationReviewModal.newCaseText = '';
+  divinationReviewModal.newCaseFor = '';
+  debouncedSave();
+  showToast('已加案例');
+};
+
+const deleteCaseFromMeaning = async (meaningId, caseIdx) => {
+  const card = reviewCardRef.value;
+  if (!card) return;
+  const m = (card.meanings || []).find(x => x.id === meaningId);
+  if (!m || !Array.isArray(m.cases)) return;
+  if (!(await appConfirm('删除这条案例？'))) return;
+  m.cases.splice(caseIdx, 1);
+  debouncedSave();
+};
+
+const formatCaseDate = (ts) => {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+};
+
     // 荷包（钱）全局数据
     const money = reactive({
       check: {
@@ -12997,7 +14067,8 @@ installment: {
           },
       },
     });
-
+ // 以后往这里加新容器，务必确认它在本行上方已声明。
+    watch([money, divination], debouncedSave, { deep: true });
     // 零花钱：季节工具
     const seasonLabel = (m) =>
       m >= 3 && m <= 5 ? '春' : m >= 6 && m <= 8 ? '夏' : m >= 9 && m <= 11 ? '秋' : '冬';
@@ -14786,7 +15857,9 @@ const monthlyBudgetRemain = (monthStr) => {
         getActiveCalls().forEach((s) => {
           if (s.id !== currentSession.value.id) hangupCall(s);
         });
-        currentSession.value.messages.forEach((m) => (m.isReadFlag = true));
+ currentSession.value.messages.forEach((m) => {
+          if (m.isReadFlag !== true) m.isReadFlag = true;
+        });
         updateUnread();
         scrollToBottom();
       } else if (v === 'library') {
@@ -14794,8 +15867,9 @@ const monthlyBudgetRemain = (monthStr) => {
         if (activeBox.value === '红包备注' && currentSession.value) ensureRedpacketPartitions(currentSession.value.corpus.boxes['红包备注']); // 确保三档隔板
         nextTick(initSortable);
       }
-      currentView.value = v;
-      nextTick(() => {
+            currentView.value = v;
+      // 图标绘制延后一帧，让视图切换先渲染，避免切换卡顿
+      requestAnimationFrame(() => {
         if (window.lucide) lucide.createIcons();
       });
     };
@@ -14826,10 +15900,15 @@ const monthlyBudgetRemain = (monthStr) => {
       const m = sessions.value.find((s) => s.id === sender);
       return m ? (m.avatar || '') : '';
     };
-    const shouldShowAvatar = (idx) =>
-      idx === 0 ||
-      messages.value[idx].sender !== messages.value[idx - 1].sender ||
-      messages.value[idx].timestamp - messages.value[idx - 1].timestamp > 120000;
+       const shouldShowAvatar = (idx) => {
+      const msgs = messages.value;
+      // 因为模板里 v-for 用的是「切片后」的数组，真实索引要加偏移
+      const offset = Math.max(0, msgs.length - visibleMessages.value.length);
+      const realIdx = idx + offset;
+      return realIdx === 0 ||
+        msgs[realIdx].sender !== msgs[realIdx - 1].sender ||
+        msgs[realIdx].timestamp - msgs[realIdx - 1].timestamp > 120000;
+    };
     const deleteMsg = (id) => {
     currentSession.value.messages = currentSession.value.messages.filter((m) => m.id !== id);
     debouncedSave();
@@ -15910,6 +16989,9 @@ if (stored.sharedBoxes) {
     mergeFromSessions('词典');
     mergeFromSessions('公共梦角自由造句');
 }
+                if (stored.divination) {
+                    Object.assign(divination, stored.divination);
+                }
                 if (stored.money) {
     if (stored.money.check) Object.assign(money.check, stored.money.check);
     if (Array.isArray(stored.money.history)) {
@@ -15959,6 +17041,7 @@ if (stored.money.installment) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             manageActiveTimer();
             setTimeout(() => { showIntro.value = false; }, 1200);
+            setTimeout(() => { checkUpdateNotice(); }, 1600);
             setTimeout(() => { maybeShowRemind(); }, 3000);
             document.addEventListener('click', () => {
                 if (settings.soundEnabled && audioCtx?.state === 'suspended') audioCtx.resume();
@@ -16075,6 +17158,11 @@ removeGroupMember,
       appDialog,
       dialogConfirm,
       dialogDismiss,
+ APP_VERSION,
+      UPDATE_NOTES,
+      updateNotice,
+      closeUpdateNotice,
+
       showIntro,
       remind,
       dismissRemind,
@@ -16087,6 +17175,7 @@ removeGroupMember,
       toggleActiveMessage,
       messages,
       currentSession,
+currentSession,
       draftText,
       plusOpen,
       typingSessions,
@@ -16442,6 +17531,34 @@ getQuestionOptions,
 toggleMemberExpand,
 deduplicateMenuOpen,
 runDeduplicate,
+      divination,
+      divinationTab,
+      divinationDraw,
+      startDivinationShuffle,
+      cardBackRandomStyle,
+      togglePickCard,
+      confirmDivinationDraw,
+      pickedCards,
+      resetDivinationDraw,
+      toggleSyncTarget,
+      saveDivinationDraw,
+      divinationRecordsTab,
+      filteredDivinationRecords,
+      deleteDivinationRecord,
+      illumRecordModal,
+      openIllumRecord,
+      saveIllumRecord,
+      diviRecordCardLine,
+      formatDiviTime,
+      divinationReviewModal,
+      reviewCardRef,
+      openCardReview,
+      addMeaningToCard,
+      deleteMeaningFromCard,
+      startAddCase,
+      saveCaseToMeaning,
+      deleteCaseFromMeaning,
+      formatCaseDate,
 // 画板
 drawBoardOpen,
 drawMode,
@@ -16507,10 +17624,10 @@ isMuted,
 // 消息工具栏
       activeMsgId, toggleMsgToolbar, closeMsgToolbar,
       msgMenuCopy2, msgMenuQuote2, msgMenuRetract2, msgMenuDelete2,
-getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,
+getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tryGroupGrabUserMessage,
       saveGroupFreeComposedSentence,
 // P2-b 撤回
-      getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,
+      getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,showRetractModeHelp, showRetractMethodHelp,
 // 回复设置（全局）
   settingsTab, replySubTab, boxHasCards,adjustSetting,
       replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,
@@ -16562,6 +17679,7 @@ splitByDict,
 triggerDictSpell,
 freeComposeSettingsMap,
 getFreeComposeSettings,
+freeComposeSubTab,
 drawSourceSentence,
 drawWordFromAllBoxes,
 drawSentenceOrWordFromAllBoxes,
@@ -16578,7 +17696,7 @@ freeComposeGroupSettingsMap,
 getFreeComposeGroupSettings,setFreeComposeWeight, toggleFreeComposePool,
       toggleAllFreeComposeInCategory, drawFreeComposeCard, defaultFreeComposeWeightMap,
  getFreeComposeWeight, exportDialogOpen,
-     
+     visibleMessages,
 exportSelectedBoxes,
 openExportDialog,
 exportSelectCurrent,
