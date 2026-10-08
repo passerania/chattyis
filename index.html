@@ -8032,55 +8032,38 @@ const drawQuotesFromDict = (session, count) => {
     const settings = getDictSpellSettings(session.id);
     const pool = [];
 
-    // 1. 从词典书册（共享）抽语录类字卡
+    // 从词典书册（共享）抽所有二级标签
     const box = sharedBoxes['词典'];
     if (box && box.groups) {
         box.groups.forEach(g => {
-            // 只处理「语录」类分组
-            const isQuoteGroup = g.name && (g.name.includes('语录') || g.name === '语录');
-            if (!isQuoteGroup) return;
-            (g.replies || []).forEach(r => {
-                if (r.enabled === false) return;
-                const t = (r.text || '').trim();
-                if (!t) return;
-                // 过滤规则
-                if (t.length < 3 || t.length > 26) return;
-                if (t.startsWith('data:')) return;
-                const chineseChars = t.match(/[\u4e00-\u9fa5]/g) || [];
-                if (chineseChars.length < 2) return;
-                // 排除含 emoji 的
-                if (/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u.test(t)) return;
-                pool.push({ text: t, isSystem: !!r.isSystem });
-            });
-        });
-    }
+            const name = g.name || '';
+            const isQuote = name.includes('语录');
+            // 词类分组（短词）用不同的长度范围
+            const isWord = name.includes('词库') || name.includes('基础') ||
+                           name.includes('饮食') || name.includes('行动') ||
+                           name.includes('物件') || name.includes('水果');
+            const minLen = isWord ? 2 : 3;
+            const maxLen = isWord ? 6 : 26;
 
-    // 2. 混用自定义字卡（从私聊书册抽纯文本）
-    if (settings.mixCustom) {
-        const chatBox = session.corpus?.boxes?.['私聊'];
-        (chatBox?.groups || []).forEach(g => {
             (g.replies || []).forEach(r => {
                 if (r.enabled === false) return;
-                if (r.image) return;
                 const t = (r.text || '').trim();
                 if (!t) return;
-                if (t.length < 3 || t.length > 26) return;
+                if (t.length < minLen || t.length > maxLen) return;
                 if (t.startsWith('data:')) return;
                 const chineseChars = t.match(/[\u4e00-\u9fa5]/g) || [];
                 if (chineseChars.length < 2) return;
                 if (/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u.test(t)) return;
-                pool.push({ text: t, isSystem: false });
+                pool.push({ text: t, isSystem: !!r.isSystem, fromQuote: isQuote });
             });
         });
     }
 
     if (!pool.length) return [];
 
-    // 随机不重复抽 count 条
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, Math.min(count, shuffled.length));
 };
-
 
 // ===== 抽一条源句（走会话自己的 freeComposeWeightMap） =====
 const drawSourceSentence = (session) => {
@@ -8501,9 +8484,9 @@ const triggerDictSpell = (session) => {
         const lastMsg = session.messages[session.messages.length - 1];
         if (lastMsg && lastMsg.content === finalText) return false;
 
-        // tag：含短字词用「词典拼字」，全长句用「词典」
-        const hasShort = quotes.some(q => q.text.length < 5);
-        const dictTag = hasShort ? '词典拼字' : '词典';
+                // tag：有语录 → 「词典拼字·语录」；纯词库 → 「词典拼字」
+        const hasQuote = quotes.some(q => q.fromQuote);
+        const dictTag = hasQuote ? '词典拼字·语录' : '词典拼字';
 
         sendMessage('them', finalText, {
             session,
@@ -10209,8 +10192,8 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
         } else {
                                                                     // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
             const _concatCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
-            const pool = _concatCfg.concatEnabled
-                ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '公共'] })
+                        const pool = _concatCfg.concatEnabled
+                ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '主动写信', '信封回复', '梦角自由造句', '公共', '公共梦角自由造句'] })
                 : drawWeightedCards(cur, '私聊', 30);
             if (pool.length) {
                 const marked = settings.markEnabled && Math.random() < 0.15;
