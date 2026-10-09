@@ -840,6 +840,7 @@ body { color: var(--color-text); }
                 <!-- 手动撤回：胶囊 + 展开原文（保持现状） -->
                 <template v-else>
                     <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
+<div v-if="msg.content && msg.content.trim()" v-html="highlightText(msg.content, msg.isTyping)" class="leading-relaxed mb-2"></div>
                         <button @click.stop="toggleRetractExpand(msg)"
                                 class="flex items-center gap-1 px-3 py-1 rounded-full border border-border/60 text-[12px] text-muted hover:bg-bg/50 transition-colors">
                             <span>{{ retractLabel(msg) }}</span>
@@ -1531,7 +1532,7 @@ body { color: var(--color-text); }
                             <button @click="getRetractSettings(currentSession.id).retractMode = Math.max(1, (getRetractSettings(currentSession.id).retractMode || 1) - 1); debouncedSave();"
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
                             <span class="w-10 text-center text-text font-medium">
-                                {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span>
+                                                               {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span>
                             </span>
                             <button @click="getRetractSettings(currentSession.id).retractMode = Math.min(4, (getRetractSettings(currentSession.id).retractMode || 1) + 1); debouncedSave();"
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
@@ -1778,7 +1779,7 @@ body { color: var(--color-text); }
                             <button @click="getRetractSettings(currentSession.id).retractMode = Math.max(1, (getRetractSettings(currentSession.id).retractMode || 1) - 1); debouncedSave();"
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
                             <span class="w-10 text-center text-text font-medium">
-                                {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span>
+                                                               {{ getRetractSettings(currentSession.id).retractMode || 1 }}<span v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 4" class="text-[10px] text-muted ml-0.5">随机</span> 
                             </span>
                             <button @click="getRetractSettings(currentSession.id).retractMode = Math.min(4, (getRetractSettings(currentSession.id).retractMode || 1) + 1); debouncedSave();"
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
@@ -3444,23 +3445,26 @@ body { color: var(--color-text); }
 
     <!-- ===== Tab: 收到的信 ===== -->
     <template v-if="mailboxTab === 'inbox'">
-        <div class="shrink-0 bg-surface/60 border-b border-border/40 px-4 py-2.5 flex items-center gap-2 text-xs flex-wrap">
-            <div class="flex items-center gap-1">
-                <span class="text-[10px] text-muted">来自</span>
-                <select v-model="mailFilter.sessionId" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
-                    <option value="all">全部</option>
-                    <option v-for="opt in mailSessionOptions" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
-                </select>
+                <div class="shrink-0 bg-surface/60 border-b border-border/40 px-4 py-2 text-xs">
+            <div class="flex items-center gap-2 mb-2 overflow-x-auto" style="scrollbar-width:none;">
+                <span class="text-[10px] text-muted shrink-0">来自</span>
+                <button @click="mailFilter.sessionId = 'all'"
+                        class="shrink-0 px-2.5 py-1 rounded-full text-[11px] tracking-wider transition-colors"
+                        :class="mailFilter.sessionId === 'all' ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">全部</button>
+                <button v-for="opt in mailSessionOptions" :key="opt.id"
+                        @click="mailFilter.sessionId = opt.id"
+                        class="shrink-0 px-2.5 py-1 rounded-full text-[11px] tracking-wider transition-colors"
+                        :class="mailFilter.sessionId === opt.id ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ opt.name }}</button>
             </div>
-            <div class="flex items-center gap-1">
-                <span class="text-[10px] text-muted">状态</span>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] text-muted shrink-0">状态</span>
                 <select v-model="mailFilter.status" class="bg-bg border border-border rounded-md px-2 py-1 text-[11px] text-text">
                     <option value="all">全部</option>
                     <option value="unread">未读</option>
                     <option value="read">已读</option>
                 </select>
+                <button @click="markAllMailRead" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors ml-auto">全部已读</button>
             </div>
-            <button @click="markAllMailRead" class="text-[10px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors ml-auto">全部已读</button>
         </div>
         <main class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             <div v-if="!filteredInbox.length" class="mt-20 text-center text-xs text-muted/60">暂无来信</div>
@@ -6927,26 +6931,49 @@ return items;
           return items;
         };
         // 抽 n 句字卡：每一句都独立随机、允许重复（像每次独立从一叠卡里摸一张）
-               const drawEnvelopeCards = (n, session, situation) => {
+                       const drawEnvelopeCards = (n, session, situation) => {
           const sit = situation || '信封回复';
           const count = n || (5 + Math.floor(Math.random() * 10));
-          const items = drawWeightedCards(session, sit, count, { allowRepeat: true });
-          if (!items.length) {
-            // 兜底：走旧逻辑
-            const pool = envelopeCardPool(session);
-            if (!pool.length) return [];
-            const result = [];
-            for (let i = 0; i < count; i++) {
-              result.push(pool[Math.floor(Math.random() * pool.length)]);
+          const s = session || currentSession.value;
+          if (!s) return [];
+
+          // 直接构建池子（不依赖 drawWeightedCards）
+          const pool = _buildPool(s, { situation: sit });
+          if (!pool || !pool.length) return [];
+
+          // 按"去空白 + 去标点"去重（同文本只保留一份）
+          const seen = new Set();
+          const uniq = [];
+          pool.forEach(c => {
+            let key = '';
+            if (c.text) {
+              key = c.text.replace(/[\s\u200b\u200c\u200d\ufeff，。！？；：、,.!?;:'"()\[\]【】《》〈〉—…～·]/g, '');
+            } else if (c.image) {
+              key = '__img__' + (c.image.length || 0) + '_' + c.image.slice(-32);
             }
-            return result;
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            uniq.push({ text: c.text, image: c.image, _w: c._w || 1 });
+          });
+          if (!uniq.length) return [];
+
+          // 无放回抽 count 张（按权重）
+          const out = [];
+          const maxN = Math.min(count, uniq.length);
+          for (let i = 0; i < maxN; i++) {
+            const totalW = uniq.reduce((sum, c) => sum + c._w, 0);
+            if (totalW <= 0) break;
+            let r = Math.random() * totalW;
+            let idx = uniq.length - 1;
+            for (let j = 0; j < uniq.length; j++) {
+              r -= uniq[j]._w;
+              if (r <= 0) { idx = j; break; }
+            }
+            const picked = uniq[idx];
+            if (picked.text) out.push(picked.text);
+            uniq.splice(idx, 1);
           }
-          const result = [];
-          for (let i = 0; i < count; i++) {
-            const item = items[Math.floor(Math.random() * items.length)];
-            if (item.text) result.push(item.text);
-          }
-          return result;
+          return out;
         };
 
         // 留言板浮层状态（原信封）
@@ -8093,9 +8120,21 @@ const _drawFromPool = (pool, n, allowRepeat) => {
             }
             out.push({ text: pick.text, image: pick.image });
         }
-    } else {
-        // 无放回
-        const work = pool.map(c => ({ text: c.text, image: c.image, _w: c._w || 1 }));
+       } else {
+                // 无放回（按"去空白+去标点"去重，防止隐藏字符导致重复）
+        const seen = new Set();
+        const work = [];
+        pool.forEach(c => {
+            let key = '';
+            if (c.text) {
+                key = c.text.replace(/[\s\u200b\u200c\u200d\ufeff，。！？；：、,.!?;:'"()\[\]【】《》〈〉—…～·]/g, '');
+            } else if (c.image) {
+                key = '__img__' + (c.image.length || 0) + '_' + c.image.slice(-32);
+            }
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            work.push({ text: c.text, image: c.image, _w: c._w || 1 });
+        });
         const maxN = Math.min(n, work.length);
         for (let i = 0; i < maxN; i++) {
             const totalW = work.reduce((sum, c) => sum + c._w, 0);
@@ -8171,9 +8210,55 @@ const drawWeightedCards = (session, situation, n, opts = {}) => {
             boxNames,
         });
     }
-    return _drawFromPool(_poolCache[cacheKey], n, allowRepeat);
-};
+    const pool = _poolCache[cacheKey];
+    if (!pool || !pool.length) return [];
 
+    const out = [];
+    if (allowRepeat) {
+        // 有放回
+        const totalW = pool.reduce((sum, c) => sum + (c._w || 1), 0);
+        if (totalW <= 0) return [];
+        for (let i = 0; i < n; i++) {
+            let r = Math.random() * totalW;
+            let pick = pool[pool.length - 1];
+            for (const c of pool) {
+                r -= (c._w || 1);
+                if (r <= 0) { pick = c; break; }
+            }
+            out.push({ text: pick.text, image: pick.image });
+        }
+    } else {
+        // 无放回 + 按"去标点后文本"去重
+        const seen = new Set();
+        const work = [];
+        pool.forEach(c => {
+            let key = '';
+            if (c.text) {
+                key = c.text.replace(/[\s，。！？；：、,.!?;:'"()\[\]【】《》〈〉—…～·]/g, '');
+            } else if (c.image) {
+                key = '__img__' + (c.image.length || 0) + '_' + c.image.slice(-32);
+            }
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            work.push({ text: c.text, image: c.image, _w: c._w || 1 });
+        });
+        const maxN = Math.min(n, work.length);
+        for (let i = 0; i < maxN; i++) {
+            const totalW = work.reduce((sum, c) => sum + c._w, 0);
+            if (totalW <= 0) break;
+            let r = Math.random() * totalW;
+            let idx = work.length - 1;
+            for (let j = 0; j < work.length; j++) {
+                r -= work[j]._w;
+                if (r <= 0) { idx = j; break; }
+            }
+            const picked = work[idx];
+            out.push({ text: picked.text, image: picked.image });
+            work.splice(idx, 1);
+        }
+    }
+    return out;
+};
     const sessions = ref(createDefaultSessions());
 
     const isGlobalView = () => ['home', 'library', 'settings'].includes(currentView.value);
@@ -8680,12 +8765,21 @@ const retractSentence = (text, method) => {
 // ===== 撤回玩法 · 说明弹窗 =====
 const showRetractModeHelp = () => {
     appAlert(
-        '撤回模式说明：\n\n' +
-        '1 = 抽卡 → 撤回 → 直接发送\n' +
-        '2 = 抽卡 → 造句 → 撤回 → 发送\n' +
-        '3 = 抽卡 → 撤回 → 造句 → 发送\n' +
-        '4 = 随机（每次 1/2/3 随机）',
-        '撤回模式'
+        '梦角撤回手法说明：\n\n' +
+        '每次触发时，TA 抽 2~3 条字卡。\n' +
+        '每条独立掷骰，结果是：\n' +
+        '  · 整撤（整条收回）\n' +
+        '  · 半撤（撤掉一部分，剩碎片）\n' +
+        '  · 不撤（完整保留发出）\n\n' +
+        '模式 1（默认）\n' +
+        '  每条骰三选一，剩下的碎片拼一起发出。\n\n' +
+        '模式 2\n' +
+        '  每条先骰是否造句（造句/原句），再骰三选一。\n\n' +
+        '模式 3\n' +
+        '  每条先骰三选一，剩下的碎片合起来再骰一次造句。\n\n' +
+        '模式 4\n' +
+        '  每次在 1 / 2 / 3 里随机挑一种。',
+        '撤回'
     );
 };
 const showRetractMethodHelp = () => {
@@ -9047,64 +9141,83 @@ const triggerGroupRetractPlay = (member, group) => {
     if (!rs.retractEnabled) return false;
     if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
 
-    // 群聊抽卡：群聊池 + 该成员私聊池
-    const groupPool = envelopeCardItems(group, '群聊', group.id);
-    const privatePool = envelopeCardItems(member, '私聊');
-    const pool = [...groupPool, ...privatePool];
+    const gp = envelopeCardItems(group, '群聊', group.id);
+    const pp = envelopeCardItems(member, '私聊');
+    const pool = [...gp, ...pp];
     if (!pool.length) return false;
-    const src = (pool[Math.floor(Math.random() * pool.length)].text || '').trim();
-    if (!src) return false;
+    const N = Math.min(2 + Math.floor(Math.random() * 2), pool.length);
+    const picked = [];
+    const copy = [...pool];
+    for (let i = 0; i < N && copy.length; i++) {
+        const idx = Math.floor(Math.random() * copy.length);
+        picked.push(copy[idx]);
+        copy.splice(idx, 1);
+    }
 
     let mode = rs.retractMode || 1;
     if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
     const method = rs.retractMethod || 1;
-    const baseOpts = { session: group };
 
-       if (mode === 1) {
-        const r = retractSentence(src, method);
-        if (!r || !r.remaining) return false;
-        sendMessage(member.id, r.remaining, {
-            ...baseOpts,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
+    const remainingParts = [];
+    const removedList = [];
+
+    const rollOne = (text) => {
+        const t = (text || '').trim();
+        if (!t) return;
+        const r = Math.random();
+        if (r < 1 / 3) {
+            removedList.push(t);
+        } else if (r < 2 / 3) {
+            const ret = retractSentence(t, method);
+            if (ret && ret.remaining) {
+                remainingParts.push(ret.remaining);
+                removedList.push(ret.removed || t);
+            } else {
+                removedList.push(t);
+            }
+        } else {
+            remainingParts.push(t);
+        }
+    };
+
+    if (mode === 1) {
+        picked.forEach(item => rollOne(item.text));
+    } else if (mode === 2) {
+        picked.forEach(item => {
+            const t = (item.text || '').trim();
+            if (!t) return;
+            let base = t;
+            if (Math.random() < 0.5) {
+                const composed = composeSentence(t, member);
+                if (composed) base = composed;
+            }
+            rollOne(base);
         });
-                saveGroupFreeComposedSentence(finalSend);
-        return true;
+    } else if (mode === 3) {
+        picked.forEach(item => rollOne(item.text));
+        if (remainingParts.length) {
+            const merged = remainingParts.join('  ');
+            if (Math.random() < 0.5) {
+                const composed = composeSentence(merged, member);
+                if (composed) {
+                    remainingParts.length = 0;
+                    remainingParts.push(composed);
+                }
+            }
+        }
     }
-    if (mode === 2) {
-        const composed = composeSentence(src, member);
-        if (!composed) return false;
-        const r = retractSentence(composed, method);
-        if (!r || !r.remaining) return false;
-        sendMessage(member.id, r.remaining, {
-            ...baseOpts,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
-            freeCompose: true,
-        });
-        saveGroupFreeComposedSentence(r.remaining);
-        return true;
-    }
-    if (mode === 3) {
-        const r = retractSentence(src, method);
-        if (!r || !r.remaining) return false;
-        const composed = composeSentence(r.remaining, member);
-        const finalSend = composed || r.remaining;
-        sendMessage(member.id, finalSend, {
-            ...baseOpts,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
-            freeCompose: !!composed,
-        });
-        if (composed) saveGroupFreeComposedSentence(finalSend);
-        return true;
-    }
-    return false;
+
+    if (!removedList.length) return false;
+    const finalText = remainingParts.join('  ');
+    sendMessage(member.id, finalText || ' ', {
+        session: group,
+        retracted: true,
+        originalContents: removedList,
+        blank: !finalText,
+    });
+    if (finalText) saveGroupFreeComposedSentence(finalText);
+    return true;
 };
-
 const triggerGroupFreeCompose = (member, group) => {
     if (!member || !group) return false;
     const src = drawSourceSentence(member);
@@ -9211,67 +9324,90 @@ const triggerRetractPlay = (session) => {
     if (!session) return false;
     const rs = getRetractSettings(session.id);
     if (!rs.retractEnabled) return false;
-    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false; // 没中，让原流程继续
+    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
 
-    // 抽源句
-    const src = drawSourceSentence(session);
-    if (!src) return false;
+    // 抽 2~3 条字卡（默认多条）
+    const pool = drawWeightedCards(session, '私聊', 30);
+    if (!pool.length) return false;
+    const N = Math.min(2 + Math.floor(Math.random() * 2), pool.length);
+    const picked = [];
+    const copy = [...pool];
+    for (let i = 0; i < N && copy.length; i++) {
+        const idx = Math.floor(Math.random() * copy.length);
+        picked.push(copy[idx]);
+        copy.splice(idx, 1);
+    }
 
-        let mode = rs.retractMode || 1;
-    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3); // 模式 4 = 在 1/2/3 里随机
+    let mode = rs.retractMode || 1;
+    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
     const method = rs.retractMethod || 1;
 
-    // ---------- 模式 1：抽卡 → 撤回 → 直接发送 ----------
-        if (mode === 1) {
-        const r = retractSentence(src, method);
-        if (!r || !r.remaining) return false;
-        sendMessage('them', r.remaining, {
-            session,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
+    const remainingParts = [];
+    const removedList = [];
+
+    // 每条字卡三选一：整撤 / 半撤 / 不撤
+    const rollOne = (text) => {
+        const t = (text || '').trim();
+        if (!t) return;
+        const r = Math.random();
+        if (r < 1 / 3) {
+            // 整撤
+            removedList.push(t);
+        } else if (r < 2 / 3) {
+            // 半撤
+            const ret = retractSentence(t, method);
+            if (ret && ret.remaining) {
+                remainingParts.push(ret.remaining);
+                removedList.push(ret.removed || t);
+            } else {
+                removedList.push(t); // 撤不动 → 当整撤
+            }
+        } else {
+            // 不撤
+            remainingParts.push(t);
+        }
+    };
+
+    if (mode === 1) {
+        picked.forEach(item => rollOne(item.text));
+    } else if (mode === 2) {
+        picked.forEach(item => {
+            const t = (item.text || '').trim();
+            if (!t) return;
+            let base = t;
+            if (Math.random() < 0.5) {
+                const composed = composeSentence(t, session);
+                if (composed) base = composed;
+            }
+            rollOne(base);
         });
-        saveFreeComposedSentence(r.remaining, session);
-        return true;
-    }
-    // ---------- 模式 2：抽卡 → 造句 → 撤回 → 发送 ----------
-    if (mode === 2) {
-        const composed = composeSentence(src, session);
-        if (!composed) return false;
-        const r = retractSentence(composed, method);
-        if (!r || !r.remaining) return false;
-        sendMessage('them', r.remaining, {
-            session,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
-            freeCompose: true,
-        });
-        saveFreeComposedSentence(r.remaining, session);
-        return true;
+    } else if (mode === 3) {
+        picked.forEach(item => rollOne(item.text));
+        // 碎片合起来再骰一次造句
+        if (remainingParts.length) {
+            const merged = remainingParts.join('  ');
+            if (Math.random() < 0.5) {
+                const composed = composeSentence(merged, session);
+                if (composed) {
+                    remainingParts.length = 0;
+                    remainingParts.push(composed);
+                }
+            }
+        }
     }
 
-    // ---------- 模式 3：抽卡 → 撤回 → 造句 → 发送 ----------
-    if (mode === 3) {
-        const r = retractSentence(src, method);
-        if (!r || !r.remaining) return false;
-        const composed = composeSentence(r.remaining, session);
-        // 造句失败：直接发撤回后的源句（不白走一趟）
-        const finalSend = composed || r.remaining;
-        sendMessage('them', finalSend, {
-            session,
-            retracted: true,
-            originalContents: [r.original],
-            removedPart: r.removed || '',
-            freeCompose: !!composed,
-        });
-         saveFreeComposedSentence(finalSend, session);
-        return true;
-    }
-
-    return false;
+    if (!removedList.length) return false; // 全都"不撤" → 不算撤回，让原流程走
+    const finalText = remainingParts.join('  ');
+    sendMessage('them', finalText || ' ', {
+        session,
+        retracted: true,
+        originalContents: removedList,
+        blank: !finalText,
+    });
+    if (finalText) saveFreeComposedSentence(finalText, session);
+    return true;
 };
-
+  
 // ===== 梦角自由造句触发 =====
 const triggerFreeCompose = (session) => {
     if (!session) return false;
