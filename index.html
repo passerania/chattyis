@@ -106,16 +106,20 @@ body { color: var(--color-text); }
             color: #4a4a4a;
         }
 
-        body {
-            background-color: var(--color-bg); margin: 0; overflow: hidden; -webkit-font-smoothing: antialiased;
+               body {
+            background: var(--color-bg-layered, var(--color-bg));
+            background-attachment: fixed;
+            margin: 0; overflow: hidden; -webkit-font-smoothing: antialiased;
         }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
 
-        .app-container {
+                .app-container {
             width: 100vw; height: 100vh;
-            background: var(--color-bg); position: relative;
+            background: var(--color-bg-layered, var(--color-bg));
+            background-attachment: fixed;
+            position: relative;
             display: flex; flex-direction: column; overflow: hidden;
-            transition: background-image 0.3s ease;
+            transition: background 0.3s ease;
         }
         @media (min-width: 768px) {
             .app-container {
@@ -136,25 +140,26 @@ body { color: var(--color-text); }
         }
 
         /* 强化气泡玻璃拟态，稳定表现 */
-        .msg-bubble {
-            display: inline-block !important;
-            padding: 8px 12px !important;
-            border-radius: 20px !important;
-            color: rgba(0,0,0,0.85) !important;
-            position: relative !important;
-            background: rgba(255,255,255,0.5) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            line-height: 1.45 !important;
-            border: 1px solid rgba(255,255,255,0.6) !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+                        .msg-bubble {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 20px;
+            color: var(--color-text);
+            position: relative;
+            background: rgba(255,255,255,0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            line-height: 1.45;
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
             word-wrap: break-word; max-width: 100%;
         }
         .dark .msg-bubble {
-            color: rgba(255,255,255,0.92) !important; background: rgba(30,30,35,0.55) !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+            color: var(--color-text); background: rgba(30,30,35,0.55);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
         }
+
         .highlight { background-color: rgba(255, 208, 0, 0.5); border-radius: 4px; padding: 0 2px; }
 
         /* 入场动画 */
@@ -202,7 +207,11 @@ body { color: var(--color-text); }
     .redpacket-card-top { background:var(--color-bg); padding:28px 20px 10px; text-align:center; position:relative; color:var(--color-text); }
     .redpacket-card-top * { color:var(--color-text) !important; }
     .redpacket-top-red { background:linear-gradient(135deg,#f43f5e,#dc2626) !important; }
-    .redpacket-top-red * { color:#fff !important; }
+.redpacket-top-red * { color:#fff !important; }
+/* 红包深色主题：整体压暗，保留红色调 */
+.dark .redpacket-top-red { background:linear-gradient(135deg,#7a2530,#4d1520) !important; }
+.rp-bg { background: linear-gradient(135deg, #f43f5e, #e11d48) !important; }
+.dark .rp-bg { background: linear-gradient(135deg, #7a2530, #4d1520) !important; }
     .redpacket-card-tear { height:12px; background:#FFFBB4; position:relative; }
     .redpacket-card-tear::before { content:''; position:absolute; top:-6px; left:-12px; right:-12px; height:12px; background:radial-gradient(circle at 6px 6px,#fff 3px,transparent 3px); background-size:12px 12px; background-repeat:repeat-x; }
     .redpacket-card-bottom { background:#fff; padding:24px 20px; text-align:center; }
@@ -547,7 +556,7 @@ body { color: var(--color-text); }
     <div class="app-container text-sm">
         <transition name="view">
             <!-- 主屏幕 -->
-                <div v-if="currentView === 'home'" key="home" class="absolute inset-0 z-10 bg-bg overflow-hidden" :style="homeBgStyle" @touchstart="onHomeTouchStart" @touchend="onHomeTouchEnd">
+                <div v-if="currentView === 'home'" key="home" class="inset-0 flex flex-col z-20 bg-transparentabsolute inset-0 z-10 bg-transparent overflow-hidden" :style="homeBgStyle" @touchstart="onHomeTouchStart" @touchend="onHomeTouchEnd">
     <!-- 三页轨道 -->
     <div class="home-track flex h-full transition-transform duration-300 ease-out" :style="{ transform: `translateX(-${homePage * 100}%)` }">
 
@@ -555,10 +564,10 @@ body { color: var(--color-text); }
         <div class="w-full h-full shrink-0 flex flex-col justify-between pt-24 px-8 overflow-hidden">
                 <!-- 顶部导航栏（位于原「林小初」高度）：字卡 / 意趣（移除洞察） -->
                 <transition name="navfade">
-                    <div v-show="!settings.navCollapsed" class="flex items-center justify-around mb-6">
+                    <div v-show="!settings.navCollapsed" class="flex items-center justify-center gap-20 mb-6">
                         <button @click="switchView('library')" class="flex flex-col items-center gap-1 text-text hover:opacity-70 transition-opacity">
                             <span class="w-10 h-10 rounded-[14px] overflow-hidden flex items-center justify-center bg-surface/60 border border-border/40 shadow-sm">
-                                <img v-if="currentSession?.navIcons?.library" :src="currentSession.navIcons.library" class="w-full h-full object-cover" alt="">
+                                <img v-if="currentSession?.navIcons?.library" :src="settings.navIcons.library" class="w-full h-full object-cover" alt="">
                                 <svg v-else viewBox="0 0 24 24" class="w-1/2 h-1/2" fill="var(--nav-icon-color)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
                             </span>
                             <span class="nav-label">字卡</span>
@@ -579,13 +588,7 @@ body { color: var(--color-text); }
 </button>
 
 
-                        <button @click="switchView('yiqu')" class="flex flex-col items-center gap-1 text-text hover:opacity-70 transition-opacity">
-                            <span class="w-10 h-10 rounded-[14px] overflow-hidden flex items-center justify-center bg-surface/60 border border-border/40 shadow-sm">
-                                <img v-if="currentSession?.navIcons?.yiqu" :src="currentSession.navIcons.yiqu" class="w-full h-full object-cover" alt="">
-                                <svg v-else viewBox="0 0 24 24" class="w-1/2 h-1/2" fill="var(--nav-icon-color)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
-                            </span>
-                            <span class="nav-label">意趣</span>
-                        </button>
+                                               </button>
                     </div>
                 </transition>
                     <!-- 当前会话标识 + 顶部图标收纳键（与卡片右对齐、低调） -->
@@ -941,12 +944,12 @@ body { color: var(--color-text); }
     <div v-else-if="msg.sender === 'system' && msg.type === 'redpacket' && msg.status === 'pending' && msg.expireAt > Date.now()" @click="openRedpacket(msg)" class="flex justify-center mb-4 cursor-pointer relative"
      @contextmenu.prevent="openMsgMenu(msg, $event)"
      @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
-            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50 rp-bg">
             <div class="px-4 py-3 text-white text-center">
                 <div class="text-lg mb-1">🧧</div>
                 <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
             </div>
-            <div class="bg-white/90 py-2 text-center"><span class="text-[10px] text-muted">点击拆开</span></div>
+             <div class="bg-surface/90 py-2 text-center"><span class="text-[10px] text-muted">点击拆开</span></div>
         </div>
     </div>
 
@@ -1064,12 +1067,12 @@ body { color: var(--color-text); }
      @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
             <div class="flex items-center gap-2">
             <button @click="deleteMsg(msg.id)" class="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-red-500 p-1 bg-surface/70 rounded-full shadow-sm"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50" style="background:linear-gradient(135deg,#f43f5e,#e11d48);">
+            <div class="w-56 rounded-xl overflow-hidden shadow-md border border-red-300/50 rp-bg">
                 <div class="px-4 py-3 text-white">
                     <div class="text-lg mb-1">🧧</div>
                     <div class="text-[13px] font-medium tracking-wider">{{ msg.content }}</div>
                 </div>
-                <div class="bg-white/90 py-2 text-center">
+                 <div class="bg-surface/90 py-2 text-center">
                     <span v-if="msg.status === 'opened'" class="text-[12px] font-semibold text-red-600">对方已收下</span>
                     <span v-else-if="msg.status === 'pending'" class="text-[12px] text-muted">等待对方收下…</span>
                     <span v-else-if="msg.status === 'expired'" class="text-[12px] text-muted">对方未收下 · 已退回</span>
@@ -1084,14 +1087,14 @@ body { color: var(--color-text); }
      @contextmenu.prevent="openMsgMenu(msg, $event)"
      @touchstart="onMsgPressStart(msg, $event)" @touchend="onMsgPressEnd" @touchmove="onMsgPressEnd">
             <div class="w-60 rounded-xl overflow-hidden shadow-md border border-red-300/50 bg-surface">
-            <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;">
+            <div class="px-4 py-3 text-center rp-bg" style="color:#fff;">
                 <div class="text-lg mb-1">🧧</div>
                 <div class="text-[13px] font-medium tracking-wider">抢红包</div>
                 <div v-if="msg.sender !== 'me'" class="text-[11px] mt-0.5 opacity-90">{{ senderName(msg.sender) }} 发的</div>
                 <div v-if="msg.content" class="text-[11px] mt-0.5 opacity-90 leading-snug">{{ msg.content }}</div>
                 <div class="text-[11px] mt-0.5 opacity-90">¥{{ msg.amount.toLocaleString('zh-CN') }} · {{ packetCountOf(msg.packetId) }} 份</div>
             </div>
-            <div class="bg-white/90 py-2 text-center">
+             <div class="bg-surface/90 py-2 text-center">
                 <button v-if="msg.sender !== 'me'" @click="userGrabPacket(msg.packetId)" class="px-4 py-1.5 rounded-full text-[12px] font-medium text-white" style="background:#e11d48;">抢</button>
                 <span v-else class="text-[11px] text-muted">众人争抢中…</span>
             </div>
@@ -1104,7 +1107,7 @@ body { color: var(--color-text); }
             <div class="px-4 py-3 text-center" style="background:var(--nav-icon-color);color:#fff;">
                 <div class="text-[13px] font-medium tracking-wider">{{ msg.shareTitle }}</div>
             </div>
-            <div class="bg-white/90 py-2 text-center">
+             <div class="bg-surface/90 py-2 text-center">
                 <span class="text-[11px] text-muted">点击查看分享内容</span>
             </div>
         </div>
@@ -1920,7 +1923,7 @@ body { color: var(--color-text); }
             <!-- 聊天视图结束 -->
 
             <!-- 字卡（原语料库） -->
-            <div v-else-if="currentView === 'library'" key="library" class="absolute inset-0 flex flex-col z-20 bg-bg">
+            <div v-else-if="currentView === 'library'" key="library" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
     <button @click="switchView('home')" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">{{ currentSession?.name || '' }} 字卡</span>
@@ -2194,7 +2197,7 @@ body { color: var(--color-text); }
 
 
             <!-- 设置（原底韵） -->
-            <div v-else-if="currentView === 'preferences'" key="preferences" class="absolute inset-0 flex flex-col z-20 bg-bg">
+            <div v-else-if="currentView === 'preferences'" key="preferences" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
                     <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">设置</span>
@@ -2208,6 +2211,9 @@ body { color: var(--color-text); }
                             <button @click="settingsTab = '回复设置'"
                                     class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
                                     :class="settingsTab === '回复设置' ? 'bg-text text-white' : 'text-muted hover:text-text'">回复设置</button>
+                            <button @click="settingsTab = '互动设置'"
+                                    class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
+                                    :class="settingsTab === '互动设置' ? 'bg-text text-white' : 'text-muted hover:text-text'">互动设置</button>
                             <button @click="settingsTab = '系统'"
                                     class="flex-1 py-2 rounded-lg text-[12px] tracking-widest transition-colors"
                                     :class="settingsTab === '系统' ? 'bg-text text-white' : 'text-muted hover:text-text'">系统</button>
@@ -2238,18 +2244,18 @@ body { color: var(--color-text); }
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">玩家气泡刺绣</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
                                 <div class="p-3.5 flex flex-col gap-2">
-                                    <span>我的气泡刺绣，通用</span>
-                                    <textarea v-model="settings.playerCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-player { }"></textarea>
+                                    <span>我的气泡，通用</span>
+<textarea v-model="settings.playerCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-player { background: #ffd; }"></textarea>
+<div class="text-[10px] text-muted/60 leading-relaxed mt-1">
+    用 <code>.custom-css-player</code> 选择器即可。支持 <code>background</code>、<code>color</code>、<code>border</code>、<code>border-radius</code>、<code>box-shadow</code>、<code>font-family</code> 等。<br>
+    ⚠️ 如果某条属性不生效，加 <code>!important</code>（例：<code>background: red !important;</code>）
+</div>
                                 </div>
                             </div>
 <section>
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">排版</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
-                                <div class="flex items-center justify-between p-3.5 border-b border-border">
-                                    <span>墨色模式</span>
-                                    <button @click="toggleDarkMode" class="w-10 h-5 rounded-full relative transition-colors" :class="settings.darkMode ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.darkMode ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                </div>
-                                <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                                                <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>主题色（跟随主屏图标色）</span>
                                     <div class="flex items-center gap-2">
                                         <button @click="openColorPicker({ key: 'theme', value: settings.accentColor, onApply: (v) => { settings.accentColor = v; } })" class="w-8 h-8 rounded cursor-pointer border border-border bg-transparent p-0.5 flex items-center justify-center" :style="settings.accentColor ? { background: settings.accentColor } : {}">
@@ -2272,32 +2278,57 @@ body { color: var(--color-text); }
                                 </div>
                             </div>
                         </section>
-
-                            
+                            <section class="mt-6">
+                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间视觉</h3>
+                                
+                                <!-- 下面 4 块从意趣搬过来 -->
 <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                                <div class="p-3.5">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span>我的范围</span>
-                                        <span class="text-[10px] text-muted">{{ 3 - (money.redpacket.userUsedThisYear || 0) }} 次剩余</span>
-                                    </div>
-                                    <div class="text-[11px] text-muted">{{ money.redpacket.userRange.min }} ~ {{ money.redpacket.userRange.max }}</div>
-                                    <button @click="openRangeEdit" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
+                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间配色</h3>
+                        <div class="bg-surface border border-border rounded-xl p-3 grid grid-cols-3 gap-3">
+                                                        <div v-for="(t, key) in THEMES" :key="key"
+                                 @click="applyTheme(key)"
+                                 class="aspect-square rounded-xl border cursor-pointer overflow-hidden relative transition-all"
+                                 :class="settings.themeId === key ? 'ring-2 ring-text ring-offset-2' : 'border-border/40 hover:scale-105'"
+                                 :style="{ background: `radial-gradient(circle at 25% 25%, ${t.bgColors[0]} 0%, transparent 55%), radial-gradient(circle at 75% 20%, ${t.bgColors[1]} 0%, transparent 50%), ${t.bgBase || t.bgColors[0]}` }">
+                                <div class="absolute inset-3 rounded-md border" :style="{ borderColor: t.border, background: t.surface }"></div>
+                                <span class="absolute bottom-1 left-0 right-0 text-center text-[10px] tracking-wider font-medium" :style="{ color: t.text }">{{ t.label }}</span>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-muted/60 leading-relaxed px-2 mt-2">
+                            点击色块切换整套配色（背景 + 面板 + 文字 + 强调色）
+                        </div>
+                    </section>
+                                
+                            </section>
+<section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">屏风</h3>
+                        <div v-if="currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
+                            <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
+                                <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
+                                <span class="text-[9px] text-muted">添置</span>
+                                <input type="file" accept="image/*" class="hidden" @change="uploadBgToLibrary">
+                            </label>
+                            <div class="w-16 h-24 shrink-0 border rounded-md cursor-pointer flex items-center justify-center text-[10px] text-muted snap-center transition-all" :class="!settings.bgImage ? 'border-text bg-bg' : 'border-border bg-surface'" @click="setBg('')">无相</div>
+                            <div v-for="(bg, idx) in (settings.bgLibrary || [])" :key="idx" class="w-16 h-24 shrink-0 rounded-md bg-cover bg-center cursor-pointer relative group snap-center" :style="{ backgroundImage: `url(${bg})` }" :class="settings.bgImage === bg ? 'ring-2 ring-text ring-offset-1' : ''" @click="setBg(bg)">
+                                <button @click.stop="removeBg(idx)" class="absolute -top-2 -right-2 w-5 h-5 bg-surface text-red-500 rounded-full shadow border border-border opacity-0 group-hover:opacity-100 flex items-center justify-center">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置交谈背景</div>
+                    </section>
+                                               <section>
+                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">角色气泡刺绣</h3>
+                            <div v-if="currentSession" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
+                                <div class="p-3.5 flex flex-col gap-2">
+                                    <span v-if="currentSession.type === 'group'">该群聊的气泡刺绣 (CSS，这座敞轩专属)</span>
+                                    <span v-else>TA的气泡刺绣 (CSS，这间静室专属)</span>
+                                    <textarea v-model="settings.characterCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-character { }"></textarea>
                                 </div>
                             </div>
+                            <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置气泡刺绣</div>
                         </section>
-                    <!-- 全量备份：一键导出/导入全部数据（会话/语料/红包/日历/字笺/设置） -->
-<section class="mt-6">
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">全量备份</h3>
-                            <div class="bg-surface border border-border rounded-xl p-4 space-y-3 text-[12px]">
-                                <div class="text-muted font-light leading-relaxed">导出全部数据为一个文件，换设备或误删时可一键恢复。</div>
-                                <div class="flex gap-2">
-                                    <button @click="exportAllData" class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5"><i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出备份</button>
-                                    <label class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"><i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入备份<input type="file" accept=".json" class="hidden" @change="importAllData"></label>
-                                </div>
-                                                        </div>
-                        </section>
+                            
+                    
                         </template>
 
                                                 <!-- ===== Tab: 回复设置 ===== -->
@@ -2313,17 +2344,23 @@ body { color: var(--color-text); }
                                     <span>徐徐道来</span>
                                     <button @click="settings.typewriter = !settings.typewriter" class="w-10 h-5 rounded-full relative" :class="settings.typewriter ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.typewriter ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                 </div>
-                                <div class="p-3.5 space-y-2.5 border-b border-border">
+                                                                <div class="p-3.5 space-y-3 border-b border-border">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-[12px] text-muted">最短回复时间</span>
-                                        <span class="text-[12px] text-text tabular-nums">{{ fmtDelay(settings.replyDelayMin) }}</span>
+                                        <span class="text-[13px] text-text">最短回复时间</span>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="adjustReplyDelay('min', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMin) }}</span>
+                                            <button @click="adjustReplyDelay('min', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                        </div>
                                     </div>
-                                    <input type="range" min="1" max="600" step="1" :value="settings.replyDelayMin" @input="onReplyMinInput" class="w-full" style="accent-color: var(--nav-icon-color);" />
                                     <div class="flex items-center justify-between">
-                                        <span class="text-[12px] text-muted">最长回复时间</span>
-                                        <span class="text-[12px] text-text tabular-nums">{{ fmtDelay(settings.replyDelayMax) }}</span>
+                                        <span class="text-[13px] text-text">最长回复时间</span>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="adjustReplyDelay('max', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMax) }}</span>
+                                            <button @click="adjustReplyDelay('max', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                        </div>
                                     </div>
-                                    <input type="range" min="1" max="600" step="1" :value="settings.replyDelayMax" @input="onReplyMaxInput" class="w-full" style="accent-color: var(--nav-icon-color);" />
                                     <div class="text-[10px] text-muted leading-relaxed">徐徐道来开启时，每条消息在最短~最长之间随机延迟（最长自动不小于最短）</div>
                                 </div>
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
@@ -2417,6 +2454,45 @@ body { color: var(--color-text); }
                                     以下都是 TA 随机行为的触发概率（%）：嫌频繁就把数值调小，调到 0 = 不再触发；开关关掉 = 彻底关闭该行为。修改即时保存生效。
                                 </div>
 
+                                                              <!-- ===== 群聊主动会话 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">群聊主动会话</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div v-if="!groupSessions.length" class="p-3.5 text-[12px] text-muted">
+                                            还没有群聊
+                                        </div>
+                                        <template v-else>
+                                            <div v-for="(g, idx) in groupSessions" :key="g.id"
+                                                 class="border-b border-border last:border-b-0">
+                                                <div class="flex items-center justify-between p-3.5"
+                                                     :class="g.groupChatEnabled ? '' : ''">
+                                                    <span class="text-[13px] text-text truncate pr-2">{{ g.name }}</span>
+                                                    <button @click="toggleGroupChatFor(g)"
+                                                            class="w-10 h-5 rounded-full relative transition-colors shrink-0"
+                                                            :class="g.groupChatEnabled ? 'bg-text' : 'bg-border'">
+                                                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                             :class="g.groupChatEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                                    </button>
+                                                </div>
+                                                                                                <div v-if="g.groupChatEnabled" class="px-3.5 pb-3.5 bg-bg/50">
+                                                    <div class="flex items-center justify-between pt-3">
+                                                        <span class="text-[13px] text-text">发起间隔</span>
+                                                        <div class="flex items-center gap-2">
+                                                            <button @click="adjustGroupChatInterval(g, -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ g.groupChatInterval }} 分</span>
+                                                            <button @click="adjustGroupChatInterval(g, 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1.5">
+                                                        开启后，TA 们会按此间隔随机有一位在群里主动说话。
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
+
+
                                 <!-- ===== 主动搭话 ===== -->
                                 <section class="mb-4">
                                     <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">主动搭话</h3>
@@ -2425,10 +2501,14 @@ body { color: var(--color-text); }
                                             <span>主动搭话</span>
                                             <button @click="toggleActiveMessage" class="w-10 h-5 rounded-full relative" :class="settings.activeMessage ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.activeMessage ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                         </div>
-                                        <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 flex flex-col gap-2 border-b border-border">
-                                            <div class="flex justify-between text-[11px] text-muted"><span>发起间隔</span><span>{{settings.activeInterval}} 分钟</span></div>
-                                            <input type="range" v-model.number="settings.activeInterval" min="5" max="120" @change="manageActiveTimer" class="w-full accent-text">
-                                        </div>
+                                        <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 flex items-center justify-between border-b border-border">
+    <span class="text-[13px] text-text">发起间隔</span>
+    <div class="flex items-center gap-2">
+        <button @click="settings.activeInterval = Math.max(5, settings.activeInterval - 5); manageActiveTimer(); debouncedSave();" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+        <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ settings.activeInterval }} 分</span>
+        <button @click="settings.activeInterval = Math.min(120, settings.activeInterval + 5); manageActiveTimer(); debouncedSave();" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+    </div>
+</div>
                                         <div class="flex items-center justify-between p-3.5">
                                             <span>标记</span>
                                             <button @click="settings.markEnabled = !settings.markEnabled" class="w-10 h-5 rounded-full relative" :class="settings.markEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.markEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
@@ -2575,9 +2655,95 @@ body { color: var(--color-text); }
                             </template>
                         </template>
 
+                        <!-- ===== Tab: 互动设置 ===== -->
+                        <template v-if="settingsTab === '互动设置'">
+                            <section class="mb-3">
+                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
+
+                                                               <!-- 我的范围 -->
+                                <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px] mb-3">
+                                    <div class="p-3.5">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span>我的范围
+                                                <span class="ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-bg/60 text-muted/70 align-middle">通用</span>
+                                            </span>
+                                            <span class="text-[10px] text-muted">{{ 3 - (money.redpacket.userUsedThisYear || 0) }} 次剩余</span>
+                                        </div>
+                                        <div class="text-[11px] text-muted">{{ money.redpacket.userRange.min }} ~ {{ money.redpacket.userRange.max }}</div>
+                                        <button @click="openRangeEdit" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
+                                    </div>
+                                </div>
+
+                                <!-- TA 的红包数目 + 群聊设置 -->
+                                <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
+                                    <div v-if="currentSession">
+                                        <div v-if="currentSession.type !== 'group'" class="p-3.5 border-b border-border">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span>TA的红包数目
+                                                    <span class="ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-bg/60 text-muted/70 align-middle">私聊</span>
+                                                </span>
+                                                <span class="text-[10px] text-muted">{{ 3 - (currentSession.redPacket.usedThisYear || 0) }} 次剩余</span>
+                                            </div>
+                                            <div class="text-[11px] text-muted">小红包 · {{ currentSession.redPacket.tiers[0].min }}~{{ currentSession.redPacket.tiers[0].max }} · 红包 · {{ currentSession.redPacket.tiers[1].min }}~{{ currentSession.redPacket.tiers[1].max }} · 转账 · {{ currentSession.redPacket.tiers[2].min }}~{{ currentSession.redPacket.tiers[2].max }}</div>
+                                            <button @click="openTierEdit(currentSession)" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
+                                        </div>
+                                        <div v-if="currentSession.type === 'group'" class="p-3.5 border-b border-border">
+                                            <div class="flex items-center justify-between">
+                                                <span>TA可以发起抢红包
+                                                    <span class="ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-bg/60 text-muted/70 align-middle">群聊</span>
+                                                </span>
+                                                <button @click="currentSession.roleGrabRedpacketEnabled = !currentSession.roleGrabRedpacketEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleGrabRedpacketEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleGrabRedpacketEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                            </div>
+                                        </div>
+                                        <div v-if="currentSession.type === 'group'" class="p-3.5">
+                                            <div class="flex items-center justify-between mb-2">
+                                                                                            <div v-if="currentSession.groupChatEnabled" class="flex items-center justify-between text-[11px] text-muted">
+                                                <span>发起间隔</span>
+                                                <span>{{ currentSession.groupChatInterval }} 分钟</span>
+                                            </div>
+                                            <input v-if="currentSession.groupChatEnabled" type="range" v-model.number="currentSession.groupChatInterval" min="5" max="300" class="w-full accent-text mt-2">
+                                            <div class="flex items-center justify-between mt-3">
+                                                <span>标记</span>
+                                                <button @click="currentSession.groupMarkEnabled = !currentSession.groupMarkEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.groupMarkEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.groupMarkEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                            </div>
+                                            <div class="flex items-center justify-between mt-3">
+                                                <span>TA可以@任意一位</span>
+                                                <button @click="currentSession.roleAtRoleEnabled = !currentSession.roleAtRoleEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleAtRoleEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleAtRoleEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="p-3.5 text-muted text-[12px]">进入某个会话后可调整红包档位</div>
+                                </div>
+                            </section>
+                        </template>
+
                         <!-- ===== Tab: 系统 ===== -->
                                                 
                                                 <template v-if="settingsTab === '系统'">
+                            <!-- ===== 数据 ===== -->
+                            <section class="mb-4">
+                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">数据</h3>
+                                <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <!-- 全量备份 -->
+                                    <div class="p-4 border-b border-border">
+                                        <div class="text-[13px] text-text mb-1">全量备份</div>
+                                        <div class="text-[11px] text-muted mb-3 leading-relaxed">导出全部数据为一个文件，换设备或误删时可一键恢复。</div>
+                                        <div class="flex gap-2">
+                                            <button @click="exportAllData" class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 text-[12px]"><i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出备份</button>
+                                            <label class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-[12px]"><i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入备份<input type="file" accept=".json" class="hidden" @change="importAllData"></label>
+                                        </div>
+                                    </div>
+                                    <!-- 清除所有对话 -->
+                                    <div class="p-4">
+                                        <div class="text-[13px] text-red-500 mb-1">清除所有对话</div>
+                                        <div class="text-[11px] text-muted mb-3 leading-relaxed">清除当前会话的全部聊天记录。此操作不可撤销。</div>
+                                        <button @click="clearChat" class="w-full py-2.5 rounded-lg border border-red-400/50 text-red-500 tracking-widest hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 text-[12px]">
+                                            <i data-lucide="flame" class="w-4 h-4 stroke-[1.5]"></i> 清除所有对话
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
+
                             <section>
                                 <!-- ===== 版本 ===== -->
                                 <section class="mb-4">
@@ -2657,137 +2823,10 @@ body { color: var(--color-text); }
                         
 
 
-            <!-- 意趣 -->
-            <div v-else-if="currentView === 'yiqu'" key="yiqu" class="absolute inset-0 flex flex-col z-20 bg-bg">
-                <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
-                    <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
-                    <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">意趣</span>
-                </header>
-                 <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-12">
-                    <section>
-                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间配色</h3>
-                        <div class="bg-surface border border-border rounded-xl p-3 grid grid-cols-3 gap-3">
-                            <div v-for="(t, key) in THEMES" :key="key"
-                                 @click="applyTheme(key)"
-                                 class="aspect-square rounded-xl border cursor-pointer overflow-hidden relative transition-all"
-                                 :class="settings.themeId === key ? 'ring-2 ring-text ring-offset-2' : 'border-border/40 hover:scale-105'"
-                                 :style="{ background: t.bg }">
-                                <div class="absolute inset-3 rounded-md border" :style="{ borderColor: t.border, background: t.surface }"></div>
-                                <span class="absolute bottom-1 left-0 right-0 text-center text-[10px] tracking-wider font-medium" :style="{ color: t.text }">{{ t.label }}</span>
-                            </div>
-                        </div>
-                        <div class="text-[10px] text-muted/60 leading-relaxed px-2 mt-2">
-                            点击色块切换整套配色（背景 + 面板 + 文字 + 强调色）
-                        </div>
-                    </section>
-                        <section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">屏风</h3>
-                        <div v-if="currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
-                            <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
-                                <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
-                                <span class="text-[9px] text-muted">添置</span>
-                                <input type="file" accept="image/*" class="hidden" @change="uploadBgToLibrary">
-                            </label>
-                            <div class="w-16 h-24 shrink-0 border rounded-md cursor-pointer flex items-center justify-center text-[10px] text-muted snap-center transition-all" :class="!currentSession.bgImage ? 'border-text bg-bg' : 'border-border bg-surface'" @click="setBg('')">无相</div>
-                            <div v-for="(bg, idx) in (currentSession.bgLibrary || [])" :key="idx" class="w-16 h-24 shrink-0 rounded-md bg-cover bg-center cursor-pointer relative group snap-center" :style="{ backgroundImage: `url(${bg})` }" :class="currentSession.bgImage === bg ? 'ring-2 ring-text ring-offset-1' : ''" @click="setBg(bg)">
-                                <button @click.stop="removeBg(idx)" class="absolute -top-2 -right-2 w-5 h-5 bg-surface text-red-500 rounded-full shadow border border-border opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                    <i data-lucide="x" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置交谈背景</div>
-                    </section>
-                        <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">册页</h3>
-                            <div v-if="currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
-                                <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
-                                    <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
-                                    <span class="text-[9px] text-muted">添置</span>
-                                    <input type="file" accept="image/*" class="hidden" @change="uploadCallBg">
-                                </label>
-                                <div v-for="(bg, idx) in (currentSession.callBgImages || [])" :key="idx" class="w-16 h-24 shrink-0 rounded-md bg-cover bg-center cursor-pointer relative group snap-center" :style="{ backgroundImage: `url(${bg})` }">
-                                    <button @click.stop="removeCallBg(idx)" class="absolute -top-2 -right-2 w-5 h-5 bg-surface text-red-500 rounded-full shadow border border-border opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                        <i data-lucide="x" class="w-3 h-3"></i>
-                                    </button>
-                                </div>
-                                <div v-if="!(currentSession.callBgImages || []).length" class="text-[11px] text-muted/60 self-center">通话时随机抽取一张铺满</div>
-                            </div>
-                            <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置册页</div>
-                        </section>
-                        <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">角色气泡刺绣</h3>
-                            <div v-if="currentSession" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
-                                <div class="p-3.5 flex flex-col gap-2">
-                                    <span v-if="currentSession.type === 'group'">该群聊的气泡刺绣 (CSS，这座敞轩专属)</span>
-                                    <span v-else>TA的气泡刺绣 (CSS，这间静室专属)</span>
-                                    <textarea v-model="currentSession.customCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-character { }"></textarea>
-                                </div>
-                            </div>
-                            <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置气泡刺绣</div>
-                        </section>
-                    <section>
-                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
-                        <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
-                            <div v-if="currentSession">
-                                <div v-if="currentSession.type !== 'group'" class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span>TA的红包数目</span>
-                                        <span class="text-[10px] text-muted">{{ 3 - (currentSession.redPacket.usedThisYear || 0) }} 次剩余</span>
-                                    </div>
-                                    <div class="text-[11px] text-muted">小红包 · {{ currentSession.redPacket.tiers[0].min }}~{{ currentSession.redPacket.tiers[0].max }} · 红包 · {{ currentSession.redPacket.tiers[1].min }}~{{ currentSession.redPacket.tiers[1].max }} · 转账 · {{ currentSession.redPacket.tiers[2].min }}~{{ currentSession.redPacket.tiers[2].max }}</div>
-                                    <button @click="openTierEdit(currentSession)" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
-                                </div>
-                                <div v-if="currentSession.type === 'group'" class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between">
-                                        <span>TA可以发起抢红包</span>
-                                        <button @click="currentSession.roleGrabRedpacketEnabled = !currentSession.roleGrabRedpacketEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleGrabRedpacketEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleGrabRedpacketEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                    </div>
-                                </div>
-                                <div v-if="currentSession.type === 'group'" class="p-3.5">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span>主动会话</span>
-                                        <button @click="toggleGroupChat" class="w-10 h-5 rounded-full relative" :class="currentSession.groupChatEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.groupChatEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                    </div>
-                                    <div v-if="currentSession.groupChatEnabled" class="flex items-center justify-between text-[11px] text-muted">
-                                        <span>发起间隔</span>
-                                        <span>{{ currentSession.groupChatInterval }} 分钟</span>
-                                    </div>
-                                    <input v-if="currentSession.groupChatEnabled" type="range" v-model.number="currentSession.groupChatInterval" min="5" max="300" class="w-full accent-text mt-2">
-                                    <div class="flex items-center justify-between mt-3">
-                                        <span>标记</span>
-                                        <button @click="currentSession.groupMarkEnabled = !currentSession.groupMarkEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.groupMarkEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.groupMarkEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                    </div>
-                                    <div class="flex items-center justify-between mt-3">
-                                        <span>TA可以@任意一位</span>
-                                        <button @click="currentSession.roleAtRoleEnabled = !currentSession.roleAtRoleEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleAtRoleEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleAtRoleEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-else class="p-3.5 text-muted text-[12px]">进入某个会话后可调整红包档位</div>
-                        </div>
-                    </section>
-                    <section class="mt-4">
-                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">顶部图标 · 屏风</h3>
-                        <div class="grid grid-cols-3 gap-2 px-2">
-                            <div v-for="slot in navIconSlots" :key="slot.key" class="flex flex-col items-center gap-1.5 bg-surface border border-border rounded-xl p-2.5">
-                                <div class="w-full aspect-square rounded-lg overflow-hidden flex items-center justify-center bg-bg border border-border/50">
-                                    <img v-if="currentSession?.navIcons && currentSession.navIcons[slot.key]" :src="currentSession.navIcons[slot.key]" class="w-full h-full object-cover" alt="">
-                                    <svg v-else viewBox="0 0 24 24" class="w-1/2 h-1/2" fill="var(--nav-icon-color)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
-                                </div>
-                                <span class="text-[11px] tracking-widest text-muted">{{ slot.label }}</span>
-                                <label class="text-[10px] px-3 py-1 rounded-full border border-border text-muted cursor-pointer hover:text-text transition-colors">换图
-                                    <input type="file" accept="image/*" class="hidden" @change="onNavIconUpload(slot.key, $event)">
-                                </label>
-                                <button v-if="currentSession?.navIcons && currentSession.navIcons[slot.key]" @click="clearNavIcon(slot.key)" class="text-[10px] text-muted/70 hover:text-red-500 transition-colors">移除</button>
-                            </div>
-                        </div>
-                    </section>
-                         <div class="mt-4"><button @click="clearChat" class="w-full text-left p-4 bg-surface border border-border rounded-xl text-red-500 font-light tracking-wider hover:bg-red-500/5 transition-colors flex justify-between items-center">清除所有对话 <i data-lucide="flame" class="w-4 h-4"></i></button></div>
-                </main>
-            </div>
-
+            
             <!--（洞察板块已移除）-->
             <!-- 占卜 -->
-            <div v-else-if="currentView === 'divination'" key="divination" class="absolute inset-0 flex flex-col z-20 bg-bg">
+            <div v-else-if="currentView === 'divination'" key="divination" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
                     <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text">占卜</span>
@@ -2994,7 +3033,7 @@ body { color: var(--color-text); }
 
 
            <!-- 荷包视图（钱） -->
-<div v-else-if="currentView === 'money'" key="money" class="absolute inset-0 flex flex-col z-20 bg-bg">
+<div v-else-if="currentView === 'money'" key="money" class="absolute inset-0 flex flex-col z-20 bg-transparent">
     <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
         <button @click="backFromMoney" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
         <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text">荷包</span>
@@ -3289,7 +3328,7 @@ body { color: var(--color-text); }
 
 
         <!-- 字笺视图 -->
-            <div v-else-if="currentView === 'board'" key="board" class="absolute inset-0 flex flex-col z-20 bg-bg">
+            <div v-else-if="currentView === 'board'" key="board" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border/40 shrink-0">
                     <button @click="switchView('home')" class="p-2 -ml-1 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                     <div class="text-sm tracking-widest text-text">字笺</div>
@@ -3473,7 +3512,7 @@ body { color: var(--color-text); }
 
 
 <!-- ===== 信箱视图 ===== -->
-<div v-else-if="currentView === 'mailbox'" key="mailbox" class="absolute inset-0 flex flex-col z-20 bg-bg">
+<div v-else-if="currentView === 'mailbox'" key="mailbox" class="absolute inset-0 flex flex-col z-20 bg-transparent">
     <header class="h-14 flex items-center justify-between px-4 border-b border-border/40 shrink-0 bg-surface relative">
         <button @click="currentView = 'home'" class="p-2 -ml-1 text-text hover:opacity-60">
             <i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i>
@@ -5278,7 +5317,7 @@ body { color: var(--color-text); }
                     <input type="number" v-model.number="sendRp.amount" min="0" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3" placeholder="0">
                     <div class="text-[10px] text-muted mb-1">备注（必填）</div>
                     <input v-model="sendRp.note" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-4" placeholder="想对 TA 说的话">
-                    <button @click="sendRedpacket" class="w-full py-2.5 rounded-lg text-white text-sm font-medium tracking-wider" style="background:linear-gradient(135deg,#f43f5e,#dc2626);">发出</button>
+                   <button @click="sendRedpacket" class="w-full py-2.5 rounded-lg text-white text-sm font-medium tracking-wider rp-bg">发出</button>
                 </div>
             </div>
         </div>
@@ -5298,7 +5337,8 @@ body { color: var(--color-text); }
 <!-- 👇 新增：红包备注 -->
 <div class="text-[10px] text-muted mb-1">备注（选填）</div>
 <input v-model="grabPacketForm.note" type="text" maxlength="30" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm mb-3" placeholder="写点什么…">
-                    <button @click="sendGrabPacket" class="w-full py-2.5 rounded-lg text-white text-sm font-medium tracking-wider" style="background:linear-gradient(135deg,#f43f5e,#dc2626);">发红包</button>
+                    <button @click="sendGrabPacket" class="w-full py-2.5 rounded-lg text-white text-sm font-medium tracking-wider rp-bg">发红包</button>
+
                 </div>
             </div>
         </div>
@@ -8603,6 +8643,11 @@ const exportSelectedBoxes = ref([]);
       markEnabled: false,          // 私聊标记
       blankReplyEnabled: false,
       navCollapsed: false, // 主屏顶部图标收纳（字卡/意趣 收起）
+      navIcons: { library: '', yiqu: '' },   // 顶部图标·屏风（全局）
+      bgImage: '',                            // 屏风·会话背景（全局）
+      bgLibrary: [],                          // 屏风图库（全局）
+      callBgImages: [],                       // 册页·通话背景（全局）
+      characterCSS: '',                       // 角色气泡刺绣（全局）
 diviAttachEnabled: true,   // 梦角回复附加塔罗/雷诺曼
       diviAttachProb: 15,        // 触发概率（%）
       playerCSS: '',                // 我的气泡刺绣（全局，群聊私聊通用）    // 空白回复（通用）
@@ -10263,12 +10308,17 @@ const exportAllData = () => {
   URL.revokeObjectURL(url);
   showToast('备份已导出');
 };
-    const applyCSS = () => {
+        const applyCSS = () => {
       const charCSS = (currentSession.value?.customCSS || '').replace(/\.custom-css-target/g, '.custom-css-character');
       const playerCSS = (settings.playerCSS || '').replace(/\.custom-css-target/g, '.custom-css-player');
-      document.getElementById('custom-css-injection').innerHTML = charCSS + '\n' + playerCSS;
+      // 把用户写的 .custom-css-player 也复制一份 .dark 版本，覆盖深色主题
+      const darkChar = charCSS.replace(/\.custom-css-character\b/g, '.dark .custom-css-character');
+      const darkPlayer = playerCSS.replace(/\.custom-css-player\b/g, '.dark .custom-css-player');
+      document.getElementById('custom-css-injection').innerHTML =
+        charCSS + '\n' + playerCSS + '\n' + darkChar + '\n' + darkPlayer;
     };
-    watch(() => currentSession.value?.customCSS, applyCSS);
+
+    watch(() => settings.characterCSS, applyCSS);
     watch(() => settings.playerCSS, applyCSS);
 // 权重变化立即保存
 watch(() => JSON.stringify(settings.replyWeightMap), () => {
@@ -10876,7 +10926,7 @@ const selectTag = (type, text) => {
       if (!s.navIcons) s.navIcons = { library: '', insight: '', yiqu: '' };
       try {
         const compressed = await compressImage(file, 128, 0.85);
-        s.navIcons[key] = compressed;
+        settings.navIcons[key] = compressed;
         debouncedSave();
       } catch (err) {
         console.error('[导航图标压缩失败]', err);
@@ -10885,7 +10935,7 @@ const selectTag = (type, text) => {
     };
     const clearNavIcon = (key) => {
       const s = currentSession.value;
-      if (s && s.navIcons) { s.navIcons[key] = ''; debouncedSave(); }
+      if (s && s.navIcons) { settings.navIcons[key] = ''; debouncedSave(); }
     };
 
    const handleSend = () => {
@@ -12259,33 +12309,122 @@ watch(() => currentView.value, (v) => { if (v !== 'chat') pendingQuote.value = n
 
 // ===== T3：主题配色（6 套） =====
 const THEMES = {
-    day:    { label: '日间',       bg: '#f7f7f9', surface: '#ffffff', text: '#0a0b0b', muted: '#888888', border: '#e2e2e2', accent: '#070707', navIcon: '#3a3a3a', dark: false, swatch: '#ffffff' },
-    night:  { label: '夜间',       bg: '#0d0d0f', surface: '#171719', text: '#e6e6e6', muted: '#666666', border: '#2a2a2a', accent: '#ffffff', navIcon: '#cfcfcf', dark: true,  swatch: '#2a2a2a' },
-    pink:   { label: '雾粉',       bg: '#faf5f7', surface: '#ffffff', text: '#3a2a30', muted: '#9a8890', border: '#ead8dd', accent: '#c87d9e', navIcon: '#a06880', dark: false, swatch: '#f4dce4' },
-    cream:  { label: '奶油黄',     bg: '#fbf8ef', surface: '#ffffff', text: '#3a3428', muted: '#9a9280', border: '#e8e2c8', accent: '#b89950', navIcon: '#8a7530', dark: false, swatch: '#f5ead0' },
-    mist:   { label: '雾蓝',       bg: '#f2f5fa', surface: '#ffffff', text: '#1f2a3a', muted: '#7a8798', border: '#d8dfe8', accent: '#5b7fa8', navIcon: '#4a6d95', dark: false, swatch: '#dce6f2' },
-    mono:   { label: '黑白拼色',   bg: '#1a1a1a', surface: '#f5f5f5', text: '#f5f5f5', muted: '#a0a0a0', border: '#333333', accent: '#ffffff', navIcon: '#e0e0e0', dark: true,  swatch: '#1a1a1a' },
+    day: {
+        label: '日间',
+       bgBase: '#f7f8fa',
+        bgColors: ['#e6eef8', '#f8eed8', '#eeebf5'],
+        surface: '#ffffff', text: '#2a2a30', muted: '#7a7a82', border: '#e2e2e8',
+        accent: '#1a1a20', navIcon: '#3a3a42', dark: false, swatch: '#ffffff',
+    },
+    night: {
+        label: '夜间',
+        bgBase: '#0c0c14',
+        bgColors: ['#2a2e5a', '#1e1c48', '#16203a'],
+        surface: '#1a1a28', text: '#e8e8ec', muted: '#7c7c88', border: '#2a2a38',
+        accent: '#ffffff', navIcon: '#cfcfd8', dark: true, swatch: '#1a1a2e',
+    },
+    pink: {
+        label: '雾粉',
+          bgBase: '#faf6f8',
+        bgColors: ['#f7dde8', '#efe0f3', '#f7e4db'],
+        surface: '#fffbfd', text: '#4a3a44', muted: '#a08a96', border: '#ecd4de',
+        accent: '#c87d9e', navIcon: '#8a5068', dark: false, swatch: '#f5d0e2',
+    },
+    cream: {
+        label: '奶油黄',
+        bgBase: '#faf7ee',
+        bgColors: ['#f8eccb', '#f4e8c0', '#f8efd8'],
+        surface: '#fffcf2', text: '#4a4230', muted: '#9a9078', border: '#e8dcb8',
+        accent: '#b89950', navIcon: '#7a6520', dark: false, swatch: '#f7e6b8',
+    },
+    mist: {
+        label: '雾蓝',
+       bgBase: '#f3f6fa',
+        bgColors: ['#dde9f4', '#d5e2f0', '#deebf1'],
+        surface: '#fdfeff', text: '#2a3545', muted: '#7a8898', border: '#d0dae6',
+        accent: '#5b7fa8', navIcon: '#3a5a80', dark: false, swatch: '#c8ddf0',
+    },
+    mono: {
+        label: '黑白拼色',
+        bgBase: '#1a1a1a',
+        bgColors: ['#050505', '#202020', '#3a3a3a'],
+        surface: '#f5f5f5', text: '#f5f5f5', muted: '#a0a0a0', border: '#333333',
+        accent: '#ffffff', navIcon: '#e0e0e0', dark: true, swatch: '#0a0a0a',
+    },
+};
+// 水墨晕染：3 色 radial-gradient 叠加
+const buildLayeredBg = (t) => {
+    const c1 = t.bgColors[0];
+    const c2 = t.bgColors[1];
+    const c3 = t.bgColors[2] || t.bgColors[1];
+    const base = t.bgBase || t.bgColors[0];
+    return `radial-gradient(circle at 12% 18%, ${c1} 0%, transparent 38%), radial-gradient(circle at 88% 22%, ${c2} 0%, transparent 34%), radial-gradient(circle at 50% 92%, ${c3} 0%, transparent 42%), ${base}`;
 };
 
 const applyTheme = (id) => {
     const t = THEMES[id];
     if (!t) return;
     const root = document.documentElement;
-    // 整套变量覆盖
-    root.style.setProperty('--color-bg', t.bg);
+    const layered = buildLayeredBg(t);
+    root.style.setProperty('--color-bg', t.bgBase || t.bgColors[0]);
+    root.style.setProperty('--color-bg-layered', layered);
     root.style.setProperty('--color-surface', t.surface);
     root.style.setProperty('--color-text', t.text);
     root.style.setProperty('--color-muted', t.muted);
     root.style.setProperty('--color-border', t.border);
     root.style.setProperty('--color-accent', t.accent);
     root.style.setProperty('--nav-icon-color', t.navIcon);
-    // 整体背景随主题（覆盖 body 上的背景色）
-    document.body.style.backgroundColor = t.bg;
+    // 整体背景随主题（覆盖 body 上的背景）
+    document.body.style.background = layered;
+    document.body.style.backgroundAttachment = 'fixed';
     // 深浅模式跟随
     root.classList.toggle('dark', !!t.dark);
     settings.darkMode = !!t.dark;
     settings.themeId = id;
     settings.accentColor = null;
+    debouncedSave();
+};
+// 群聊主动会话用：列出所有群聊
+const groupSessions = computed(() => sessions.value.filter(s => s.type === 'group'));
+
+// 切换某个群聊的主动会话开关（不改 currentSession）
+const toggleGroupChatFor = (g) => {
+    if (!g || g.type !== 'group') return;
+    g.groupChatEnabled = !g.groupChatEnabled;
+    if (g.groupChatEnabled) startGroupChatTimer(g);
+    else if (g._chatTimer) { clearTimeout(g._chatTimer); g._chatTimer = null; }
+    debouncedSave();
+};
+
+// 群聊主动会话：调整间隔并重启定时器
+const adjustGroupChatInterval = (g, delta) => {
+    if (!g || g.type !== 'group') return;
+    const cur = Number(g.groupChatInterval) || 30;
+    let next = cur + delta;
+    if (next < 5) next = 5;
+    if (next > 300) next = 300;
+    g.groupChatInterval = next;
+    if (g.groupChatEnabled && g._chatTimer) {
+        clearTimeout(g._chatTimer);
+        g._chatTimer = null;
+        startGroupChatTimer(g);
+    }
+    debouncedSave();
+};
+
+// 徐徐道来：调整最短/最长回复时间（5 秒为单位），自动保持 max >= min
+const adjustReplyDelay = (which, delta) => {
+    const cur = which === 'min' ? (settings.replyDelayMin || 5) : (settings.replyDelayMax || 5);
+    let next = cur + delta;
+    if (next < 5) next = 5;
+    if (next > 600) next = 600;
+    if (which === 'min') {
+        settings.replyDelayMin = next;
+        if (settings.replyDelayMax < next) settings.replyDelayMax = next;
+    } else {
+        settings.replyDelayMax = next;
+        if (settings.replyDelayMin > next) settings.replyDelayMin = next;
+    }
     debouncedSave();
 };
 
@@ -12797,15 +12936,15 @@ const removeGroupMember = (mid) => {
 
     // ===== 版本更新公告 =====
     // 想再弹一次公告：改这个版本号即可（日期格式最直观）
-    const APP_VERSION = '2026.10.09';
+    const APP_VERSION = '2026.10.10';
     const UPDATE_NOTES =
         '本次更新：\n\n' +
-        '· 梦角造句更自由：\n' +
-        '  撤回收录进梦角自由造句。私聊 / 群聊都支持。\n' +
-        '· 撤回说明\n' +
-        '  侧拉面板「梦角自由造句 → 撤回玩法」里，模式 / 手法旁有 ⓘ 可看说明。\n\n' +
-        '· 占卜功能·塔罗上线\n' +
-        '  右滑第三页添加应用，选择占卜，即可开始能够发送个用户的占卜。照明之秘可手动补录。';
+        '· 主题背景更好看：\n' +
+        '  新增了水墨晕染风格背景。\n' +
+        '· 特殊卡片也支持夜间模式喽\n'\n +
+        '  占卜功能更新\n' +
+        '· 梦角也可以发送占卜了：当前梦角自动擅长：塔罗、雷诺曼\n' +
+        '  在回复设置里面打开设置噢';
     const updateNotice = reactive({ show: false });
     const checkUpdateNotice = () => {
         try {
@@ -16921,8 +17060,8 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
       if (f) {
         const fr = new FileReader();
         fr.onload = (ev) => {
-          s.bgLibrary = s.bgLibrary || [];
-          s.bgLibrary.push(ev.target.result);
+          settings.bgLibrary = settings.bgLibrary || [];
+          settings.bgLibrary.push(ev.target.result);
           s.bgImage = ev.target.result;
           debouncedSave();
         };
@@ -16932,28 +17071,27 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
     const setBg = (bg) => {
       const s = sess();
       if (!s) return;
-      s.bgImage = bg;
+      settings.bgImage = bg;
       debouncedSave();
     };
     const removeBg = (idx) => {
       const s = sess();
       if (!s) return;
-      s.bgLibrary = s.bgLibrary || [];
+      settings.bgLibrary = s.bgLibrary || [];
       if (s.bgImage === s.bgLibrary[idx]) s.bgImage = '';
       s.bgLibrary.splice(idx, 1);
       debouncedSave();
     };
     // 交谈视图背景（跟随会话）
-    const chatBgStyle = computed(() => {
-      const s = sess();
-      return s && s.bgImage
-        ? {
-            backgroundImage: `url(${s.bgImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }
-        : {};
-    });
+    const chatBgStyle = computed(() =>
+  settings.bgImage
+    ? {
+        backgroundImage: `url(${settings.bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {}
+);
     // 聊天背景亮度检测：背景偏深时，头部/底部文字与图标自动切浅色，保证可见
     const chatBgDark = ref(false);
     const _bgDarkCache = {};
@@ -16977,7 +17115,7 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
       };
       img.src = src;
     };
-    watch(() => (sess() ? sess().bgImage : ''), (v) => _refreshBgDark(v), { immediate: true });
+    watch(() => (settings.bgImage), (v) => _refreshBgDark(v), { immediate: true });
     // 回廊：主屏幕背景（全局）
     const homeBgStyle = computed(() =>
       settings.homeBgImage
@@ -17075,8 +17213,8 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
       if (f) {
         const fr = new FileReader();
         fr.onload = (ev) => {
-          s.callBgImages = s.callBgImages || [];
-          s.callBgImages.push(ev.target.result);
+          settings.callBgImages = settings.callBgImages || [];
+          settings.callBgImages.push(ev.target.result);
           debouncedSave();
         };
         fr.readAsDataURL(f);
@@ -17085,8 +17223,8 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
     const removeCallBg = (idx) => {
       const s = sess();
       if (!s) return;
-      s.callBgImages = s.callBgImages || [];
-      s.callBgImages.splice(idx, 1);
+      settings.callBgImages = settings.callBgImages || [];
+      settings.callBgImages.splice(idx, 1);
       debouncedSave();
     };
 
@@ -18290,7 +18428,7 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tr
       getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,showRetractModeHelp, showRetractMethodHelp,
 // 回复设置（全局）
   settingsTab, replySubTab, boxHasCards,adjustSetting,
-      replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,
+      replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,groupSessions, toggleGroupChatFor, adjustGroupChatInterval, adjustReplyDelay,
 countBoxCards, countCategoryCards, countGroupCards,
 _clearPoolCache,
 muteMember,
