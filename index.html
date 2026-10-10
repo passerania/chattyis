@@ -306,6 +306,57 @@ body { color: var(--color-text); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .divi-reveal-item { animation: divRevealIn 0.4s ease-out both; }
+/* ===== 占卜 · 聊天里的散落牌画布 ===== */
+.divi-msg-canvas {
+    position: relative;
+    margin-top: 6px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.03);
+    border: 1px dashed rgba(0,0,0,0.08);
+}
+.dark .divi-msg-canvas {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.10);
+}
+.divi-msg-tile {
+    position: absolute;
+    transform-origin: center center;
+    border-radius: 5px;
+    background: linear-gradient(135deg, #2c2c3a, #1a1a28);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.92);
+    font-size: 9px;
+    line-height: 1.1;
+    padding: 2px;
+    text-align: center;
+    overflow: hidden;
+}
+.divi-msg-tile-emoji { font-size: 13px; line-height: 1; }
+.divi-msg-tile-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+}
+.divi-msg-tile-rev {
+    font-size: 8px;
+    color: rgba(255,200,200,0.9);
+    margin-top: 1px;
+}
+.divi-msg-deckline {
+    font-size: 9px;
+    color: var(--color-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+    opacity: 0.7;
+}
 /* ===== 占卜 · 牌组管理方块 ===== */
 .divi-tile {
     aspect-ratio: 1 / 1;
@@ -807,7 +858,7 @@ body { color: var(--color-text); }
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
                     <div id="capture-area" class="pb-10">
                           <template v-for="(msg, index) in visibleMessages" :key="msg.id">
-                <!-- 撤回消息（正常消息外观） -->
+   <!-- 撤回消息（正常消息外观） -->
     <div v-if="msg.retracted" :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'">
         <div class="flex max-w-[85%] gap-2" :class="msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'">
             <div v-if="settings.showAvatar" class="shrink-0 w-7 h-7 mt-1">
@@ -817,7 +868,7 @@ body { color: var(--color-text); }
                 </div>
             </div>
             <div class="flex flex-col relative" :class="msg.sender === 'me' ? 'items-end' : 'items-start'">
-                                <!-- 撤回半句：气泡显示剩余内容 + 下方小字 -->
+                <!-- 撤回半句：气泡显示剩余内容 + 下方小字 -->
                 <template v-if="msg.removedPart">
                     <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
                         <div class="leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
@@ -826,7 +877,7 @@ body { color: var(--color-text); }
                             <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
                         </div>
                     </div>
-                                        <button @click.stop="toggleRetractExpand(msg)"
+                    <button @click.stop="toggleRetractExpand(msg)"
                             class="mt-1 inline-flex items-center gap-1 text-[10px] tracking-wider whitespace-nowrap self-start"
                             :class="chatBgDark ? 'text-white/50' : 'text-muted/60'">
                         <span class="shrink-0">⤺</span>
@@ -840,7 +891,7 @@ body { color: var(--color-text); }
                 <!-- 手动撤回：胶囊 + 展开原文（保持现状） -->
                 <template v-else>
                     <div class="msg-bubble" :class="[(msg.sender === 'me' ? 'custom-css-player' : 'custom-css-character'), settings.fontFamily === 'serif' ? 'serif-text' : 'sans-text']" :style="{ fontSize: settings.fontSize + 'px', padding: '10px' }">
-<div v-if="msg.content && msg.content.trim()" v-html="highlightText(msg.content, msg.isTyping)" class="leading-relaxed mb-2"></div>
+                        <div v-if="msg.content && msg.content.trim()" v-html="highlightText(msg.content, msg.isTyping)" class="leading-relaxed mb-2"></div>
                         <button @click.stop="toggleRetractExpand(msg)"
                                 class="flex items-center gap-1 px-3 py-1 rounded-full border border-border/60 text-[12px] text-muted hover:bg-bg/50 transition-colors">
                             <span>{{ retractLabel(msg) }}</span>
@@ -857,11 +908,21 @@ body { color: var(--color-text); }
                         </div>
                     </div>
                 </template>
-                    <div v-if="msg.tag" class="mt-2 pt-2 border-t border-dashed border-[#d0d0d0] flex items-center gap-1.5">
-                        <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#888888] font-light">{{ msg.tag.type }}</span>
-                        <span class="px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[11px] text-[#333333] font-medium">{{ msg.tag.text }}</span>
+
+                <!-- 梦角附加的塔罗/雷诺曼 -->
+                <div v-if="msg.diviCards && msg.diviCards.length" class="mt-1">
+                    <div class="divi-msg-deckline">🔮 {{ msg.diviDeckLabel || '' }}</div>
+                    <div class="divi-msg-canvas" :style="{ width: msg.diviCanvasW + 'px', height: msg.diviCanvasH + 'px' }">
+                        <div v-for="(c, ci) in msg.diviCards" :key="ci"
+                             class="divi-msg-tile"
+                             :style="{ left: c._px + 'px', top: c._py + 'px', width: c._w + 'px', height: c._h + 'px', transform: 'translate(-50%, -50%) rotate(' + c._rot + 'deg)' }">
+                            <div class="divi-msg-tile-emoji">{{ diviCardIcon(c) }}</div>
+                            <div class="divi-msg-tile-name">{{ c.name }}</div>
+                            <div v-if="c.reversed" class="divi-msg-tile-rev">逆</div>
+                        </div>
                     </div>
                 </div>
+
                 <div class="flex items-center gap-2 mt-1 px-1">
                     <span v-if="msg.dictTag" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
                     <span v-if="msg.freeCompose && !msg.retracted" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
@@ -869,7 +930,6 @@ body { color: var(--color-text); }
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <!-- 拍一拍灰字（type='pat'，居中浅灰，不做气泡） -->
@@ -1186,6 +1246,21 @@ body { color: var(--color-text); }
     <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
 </div>
 
+                <!-- 梦角附加的塔罗/雷诺曼 -->
+                <div v-if="msg.diviCards && msg.diviCards.length" class="mt-1">
+                    <div class="divi-msg-deckline">🔮 {{ msg.diviDeckLabel || '' }}</div>
+                    <div class="divi-msg-canvas" :style="{ width: msg.diviCanvasW + 'px', height: msg.diviCanvasH + 'px' }">
+                        <div v-for="(c, ci) in msg.diviCards" :key="ci"
+                             class="divi-msg-tile"
+                             :style="{ left: c._px + 'px', top: c._py + 'px', width: c._w + 'px', height: c._h + 'px', transform: 'translate(-50%, -50%) rotate(' + c._rot + 'deg)' }">
+                            <div class="divi-msg-tile-emoji">{{ diviCardIcon(c) }}</div>
+                            <div class="divi-msg-tile-name">{{ c.name }}</div>
+                            <div v-if="c.reversed" class="divi-msg-tile-rev">逆</div>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- 时间戳 & 状态 -->
                 <div class="flex items-center gap-2 mt-1 px-1">
 <span v-if="msg.dictTag" class="text-[9px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
@@ -1193,6 +1268,9 @@ body { color: var(--color-text); }
                     <span class="text-[9px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
                     <span v-if="msg.sender === 'me'" class="text-[9px] tracking-widest px-1 rounded" :class="chatBgDark ? (msg.status === 'read' ? 'text-white bg-black/20' : 'text-white/60 bg-black/20') : (msg.status === 'read' ? 'text-text bg-surface/30' : 'text-muted bg-surface/30')">{{ msg.status === 'read' ? '已读' : '未读' }}</span>
                 </div>
+                    
+               
+
 
             </div> <!-- flex-col -->
         </div> <!-- flex -->
@@ -2164,57 +2242,6 @@ body { color: var(--color-text); }
                                     <textarea v-model="settings.playerCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-player { }"></textarea>
                                 </div>
                             </div>
-                        </section>
-<section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">回廊</h3>
-                        <div class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
-                            <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
-                                <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
-                                <span class="text-[9px] text-muted">添置</span>
-                                <input type="file" accept="image/*" class="hidden" @change="uploadHomeBg">
-                            </label>
-                            <div class="w-16 h-24 shrink-0 border rounded-md cursor-pointer flex items-center justify-center text-[10px] text-muted snap-center transition-all" :class="!settings.homeBgImage ? 'border-text bg-bg' : 'border-border bg-surface'" @click="setHomeBg('')">无相</div>
-                            <div v-for="(bg, idx) in settings.homeBgLibrary" :key="idx" class="w-16 h-24 shrink-0 rounded-md bg-cover bg-center cursor-pointer relative group snap-center" :style="{ backgroundImage: `url(${bg})` }" :class="settings.homeBgImage === bg ? 'ring-2 ring-text ring-offset-1' : ''" @click="setHomeBg(bg)">
-                                <button @click.stop="removeHomeBg(idx)" class="absolute -top-2 -right-2 w-5 h-5 bg-surface text-red-500 rounded-full shadow border border-border opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                    <i data-lucide="x" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-<section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">支票背景</h3>
-                        <div class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
-                            <label class="w-32 aspect-[5/2] shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
-                                <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
-                                <span class="text-[9px] text-muted">添置</span>
-                                <input type="file" accept="image/*" class="hidden" @change="uploadCheckBg">
-                            </label>
-                            <div class="w-32 aspect-[5/2] shrink-0 border rounded-md cursor-pointer flex items-center justify-center text-[10px] text-muted snap-center transition-all" :class="!settings.checkBgImage ? 'border-text bg-bg' : 'border-border bg-surface'" @click="setCheckBg('')">无相</div>
-                            <div v-for="(bg, idx) in settings.checkBgLibrary" :key="idx" class="w-32 aspect-[5/2] shrink-0 rounded-md bg-cover bg-center cursor-pointer relative group snap-center" :style="{ backgroundImage: `url(${bg})` }" :class="settings.checkBgImage === bg ? 'ring-2 ring-text ring-offset-1' : ''" @click="setCheckBg(bg)">
-                                <button @click.stop="removeCheckBg(idx)" class="absolute -top-2 -right-2 w-5 h-5 bg-surface text-red-500 rounded-full shadow border border-border opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                                    <i data-lucide="x" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-<section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">零花钱背景</h3>
-                        <div class="bg-surface border border-border rounded-xl p-3 grid grid-cols-2 gap-3">
-                            <div v-for="season in seasonNames" :key="season" class="aspect-[5/2] rounded-md border relative overflow-hidden" :class="settings.allowanceBg[season] ? 'border-border' : 'border-dashed border-border'">
-                                <template v-if="settings.allowanceBg[season]">
-                                    <img :src="settings.allowanceBg[season]" class="w-full h-full object-cover">
-                                    <button @click="removeAllowanceBg(season)" class="absolute top-1 right-1 w-5 h-5 bg-surface/90 text-red-500 rounded-full flex items-center justify-center shadow">
-                                        <i data-lucide="x" class="w-3 h-3"></i>
-                                    </button>
-                                </template>
-                                <label v-else class="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg text-muted">
-                                    <span class="text-[13px] tracking-widest serif-text">{{ seasonZh[season] }}</span>
-                                    <span class="text-[9px]">上传</span>
-                                    <input type="file" accept="image/*" class="hidden" @change="uploadAllowanceBg($event, season)">
-                                </label>
-                                <label v-if="settings.allowanceBg[season]" class="absolute bottom-1 left-1 text-[9px] text-white bg-black/40 rounded px-1.5 py-0.5 cursor-pointer">更换
-                                    <input type="file" accept="image/*" class="hidden" @change="uploadAllowanceBg($event, season)">
-                                </label>
-                            </div>
-                        </div>
-                    </section>
 <section>
                             <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">排版</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
@@ -2245,8 +2272,38 @@ body { color: var(--color-text); }
                                 </div>
                             </div>
                         </section>
+
+                            
 <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">通用</h3>
+                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
+                            <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <div class="p-3.5">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span>我的范围</span>
+                                        <span class="text-[10px] text-muted">{{ 3 - (money.redpacket.userUsedThisYear || 0) }} 次剩余</span>
+                                    </div>
+                                    <div class="text-[11px] text-muted">{{ money.redpacket.userRange.min }} ~ {{ money.redpacket.userRange.max }}</div>
+                                    <button @click="openRangeEdit" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
+                                </div>
+                            </div>
+                        </section>
+                    <!-- 全量备份：一键导出/导入全部数据（会话/语料/红包/日历/字笺/设置） -->
+<section class="mt-6">
+                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">全量备份</h3>
+                            <div class="bg-surface border border-border rounded-xl p-4 space-y-3 text-[12px]">
+                                <div class="text-muted font-light leading-relaxed">导出全部数据为一个文件，换设备或误删时可一键恢复。</div>
+                                <div class="flex gap-2">
+                                    <button @click="exportAllData" class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5"><i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出备份</button>
+                                    <label class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"><i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入备份<input type="file" accept=".json" class="hidden" @change="importAllData"></label>
+                                </div>
+                                                        </div>
+                        </section>
+                        </template>
+
+                                                <!-- ===== Tab: 回复设置 ===== -->
+                        <template v-if="settingsTab === '回复设置'">
+<section>
+<h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">通用</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>空灵回声</span>
@@ -2279,44 +2336,37 @@ body { color: var(--color-text); }
                                 </div>
                             </div>
                         </section>
-<section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">私语</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                                <div class="flex items-center justify-between p-3.5">
-                                    <span>标记</span>
-                                    <button @click="settings.markEnabled = !settings.markEnabled" class="w-10 h-5 rounded-full relative" :class="settings.markEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.markEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
+ <!-- 全局：梦角给牌 -->
+                            <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                    <span>梦角回复附带塔罗 / 雷诺曼</span>
+                                    <button @click="settings.diviAttachEnabled = !settings.diviAttachEnabled; debouncedSave();"
+                                            class="w-10 h-5 rounded-full relative transition-colors"
+                                            :class="settings.diviAttachEnabled ? 'bg-text' : 'bg-border'">
+                                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                             :class="settings.diviAttachEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                    </button>
                                 </div>
-                            </div>
-                        </section><section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                                <div class="p-3.5">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span>我的范围</span>
-                                        <span class="text-[10px] text-muted">{{ 3 - (money.redpacket.userUsedThisYear || 0) }} 次剩余</span>
+                                <div v-if="settings.diviAttachEnabled" class="px-3.5 py-3 bg-bg/50">
+                                    <div class="flex justify-between text-[11px] text-muted mb-1">
+                                        <span>触发概率（每条回复）</span>
+                                        <span>{{ settings.diviAttachProb }}%</span>
                                     </div>
-                                    <div class="text-[11px] text-muted">{{ money.redpacket.userRange.min }} ~ {{ money.redpacket.userRange.max }}</div>
-                                    <button @click="openRangeEdit" class="mt-2 text-[11px] text-text underline underline-offset-2">调整</button>
+                                    <input type="range" min="0" max="100"
+                                           v-model.number="settings.diviAttachProb"
+                                           @change="debouncedSave"
+                                           class="w-full"
+                                           style="accent-color: var(--nav-icon-color);">
+                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1.5">
+                                        每次梦角回复（含涂鸦）时，按此概率从塔罗 / 雷诺曼随机抽 1~20 张附在消息上。<br>
+                                        群聊不触发；吐槽 / 拍一拍 / 红包 / 问卷 / 投票 / 分享等特殊卡片不触发。
+                                    </div>
                                 </div>
-                            </div>
-                        </section>
-                    <!-- 全量备份：一键导出/导入全部数据（会话/语料/红包/日历/字笺/设置） -->
-<section class="mt-6">
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">全量备份</h3>
-                            <div class="bg-surface border border-border rounded-xl p-4 space-y-3 text-[12px]">
-                                <div class="text-muted font-light leading-relaxed">导出全部数据为一个文件，换设备或误删时可一键恢复。</div>
-                                <div class="flex gap-2">
-                                    <button @click="exportAllData" class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5"><i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出备份</button>
-                                    <label class="flex-1 py-2.5 rounded-lg border border-border text-text tracking-widest hover:border-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"><i data-lucide="upload" class="w-4 h-4 stroke-[1.5]"></i> 导入备份<input type="file" accept=".json" class="hidden" @change="importAllData"></label>
-                                </div>
-                                                        </div>
-                        </section>
-                        </template>
-
-                                                <!-- ===== Tab: 回复设置 ===== -->
-                        <template v-if="settingsTab === '回复设置'">
+                            </section>
                             <!-- 子 tab -->
                             <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
+                           
+
                                 <button v-for="sub in ['私聊','群聊','主动留言']" :key="sub"
                                         @click="replySubTab = sub"
                                         class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
@@ -8553,6 +8603,8 @@ const exportSelectedBoxes = ref([]);
       markEnabled: false,          // 私聊标记
       blankReplyEnabled: false,
       navCollapsed: false, // 主屏顶部图标收纳（字卡/意趣 收起）
+diviAttachEnabled: true,   // 梦角回复附加塔罗/雷诺曼
+      diviAttachProb: 15,        // 触发概率（%）
       playerCSS: '',                // 我的气泡刺绣（全局，群聊私聊通用）    // 空白回复（通用）
 enableCardStitch: false,//拼字卡
 spacePhotos: [],       // 相册多张
@@ -10323,6 +10375,12 @@ const newMsg = {
     quote: opts.quote || null,
     tag: opts.tag || null,
 };
+                  // 梦角（含涂鸦）回复时按概率附带塔罗/雷诺曼
+      const _eligForDivi =
+        sender !== 'me' &&
+        sender !== 'system' &&
+        !opts.type;
+      if (_eligForDivi) _attachDiviToMsg(newMsg);
             target.messages.push(newMsg);
       playTone(sender);
       scrollToBottom();
@@ -12410,7 +12468,11 @@ const lastMessagePreview = (session) => {
     if (!session || !session.messages || !session.messages.length) return '';
     const m = session.messages[session.messages.length - 1];
     if (m.type === 'divination') return `[占卜 · ${m.diviDeckLabel || ''}]`;
-    if (m.content && m.content.trim()) return m.content;
+    if (m.content && m.content.trim()) {
+        if (m.diviCards && m.diviCards.length) return m.content + '  [🔮牌]';
+        return m.content;
+    }
+    if (m.diviCards && m.diviCards.length) return `[🔮 ${m.diviDeckLabel || ''}]`;
     return '[消息]';
 };
 // ===== 会话卡：时间格式化（微信风格） =====
@@ -14214,6 +14276,78 @@ const DIVI_LENORMAND_ICONS = {
   '十字架': '✝️', '灵体': '👻', '香炉': '🪔', '床': '🛏️', '市场': '🏪',
 };
 
+const rollDiviCardCount = () => {
+  const r = Math.random();
+  if (r < 0.70) return 1 + Math.floor(Math.random() * 5);   // 1~5 张
+  if (r < 0.95) return 6 + Math.floor(Math.random() * 5);   // 6~10 张
+  return 11 + Math.floor(Math.random() * 10);                // 11~20 张
+};
+
+const drawRandomDiviCards = (count) => {
+  const deckKey = Math.random() < 0.5 ? 'tarot' : 'lenormand';
+  const deck = divination.decks[deckKey];
+  if (!deck || !Array.isArray(deck.cards) || !deck.cards.length) {
+    return { deckKey: '', deckLabel: '', cards: [] };
+  }
+  const pool = deck.cards.slice();
+  const picked = [];
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    const c = pool[idx];
+    pool.splice(idx, 1);
+    picked.push({
+      cardId: c.id,
+      name: c.name,
+      reversed: deckKey === 'tarot' ? Math.random() < 0.5 : false,
+    });
+  }
+  return { deckKey, deckLabel: deck.label, cards: picked };
+};
+
+const layoutDiviCards = (cards) => {
+  const N = cards.length;
+  if (!N) return { cards: [], canvasW: 0, canvasH: 0 };
+  const cols = Math.ceil(Math.sqrt(N));
+  const rows = Math.ceil(N / cols);
+  const W = cols <= 1 ? 90 : (cols === 2 ? 160 : (cols === 3 ? 200 : 240));
+  const H = rows <= 1 ? 90 : (rows === 2 ? 120 : (rows === 3 ? 170 : 220));
+  const cw = W / cols, ch = H / rows;
+  const laid = cards.map((c, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const jx = (Math.random() - 0.5) * cw * 0.28;
+    const jy = (Math.random() - 0.5) * ch * 0.28;
+    const rot = (Math.random() - 0.5) * 24;
+    return {
+      ...c,
+      _px: Math.round(col * cw + cw / 2 + jx),
+      _py: Math.round(row * ch + ch / 2 + jy),
+      _rot: Math.round(rot * 10) / 10,
+      _w: Math.round(Math.min(cw * 0.72, 40)),
+      _h: Math.round(Math.min(ch * 0.72, 56)),
+    };
+  });
+  return { cards: laid, canvasW: W, canvasH: H };
+};
+
+const _attachDiviToMsg = (newMsg) => {
+  if (!settings.diviAttachEnabled) return;
+  if (!settings.diviAttachProb || settings.diviAttachProb <= 0) return;
+  if (Math.random() * 100 >= settings.diviAttachProb) return;
+  try {
+    const n = rollDiviCardCount();
+    const draw = drawRandomDiviCards(n);
+    if (!draw.cards.length) return;
+    const laid = layoutDiviCards(draw.cards);
+    newMsg.diviDeck = draw.deckKey;
+    newMsg.diviDeckLabel = draw.deckLabel;
+    newMsg.diviCards = laid.cards;
+    newMsg.diviCanvasW = laid.canvasW;
+    newMsg.diviCanvasH = laid.canvasH;
+  } catch (e) {
+    console.error('[占卜·挂牌] 失败：', e);
+  }
+};
 const diviCardIcon = (card) => {
   if (!card || !card.name) return '✦';
   const name = card.name;
@@ -18264,6 +18398,10 @@ monthlyInstallmentTotal,
 monthlyBudgetRemain,
 globalDeduplicate,
  diviCardIcon,
+ rollDiviCardCount,
+      drawRandomDiviCards,
+      layoutDiviCards,
+
       deleteEnvelope
     };
   },
