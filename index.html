@@ -13401,6 +13401,21 @@ const _showChattyCandidates = (s, targetCard, onDone) => {
         }, randomMs(500, 1000));
     }, randomMs(800, 1500));
 };
+
+// ===== chatty · 存档节流（打字循环里连续发送时，合并成一次保存）=====
+let _chattySaveTimer = null;
+const _chattySaveThrottled = () => {
+    if (_chattySaveTimer) return;
+    _chattySaveTimer = setTimeout(() => {
+        _chattySaveTimer = null;
+        debouncedSave();
+    }, 4000);   // 4 秒内多次发送，只存一次
+};
+const _chattySaveFlush = () => {
+    if (_chattySaveTimer) { clearTimeout(_chattySaveTimer); _chattySaveTimer = null; }
+    debouncedSave();
+};
+
 // 真正写入 messages
 const _pushChattySendToChat = (s, card, correctedInfo) => {
     if (!s || !card) return;
@@ -13428,10 +13443,10 @@ const _pushChattySendToChat = (s, card, correctedInfo) => {
         mention: null,
         quote: null,
         chattyTyped: true,
-        chattySource: 'card',              // 'card' | 'free'
-        chattyDisplayHTML: displayHTML,    // 有值时优先渲染这个
+        chattySource: 'card',
+        chattyDisplayHTML: displayHTML,
     });
-    debouncedSave();
+    _chattySaveThrottled();   // ← 改成节流版
     if (currentSessionId.value === s.id && currentView.value === 'chat') scrollToBottom();
     updateUnread();
 };
@@ -13605,7 +13620,7 @@ const _pushFreeComposeToChat = (s, free) => {
         chattyPinyin: free.pinyin,
         chattyDisplayHTML: displayHTML,
     });
-    debouncedSave();
+    _chattySaveThrottled();   // ← 改成节流版
     if (currentSessionId.value === s.id && currentView.value === 'chat') scrollToBottom();
     updateUnread();
 };
@@ -13734,6 +13749,28 @@ const _startChattyBackstageTimer = () => {
     }, 60000);  // 每分钟检查一次
 };
 
+// ===== chatty · 后台时暂停打字循环 =====
+let _chattyLoopPaused = false;
+const _onChattyVisibilityChange = () => {
+    if (document.hidden) {
+        // 切到后台：停掉打字循环和时钟（保留屏幕打开状态）
+        if (chattyScreenOpen.value) {
+            _chattyLoopPaused = true;
+            _stopChattyLoop();
+            _stopChattyClock();
+            _stopChattyStatusTimer();
+        }
+    } else {
+        // 切回前台：如果屏幕还开着，恢复循环
+        if (chattyScreenOpen.value && _chattyLoopPaused) {
+            _chattyLoopPaused = false;
+            _startChattyClock();
+            _startChattyStatusTimer();
+            _startChattyLoop();
+        }
+    }
+};
+document.addEventListener('visibilitychange', _onChattyVisibilityChange);
 
 // 状态循环
 const _startChattyStatusTimer = () => {
@@ -13788,9 +13825,11 @@ const openChattyScreen = (sessionId) => {
 const closeChattyScreen = () => {
     chattyScreenOpen.value = false;
     chattySidePanelOpen.value = false;
+    _chattyLoopPaused = false;
     _stopChattyClock();
     _stopChattyStatusTimer();
     _stopChattyLoop();
+    _chattySaveFlush();   // ← 关屏幕时立即存一次，防止丢消息
 };
 
 const switchChattyView = (sid) => {
