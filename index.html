@@ -66,7 +66,7 @@
     </script>
 
     <style>
-        html { background-color: var(--color-bg); color-scheme: light; color: var(--color-text); }
+        html { background-color: var(--color-bg); color-scheme: light; color: var(--color-text); --color-surface-rgb: 255, 255, 255; }
 html.dark { color-scheme: dark; }
 body { color: var(--color-text); }
         /* 启动挡板：纯白全屏，盖在最顶，挡住 Edge 冷启动的脏快照（黑罩+弹窗），约 1 秒后自动淡出 */
@@ -184,6 +184,139 @@ body { color: var(--color-text); }
         @keyframes introReveal { 0% { opacity: 0; transform: translateY(12px); } 25% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
 
         .glass-header { background: rgba(var(--color-surface-rgb), 0.55); backdrop-filter: blur(10px); border-bottom: 1px solid var(--color-border); }
+
+        /* ===== 视觉方案系统 =====
+           主题管颜色，视觉方案管"卡片透明度 / 模糊 / 边框"，两者可叠加。
+           切换方式：<html data-visual="frosted"> ，由 settings.visualStyle 同步。
+           只用属性选择器覆盖，不改任何 DOM 结构，方便随时回退。 */
+
+        /* 通用：卡片默认加过渡，切换时不生硬 */
+        html[data-visual] .bg-surface,
+        html[data-visual] .bg-surface\/60,
+        html[data-visual] .bg-surface\/55,
+        html[data-visual] .bg-surface\/40,
+        html[data-visual] .bg-surface\/25,
+        html[data-visual] .bg-surface\/20,
+        html[data-visual] .bg-surface\/15,
+        html[data-visual] .bg-bg\/50,
+        html[data-visual] .bg-bg\/40,
+        html[data-visual] .bg-bg\/60 {
+            transition: background-color .25s ease, backdrop-filter .25s ease, box-shadow .25s ease, border-color .25s ease;
+        }
+
+        /* ① 磨砂玻璃（推荐默认观感）：卡片半透明 + 中等模糊 */
+        html[data-visual="frosted"] .bg-surface,
+        html[data-visual="frosted"] .bg-surface\/60 { background-color: rgba(var(--color-surface-rgb), 0.55) !important; }
+        html[data-visual="frosted"] .bg-surface { backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+        html[data-visual="frosted"] .bg-bg\/50,
+        html[data-visual="frosted"] .bg-bg\/40,
+        html[data-visual="frosted"] .bg-bg\/60 { background-color: rgba(var(--color-surface-rgb), 0.38) !important; }
+        html[data-visual="frosted"] header.bg-surface { background-color: rgba(var(--color-surface-rgb), 0.62) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+        /* ② 毛玻璃：更透 + 更强模糊 + 白色描边 */
+        html[data-visual="glass"] .bg-surface,
+        html[data-visual="glass"] .bg-surface\/60 { background-color: rgba(var(--color-surface-rgb), 0.25) !important; }
+        html[data-visual="glass"] .bg-surface {
+            backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+            border-color: rgba(255,255,255,0.45) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+        }
+        html[data-visual="glass"] .bg-bg\/50,
+        html[data-visual="glass"] .bg-bg\/40,
+        html[data-visual="glass"] .bg-bg\/60 { background-color: rgba(var(--color-surface-rgb), 0.18) !important; }
+        html[data-visual="glass"] header.bg-surface { background-color: rgba(var(--color-surface-rgb), 0.22) !important; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
+
+        /* ③ 透明：只留描边，去掉卡片底 */
+        html[data-visual="clear"] .bg-surface,
+        html[data-visual="clear"] .bg-surface\/60 { background-color: transparent !important; }
+        html[data-visual="clear"] .bg-surface { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none; }
+        html[data-visual="clear"] .bg-bg\/50,
+        html[data-visual="clear"] .bg-bg\/40,
+        html[data-visual="clear"] .bg-bg\/60 { background-color: transparent !important; }
+        html[data-visual="clear"] header.bg-surface { background-color: transparent !important; border-bottom: 1px solid var(--color-border); }
+
+        /* ④ 仿微信：实色卡片 + 去掉阴影 + 直角气泡 */
+        html[data-visual="wechat"] .bg-surface,
+        html[data-visual="wechat"] .bg-surface\/60 { background-color: var(--color-surface) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+        html[data-visual="wechat"] .bg-surface { box-shadow: none !important; }
+        html[data-visual="wechat"] .bg-bg\/50,
+        html[data-visual="wechat"] .bg-bg\/40,
+        html[data-visual="wechat"] .bg-bg\/60 { background-color: var(--color-surface) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+        html[data-visual="wechat"] .msg-bubble { border-radius: 6px !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none; }
+        html[data-visual="wechat"] header.bg-surface { background-color: var(--color-surface) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+        /* ⑤ 默认：不做任何覆盖（回到文件原本的观感） */
+
+        /* ===== 顶栏：边角更圆润 + 体积感（顶栏 = header.bg-surface）===== */
+        html[data-visual="frosted"] header.bg-surface,
+        html[data-visual="glass"] header.bg-surface,
+        html[data-visual="clear"] header.bg-surface {
+            border-radius: 18px 18px 0 0 !important;
+        }
+        html[data-visual="frosted"] header.bg-surface {
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08), inset 0 -1px 0 var(--color-border) !important;
+        }
+        html[data-visual="glass"] header.bg-surface {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.55) !important;
+        }
+        html[data-visual="clear"] header.bg-surface {
+            box-shadow: 0 4px 14px rgba(0,0,0,0.07), inset 0 -1px 0 var(--color-border) !important;
+        }
+        html[data-visual="wechat"] header.bg-surface {
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid var(--color-border) !important;
+        }
+
+        /* ===== 按钮跟随视觉方案（让整体一致，而不是只有卡片变了）===== */
+        /* 磨砂/毛玻璃：按钮也做成半透明 + 模糊，并统一圆角 */
+        html[data-visual="frosted"] button.rounded-lg,
+        html[data-visual="frosted"] button.rounded-xl,
+        html[data-visual="frosted"] button.rounded-full {
+            border-radius: 12px !important;
+        }
+        html[data-visual="glass"] button.rounded-lg,
+        html[data-visual="glass"] button.rounded-xl,
+        html[data-visual="glass"] button.rounded-full {
+            border-radius: 14px !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+        }
+        /* 透明：按钮也只留描边 */
+        html[data-visual="clear"] .bg-text.bg-text,
+        html[data-visual="clear"] button.bg-bg {
+            background-color: transparent !important;
+        }
+        /* 仿微信：按钮统一小圆角 + 去掉模糊（微信风格：方一点、干净） */
+        html[data-visual="wechat"] button.rounded-lg,
+        html[data-visual="wechat"] button.rounded-xl,
+        html[data-visual="wechat"] button.rounded-full {
+            border-radius: 6px !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        /* ===== 仿微信专属：气泡配色（我=微信绿，对方=白） ===== */
+        html[data-visual="wechat"] .msg-bubble {
+            border-radius: 6px !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        html[data-visual="wechat"] .msg-bubble.custom-css-player {
+            background: #95ec69 !important;
+            color: #111111 !important;
+        }
+        html[data-visual="wechat"] .msg-bubble:not(.custom-css-player) {
+            background: #ffffff !important;
+            color: #191919 !important;
+        }
+        html[data-visual="wechat"].dark .msg-bubble:not(.custom-css-player) {
+            background: #2c2c2e !important;
+            color: #ededed !important;
+        }
+
         .drag-handle-group, .drag-handle-reply { cursor: grab; }
         .drag-handle-group:active, .drag-handle-reply:active { cursor: grabbing; }
         .reply-item { transition: background 0.1s ease; }
@@ -592,7 +725,6 @@ body { color: var(--color-text); }
 </button>
 
 
-                                               </button>
                     </div>
                 </transition>
                     <!-- 当前会话标识 + 顶部图标收纳键（与卡片右对齐、低调） -->
@@ -1567,16 +1699,16 @@ body { color: var(--color-text); }
                         <button @click="getFreeComposeSettings(currentSession.id).method = Math.max(0, getFreeComposeSettings(currentSession.id).method - 1); debouncedSave();"
                                 class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
                         <span class="w-8 text-center text-text font-medium">{{ getFreeComposeSettings(currentSession.id).method }}</span>
-                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(4, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
+                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(3, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
                                 class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
                     </div>
                 </div>
                 <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
                     <div>0 = 语气词式：截词补语气词 / 句尾加语气词 / 加逗号 / 删句尾 / 换标点</div>
-                    <div>1 = 撤回式：把后半句撤回，保留前缀</div>
-                    <div>2 = 换词式：截掉一个词，从字卡里抽一个词补上</div>
-                    <div>3 = 换句式：截掉一部分句子，从字卡里抽句子/词补上</div>
-                    <div>4 = 混用：以上四种随机</div>
+                    <div>1 = 换词式：截掉一个词，从字卡里抽一个词补上</div>
+                    <div>2 = 换句式：截掉一部分句子，从字卡里抽句子/词补上</div>
+                    <div>3 = 混用：以上三种随机</div>
+                    <div class="text-muted/50 pt-0.5">（原「撤回式」已移到「撤回玩法 → 撤回手法」，此处不再重复）</div>
                 </div>
             </div>
             <!-- 存公用库概率 -->
@@ -1643,9 +1775,13 @@ body { color: var(--color-text); }
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
                         </div>
                     </div>
+                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                        <div v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 1">1 = 抽卡 → 撤回 → 直接发送（不造句）</div>
+                        <div v-else-if="(getRetractSettings(currentSession.id).retractMode || 1) === 2">2 = 抽卡 → 造句 → 撤回 → 发送</div>
+                        <div v-else-if="(getRetractSettings(currentSession.id).retractMode || 1) === 3">3 = 抽卡 → 撤回 → 再造句 → 发送</div>
+                        <div v-else>4 = 以上 1 / 2 / 3 随机</div>
+                    </div>
                 </div>
-
-                               <!-- 撤回手法 -->
                 <div class="pt-2 border-t border-border/30">
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-1.5">
@@ -1663,9 +1799,10 @@ body { color: var(--color-text); }
                         </div>
                     </div>
                     <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
-                        <div>1 = 按所有标点拆，随机撤段</div>
-                        <div>2 = 按字数随机撤前/后</div>
-                        <div>3 = 混合（1 或 2 随机）</div>
+                        <div>1 = 按标点拆：按逗号句号切开，随机保留几段</div>
+                        <div>2 = 按字数撤：从开头或结尾截掉一小段</div>
+                        <div>3 = 混合：每次随机用 1 或 2</div>
+                        <div class="text-muted/50 pt-0.5">撤回模式里的撤回一律走"混合"，即每次手法在 1/2 里随机</div>
                     </div>
                 </div>
             </template>
@@ -1889,6 +2026,12 @@ body { color: var(--color-text); }
                             <button @click="getRetractSettings(currentSession.id).retractMode = Math.min(4, (getRetractSettings(currentSession.id).retractMode || 1) + 1); debouncedSave();"
                                     class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
                         </div>
+                    </div>
+                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 space-y-0.5">
+                        <div v-if="(getRetractSettings(currentSession.id).retractMode || 1) === 1">1 = 抽卡 → 撤回 → 直接发送（不造句）</div>
+                        <div v-else-if="(getRetractSettings(currentSession.id).retractMode || 1) === 2">2 = 抽卡 → 造句 → 撤回 → 发送</div>
+                        <div v-else-if="(getRetractSettings(currentSession.id).retractMode || 1) === 3">3 = 抽卡 → 撤回 → 再造句 → 发送</div>
+                        <div v-else>4 = 以上 1 / 2 / 3 随机</div>
                     </div>
                 </div>
 
@@ -2188,7 +2331,6 @@ body { color: var(--color-text); }
                                 <button @click="openExportDialog(); libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
     <i data-lucide="download" class="w-4 h-4 stroke-[1.5]"></i> 导出语料
 </button>
-                                                                </label>
                                 <button @click="exportTriple(); libPanelOpen = false" class="w-full py-3 rounded-xl border border-border text-text text-[13px] tracking-widest hover:bg-bg transition-colors flex items-center justify-center gap-2">
                                     <i data-lucide="package" class="w-4 h-4 stroke-[1.5]"></i> 导出三合一
                                 </button>
@@ -2223,7 +2365,7 @@ body { color: var(--color-text); }
             <!-- 设置（原底韵） -->
             <div v-else-if="currentView === 'preferences'" key="preferences" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
-                    <button @click="switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
+                    <button @click="replySettingsPage !== null && settingsTab === '回复设置' ? (replySettingsPage = null) : switchView('home')" class="p-2 -ml-2 text-text"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                     <span class="absolute left-1/2 -translate-x-1/2 text-[13px] font-medium tracking-widest serif-text whitespace-nowrap">设置</span>
                 </header>
                                   <main class="flex-1 overflow-y-auto p-4 space-y-6 pb-12">
@@ -2245,9 +2387,17 @@ body { color: var(--color-text); }
 
                         <!-- ===== Tab: 外观 ===== -->
                         <template v-if="settingsTab === '外观'">
+                        <!-- ===== 分组：通用设置 ===== -->
+                        <div class="flex items-center gap-2 px-2 pt-1 pb-2">
+                            <span class="text-[12px] font-semibold tracking-widest text-text">通用设置</span>
+                            <span class="flex-1 h-px bg-border/60"></span>
+                        </div>
                         <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">我的头像</h3>
-                            <div class="bg-surface border border-border rounded-xl p-3.5 flex flex-col gap-2">
+                            <h3 @click="toggleSection('我的头像')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>我的头像</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('我的头像') ? 'rotate-180' : ''"></i>
+                            </h3>
+                            <div v-if="isSectionOpen('我的头像')" class="bg-surface border border-border rounded-xl p-3.5 flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="text-[13px] text-text">设置你自己的头像（全局通用）</div>
                                     <button @click="editAvatar('me')" class="px-3 py-1.5 rounded-lg text-white text-[12px] tracking-widest shrink-0" :style="'background:var(--nav-icon-color);'">设置头像</button>
@@ -2255,8 +2405,11 @@ body { color: var(--color-text); }
                             </div>
                         </section>
 <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">我的昵称</h3>
-                            <div class="bg-surface border border-border rounded-xl p-3.5 flex flex-col gap-2">
+                            <h3 @click="toggleSection('我的昵称')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>我的昵称</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('我的昵称') ? 'rotate-180' : ''"></i>
+                            </h3>
+                            <div v-if="isSectionOpen('我的昵称')" class="bg-surface border border-border rounded-xl p-3.5 flex flex-col gap-2">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="text-[13px] text-text">在所有会话中显示的昵称</div>
                                     <input v-model="profiles.me.name" @input="debouncedSave" maxlength="12" placeholder="我"
@@ -2264,9 +2417,17 @@ body { color: var(--color-text); }
                                 </div>
                             </div>
                         </section>
-<section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">玩家气泡刺绣</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
+                        <!-- ===== 分组：气泡与排版（CSS 相关） ===== -->
+                        <div class="flex items-center gap-2 px-2 pt-3 pb-2">
+                            <span class="text-[12px] font-semibold tracking-widest text-text">气泡与排版</span>
+                            <span class="flex-1 h-px bg-border/60"></span>
+                        </div>
+                        <section>
+                            <h3 @click="toggleSection('玩家气泡刺绣')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>玩家气泡刺绣</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('玩家气泡刺绣') ? 'rotate-180' : ''"></i>
+                            </h3>
+                            <div v-if="isSectionOpen('玩家气泡刺绣')" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
                                 <div class="p-3.5 flex flex-col gap-2">
                                     <span>我的气泡，通用</span>
 <textarea v-model="settings.playerCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[10px] font-mono resize-none" placeholder=".custom-css-player { background: #ffd; }"></textarea>
@@ -2276,9 +2437,13 @@ body { color: var(--color-text); }
 </div>
                                 </div>
                             </div>
+                        </section>
 <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">排版</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
+                            <h3 @click="toggleSection('排版')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>排版</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('排版') ? 'rotate-180' : ''"></i>
+                            </h3>
+                            <div v-if="isSectionOpen('排版')" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
                                                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>主题色（跟随主屏图标色）</span>
                                     <div class="flex items-center gap-2">
@@ -2303,12 +2468,17 @@ body { color: var(--color-text); }
                             </div>
                         </section>
                             <section class="mt-6">
-                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间视觉</h3>
-                                
-                                <!-- 下面 4 块从意趣搬过来 -->
+                                <h3 @click="toggleSection('空间视觉')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                    <span>空间视觉</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('空间视觉') ? 'rotate-180' : ''"></i>
+                                </h3>
+                                <div v-if="isSectionOpen('空间视觉')">
 <section>
-                        <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">空间配色</h3>
-                        <div class="bg-surface border border-border rounded-xl p-3 grid grid-cols-3 gap-3">
+                        <h3 @click="toggleSection('空间配色')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                            <span>空间配色</span>
+                            <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('空间配色') ? 'rotate-180' : ''"></i>
+                        </h3>
+                        <div v-if="isSectionOpen('空间配色')" class="bg-surface border border-border rounded-xl p-3 grid grid-cols-3 gap-3">
                                                         <div v-for="(t, key) in THEMES" :key="key"
                                  @click="applyTheme(key)"
                                  class="aspect-square rounded-xl border cursor-pointer overflow-hidden relative transition-all"
@@ -2322,10 +2492,50 @@ body { color: var(--color-text); }
                             点击色块切换整套配色（背景 + 面板 + 文字 + 强调色）
                         </div>
                     </section>
-                                
+
+                            <!-- ===== 视觉方案（与主题独立叠加） ===== -->
+                            <section class="mt-4">
+                                <h3 @click="toggleSection('视觉方案')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                    <span>视觉方案</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('视觉方案') ? 'rotate-180' : ''"></i>
+                                </h3>
+                                <div v-if="isSectionOpen('视觉方案')" class="bg-surface border border-border rounded-xl p-3">
+                                    <div class="grid grid-cols-5 gap-2">
+                                        <div v-for="v in VISUAL_STYLES" :key="v.id || 'default'"
+                                             @click="settings.visualStyle = v.id; debouncedSave();"
+                                             class="cursor-pointer text-center">
+                                            <div class="aspect-square rounded-lg border relative overflow-hidden transition-all mb-1"
+                                                 :class="settings.visualStyle === v.id ? 'ring-2 ring-text ring-offset-1 border-border' : 'border-border/40 hover:scale-105'"
+                                                 style="background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 55%, var(--color-border) 100%);">
+                                                <!-- 卡片示意块 -->
+                                                <div class="absolute rounded"
+                                                     :style="{ left: '12%', top: '14%', width: '76%', height: '72%',
+                                                               background: `rgba(var(--color-surface-rgb), ${visualAlpha(v.id)})`,
+                                                               border: settings.visualStyle === v.id && v.id === 'glass' ? '1px solid rgba(255,255,255,0.7)' : '1px solid var(--color-border)',
+                                                               backdropFilter: (v.id === 'frosted' || v.id === 'glass') ? 'blur(6px)' : 'none' }"></div>
+                                            </div>
+                                            <span class="text-[9px] tracking-wide"
+                                                  :class="settings.visualStyle === v.id ? 'text-text font-medium' : 'text-muted'">{{ v.label }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-[10px] text-muted/60 leading-relaxed px-1 mt-2.5">
+                                        视觉方案只管"卡片通透度 / 模糊 / 描边"，和上面的主题配色**独立叠加**：<br>
+                                        换主题只换颜色，换视觉方案只换质感。
+                                    </div>
+                                </div>
                             </section>
-<section><h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">屏风</h3>
-                        <div v-if="currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
+                            </div>
+                        </section>
+                        <!-- ===== 分组：空间与背景 ===== -->
+                        <div class="flex items-center gap-2 px-2 pt-3 pb-2">
+                            <span class="text-[12px] font-semibold tracking-widest text-text">空间与背景</span>
+                            <span class="flex-1 h-px bg-border/60"></span>
+                        </div>
+<section><h3 @click="toggleSection('屏风')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>屏风</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('屏风') ? 'rotate-180' : ''"></i>
+                            </h3>
+                        <div v-if="isSectionOpen('屏风') && currentSession" class="bg-surface border border-border rounded-xl p-3 flex gap-3 overflow-x-auto snap-x">
                             <label class="w-16 h-24 shrink-0 border border-dashed border-border rounded-md flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-bg">
                                 <i data-lucide="plus" class="w-4 h-4 text-muted"></i>
                                 <span class="text-[9px] text-muted">添置</span>
@@ -2341,8 +2551,11 @@ body { color: var(--color-text); }
                         <div v-else class="bg-surface border border-border rounded-xl p-4 text-[12px] text-muted">进入某个会话后可设置交谈背景</div>
                     </section>
                                                <section>
-                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">角色气泡刺绣</h3>
-                            <div v-if="currentSession" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
+                            <h3 @click="toggleSection('角色气泡刺绣')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>角色气泡刺绣</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('角色气泡刺绣') ? 'rotate-180' : ''"></i>
+                            </h3>
+                            <div v-if="isSectionOpen('角色气泡刺绣') && currentSession" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px]">
                                 <div class="p-3.5 flex flex-col gap-2">
                                     <span v-if="currentSession.type === 'group'">该群聊的气泡刺绣 (CSS，这座敞轩专属)</span>
                                     <span v-else>TA的气泡刺绣 (CSS，这间静室专属)</span>
@@ -2357,8 +2570,180 @@ body { color: var(--color-text); }
 
                                                 <!-- ===== Tab: 回复设置 ===== -->
                         <template v-if="settingsTab === '回复设置'">
+
+                            <!-- ========== 首页：分组卡片列表 ========== -->
+                            <template v-if="replySettingsPage === null">
+
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">字卡权重设置</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="replySettingsPage = '字卡权重设置'"
+                                             class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <i data-lucide="layers" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <div class="text-[13px] text-text">字卡权重</div>
+                                                    <div class="text-[10px] text-muted mt-0.5 truncate">私聊 / 群聊 / 信件 各自用哪些字卡书册</div>
+                                                </div>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">回复频率</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="replySettingsPage = '回复频率'"
+                                             class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <i data-lucide="timer" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <div class="text-[13px] text-text">回复频率</div>
+                                                    <div class="text-[10px] text-muted mt-0.5 truncate">通用回复、梦角给牌、主动搭话、主动写信与回信</div>
+                                                </div>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">对方页面设置</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="replySettingsPage = '对方页面设置'"
+                                             class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <i data-lucide="smartphone" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <div class="text-[13px] text-text">对方页面设置</div>
+                                                    <div class="text-[10px] text-muted mt-0.5 truncate">打字速度、发送概率、自由组合与审核概率</div>
+                                                </div>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">通用拼接设置</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="replySettingsPage = '通用拼接设置'"
+                                             class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <i data-lucide="puzzle" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <div class="text-[13px] text-text">通用拼接设置</div>
+                                                    <div class="text-[10px] text-muted mt-0.5 truncate">来信 / 回信的字卡条数与信件拼接随机标点</div>
+                                                </div>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                        </div>
+                                    </div>
+                                </section>
+
+                            </template>
+
+
+                            <!-- ========== 子页：当前打开的分组（返回用设置页左上角箭头） ========== -->
+                            <template v-else>
+
+                                <!-- ===== 子页 1：对方页面设置 ===== -->
+                                <template v-if="replySettingsPage === '对方页面设置'">
+
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">打字速度</h3>
+                                    <section class="mb-4">
+                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-[13px] text-text">打字速度</span>
+                                                    <span class="text-[10px] text-muted">{{ settings.chattyTypeSpeed === 'slower' ? '更慢' : (settings.chattyTypeSpeed === 'fast' ? '快' : '标准') }}</span>
+                                                </div>
+                                                <div class="flex gap-1">
+                                                    <button @click="settings.chattyTypeSpeed = 'slow'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'slow' ? 'bg-text text-white' : 'bg-bg text-muted'">慢</button>
+                                                    <button @click="settings.chattyTypeSpeed = 'normal'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'normal' ? 'bg-text text-white' : 'bg-bg text-muted'">标准</button>
+                                                    <button @click="settings.chattyTypeSpeed = 'fast'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'fast' ? 'bg-text text-white' : 'bg-bg text-muted'">快</button>
+                                                </div>
+                                                <div class="text-[10px] text-muted/60 leading-relaxed mt-2">TA 在自己页面里逐字打字的快慢（越慢越像在慢慢敲）。</div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">发送与自由组合</h3>
+                                    <section class="mb-4">
+                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[13px] text-text">发送概率</span>
+                                                    <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattySendProb ?? 0.3) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.chattySendProb ?? 0.3) * 100" @input="e => { settings.chattySendProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[10px] text-muted/60 leading-relaxed mt-1">TA 打完字卡后真正按下发送的概率</div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[13px] text-text">自由组合概率</span>
+                                                    <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattyFreeComposeProb ?? 0.3) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.chattyFreeComposeProb ?? 0.3) * 100" @input="e => { settings.chattyFreeComposeProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[10px] text-muted/60 leading-relaxed mt-1">每轮走"字卡外自由组合"的概率（拼音在上、字在下）</div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">审核纠错</h3>
+                                    <section class="mb-4">
+                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[13px] text-text">字级审核概率</span>
+                                                    <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattyReviewCharProb ?? 0.3) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.chattyReviewCharProb ?? 0.3) * 100" @input="e => { settings.chattyReviewCharProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[10px] text-muted/60 leading-relaxed mt-1">单个字被审核换成常用字的概率</div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[13px] text-text">词级审核概率</span>
+                                                    <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattyReviewWordProb ?? 0.3) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.chattyReviewWordProb ?? 0.3) * 100" @input="e => { settings.chattyReviewWordProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[10px] text-muted/60 leading-relaxed mt-1">词典里多字词被识别的概率（如 youmian → 莜面）</div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">后台触发</h3>
+                                    <section class="mb-4">
+                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between">
+                                                    <div class="min-w-0 pr-2">
+                                                        <div class="text-[13px] text-text">后台自动发送</div>
+                                                        <div class="text-[10px] text-muted/60 mt-0.5">不在屏幕看时也随机发消息</div>
+                                                    </div>
+                                                    <button @click="settings.chattyBackstageEnabled = !settings.chattyBackstageEnabled; debouncedSave();" class="w-10 h-5 rounded-full relative transition-colors shrink-0" :class="settings.chattyBackstageEnabled ? 'bg-text' : 'bg-border'">
+                                                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.chattyBackstageEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                                    </button>
+                                                </div>
+                                                <div v-if="settings.chattyBackstageEnabled" class="mt-2">
+                                                    <div class="flex justify-between text-[11px] text-muted mb-1">
+                                                        <span>触发间隔（分钟）</span>
+                                                        <span class="tabular-nums">{{ settings.chattyBackstageInterval }}</span>
+                                                    </div>
+                                                    <input type="range" min="5" max="240" :value="settings.chattyBackstageInterval" @input="e => { settings.chattyBackstageInterval = Number(e.target.value) || 60; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                </template>
+
+                                <!-- ===== 子页 2：回复频率 ===== -->
+                                <template v-else-if="replySettingsPage === '回复频率'">
+
 <section>
-<h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">通用</h3>
+<h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">回复频率设置</h3>
                             <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>空灵回声</span>
@@ -2373,7 +2758,7 @@ body { color: var(--color-text); }
                                         <span class="text-[13px] text-text">最短回复时间</span>
                                         <div class="flex items-center gap-2">
                                             <button @click="adjustReplyDelay('min', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMin) }}</span>
+                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 0, 600)" @keydown="numKey($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 0, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMin) }}</span>
                                             <button @click="adjustReplyDelay('min', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                         </div>
                                     </div>
@@ -2381,70 +2766,11 @@ body { color: var(--color-text); }
                                         <span class="text-[13px] text-text">最长回复时间</span>
                                         <div class="flex items-center gap-2">
                                             <button @click="adjustReplyDelay('max', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMax) }}</span>
+                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 0, 600)" @keydown="numKey($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 0, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ fmtDelay(settings.replyDelayMax) }}</span>
                                             <button @click="adjustReplyDelay('max', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                         </div>
                                     </div>
                                     <div class="text-[10px] text-muted leading-relaxed">徐徐道来开启时，每条消息在最短~最长之间随机延迟（最长自动不小于最短）</div>
-                                </div>
-                                                                <div class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-[13px] text-text">chatty 打字速度</span>
-                                        <span class="text-[10px] text-muted">{{ settings.chattyTypeSpeed === 'slow' ? '慢' : (settings.chattyTypeSpeed === 'fast' ? '快' : '标准') }}</span>
-                                    </div>
-                                    <div class="flex gap-1">
-                                        <button @click="settings.chattyTypeSpeed = 'slow'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'slow' ? 'bg-text text-white' : 'bg-bg text-muted'">慢</button>
-                                        <button @click="settings.chattyTypeSpeed = 'normal'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'normal' ? 'bg-text text-white' : 'bg-bg text-muted'">标准</button>
-                                        <button @click="settings.chattyTypeSpeed = 'fast'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'fast' ? 'bg-text text-white' : 'bg-bg text-muted'">快</button>
-                                    </div>
-                                </div>
-                                <div class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span class="text-[13px] text-text">chatty 发送概率</span>
-                                        <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattySendProb ?? 0.3) * 100) }}%</span>
-                                    </div>
-                                    <input type="range" min="0" max="100" :value="(settings.chattySendProb ?? 0.3) * 100" @input="e => { settings.chattySendProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
-                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1">TA 打完字卡后真正按下发送的概率</div>
-                                </div>
-                                <div class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span class="text-[13px] text-text">chatty 自由组合概率</span>
-                                        <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattyFreeComposeProb ?? 0.3) * 100) }}%</span>
-                                    </div>
-                                    <input type="range" min="0" max="100" :value="(settings.chattyFreeComposeProb ?? 0.3) * 100" @input="e => { settings.chattyFreeComposeProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
-                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1">每轮走"字卡外自由组合"的概率（拼音在上、字在下）</div>
-                                </div>
-                                <div class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span class="text-[13px] text-text">自由组合审核概率</span>
-                                        <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.chattyReviewProb ?? 0.3) * 100) }}%</span>
-                                    </div>
-                                    <input type="range" min="0" max="100" :value="(settings.chattyReviewProb ?? 0.3) * 100" @input="e => { settings.chattyReviewProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
-                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1">自由组合里"字被审核换成常用字"的概率（从词典取常用字）</div>
-                                </div>
-                                <div class="p-3.5 border-b border-border">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-[13px] text-text">chatty 后台触发</div>
-                                            <div class="text-[10px] text-muted/60 mt-0.5">不在屏幕看时也随机发消息</div>
-                                        </div>
-                                        <button @click="settings.chattyBackstageEnabled = !settings.chattyBackstageEnabled; debouncedSave();" class="w-10 h-5 rounded-full relative transition-colors" :class="settings.chattyBackstageEnabled ? 'bg-text' : 'bg-border'">
-                                            <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.chattyBackstageEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
-                                        </button>
-                                    </div>
-                                    <div v-if="settings.chattyBackstageEnabled" class="mt-2">
-                                        <div class="flex justify-between text-[11px] text-muted mb-1">
-                                            <span>触发间隔（分钟）</span>
-                                            <span class="tabular-nums">{{ settings.chattyBackstageInterval }}</span>
-                                        </div>
-                                        <input type="range" min="5" max="240" :value="settings.chattyBackstageInterval" @input="e => { settings.chattyBackstageInterval = Number(e.target.value) || 60; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
-                                    </div>
-                                </div>
-                                    <div class="flex gap-1">
-                                        <button @click="settings.chattyTypeSpeed = 'slow'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'slow' ? 'bg-text text-white' : 'bg-bg text-muted'">慢</button>
-                                        <button @click="settings.chattyTypeSpeed = 'normal'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'normal' ? 'bg-text text-white' : 'bg-bg text-muted'">标准</button>
-                                        <button @click="settings.chattyTypeSpeed = 'fast'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[11px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'fast' ? 'bg-text text-white' : 'bg-bg text-muted'">快</button>
-                                    </div>
                                 </div>
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>语料随缘抛出</span>
@@ -2454,9 +2780,18 @@ body { color: var(--color-text); }
                                     <span>空白回复</span>
                                     <button @click="settings.blankReplyEnabled = !settings.blankReplyEnabled" class="w-10 h-5 rounded-full relative" :class="settings.blankReplyEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.blankReplyEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                 </div>
+                                <div class="p-3.5 border-t border-border">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-[13px] text-text">拼音打字玩法</span>
+                                        <span class="text-[10px] text-muted tabular-nums">{{ Math.round((settings.mainTypingProb ?? 0.2) * 100) }}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" :value="(settings.mainTypingProb ?? 0.2) * 100" @input="e => { settings.mainTypingProb = e.target.value / 100; debouncedSave(); }" class="w-full" style="accent-color: var(--nav-icon-color);">
+                                    <div class="text-[10px] text-muted/60 leading-relaxed mt-1">每次回复前掷一次；中了就按"拼音自由组合"（声母→韵母→字）直接发一条，消息带角标。0 = 关闭</div>
+                                </div>
                             </div>
                         </section>
  <!-- 全局：梦角给牌 -->
+                            <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">梦角给牌</h3>
                             <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>梦角回复附带塔罗 / 雷诺曼</span>
@@ -2483,56 +2818,7 @@ body { color: var(--color-text); }
                                     </div>
                                 </div>
                             </section>
-                            <!-- 子 tab -->
-                            <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
-                           
-
-                                <button v-for="sub in ['私聊','群聊','主动留言']" :key="sub"
-                                        @click="replySubTab = sub"
-                                        class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
-                                        :class="replySubTab === sub ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sub }}</button>
-                            </div>
-
-                            <!-- 子 tab: 私聊 / 群聊 / 留言回复 → 字卡权重 -->
-                            <template v-if="replySubTab !== '主动留言'">
-                                <div v-if="!currentSession" class="text-center text-xs text-muted/60 py-8">请先进入一个会话</div>
-                                <template v-else>
-                                    <div v-if="!replySettingsGroups.length" class="text-center text-xs text-muted/60 py-8">当前会话没有任何字卡书册</div>
-                                    <section v-for="grp in replySettingsGroups" :key="grp.catName" class="bg-surface border border-border/60 rounded-xl overflow-hidden mb-3">
-                                        <div class="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-bg/40">
-                                            <span class="text-[12px] text-text tracking-widest font-medium">{{ grp.catName }}</span>
-                                            <button @click="toggleAllInCategory(replySubTab, grp.catName, grp.boxes)"
-                                                    class="text-[11px] text-muted hover:text-text tracking-widest">
-                                                {{ grp.boxes.some(b => getPoolWeight(replySubTab, b) > 0) ? '全不选' : '全选' }}
-                                            </button>
-                                        </div>
-                                        <div class="p-3 space-y-3">
-                                            <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-3">
-                                                <button @click="togglePool(replySubTab, boxName)"
-                                                        class="w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors"
-                                                        :class="getPoolWeight(replySubTab, boxName) > 0 ? 'bg-text border-text' : 'border-border'">
-                                                    <svg v-if="getPoolWeight(replySubTab, boxName) > 0" viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
-                                                </button>
-                                                <span class="text-[13px] text-text w-24 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
-                                                <input type="range" min="0" max="100"
-                                                       :value="getPoolWeight(replySubTab, boxName)"
-                                                       @input="e => setPoolWeight(replySubTab, boxName, e.target.value)"
-                                                       class="flex-1"
-                                                       :disabled="getPoolWeight(replySubTab, boxName) === 0"
-                                                       :style="getPoolWeight(replySubTab, boxName) === 0 ? 'opacity:0.3;' : ''">
-                                                <span class="text-[11px] text-muted w-8 text-right tabular-nums shrink-0">{{ getPoolWeight(replySubTab, boxName) }}</span>
-                                            </div>
-                                        </div>
-                                    </section>
-                                    <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
-                                        权重按归一化计算（不必凑 100）。权重为 0 或未勾选 = 该场景不使用此书册。<br>
-                                        此设置全局生效，所有会话共用。
-                                    </div>
-                                </template>
-                            </template>
-
-                                                       <!-- 子 tab: 主动留言 -->
-                            <template v-if="replySubTab === '主动留言'">
+                            <!-- ===== 子页：字卡权重设置 ===== -->
                                 <div class="text-[11px] text-muted/80 leading-relaxed px-1 mb-3">
                                     以下都是 TA 随机行为的触发概率（%）：嫌频繁就把数值调小，调到 0 = 不再触发；开关关掉 = 彻底关闭该行为。修改即时保存生效。
                                 </div>
@@ -2562,7 +2848,7 @@ body { color: var(--color-text); }
                                                         <span class="text-[13px] text-text">发起间隔</span>
                                                         <div class="flex items-center gap-2">
                                                             <button @click="adjustGroupChatInterval(g, -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                            <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ g.groupChatInterval }} 分</span>
+                                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => g.groupChatInterval, v => { g.groupChatInterval = v; }, 5, 600)" @keydown="numKey($event, () => g.groupChatInterval, v => { g.groupChatInterval = v; }, 5, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ g.groupChatInterval }} 分</span>
                                                             <button @click="adjustGroupChatInterval(g, 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                                         </div>
                                                     </div>
@@ -2584,14 +2870,26 @@ body { color: var(--color-text); }
                                             <span>主动搭话</span>
                                             <button @click="toggleActiveMessage" class="w-10 h-5 rounded-full relative" :class="settings.activeMessage ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.activeMessage ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                         </div>
-                                        <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 flex items-center justify-between border-b border-border">
-    <span class="text-[13px] text-text">发起间隔</span>
-    <div class="flex items-center gap-2">
-        <button @click="settings.activeInterval = Math.max(5, settings.activeInterval - 5); manageActiveTimer(); debouncedSave();" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-        <span class="w-14 text-center text-text font-medium tabular-nums text-[13px]">{{ settings.activeInterval }} 分</span>
-        <button @click="settings.activeInterval = Math.min(120, settings.activeInterval + 5); manageActiveTimer(); debouncedSave();" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
-    </div>
-</div>
+                                        <div v-if="settings.activeMessage" class="px-3.5 py-3 bg-bg/50 border-b border-border">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-[13px] text-text">发起间隔 · 最短</span>
+                                                <span class="text-[10px] text-muted tabular-nums">{{ settings.activeIntervalMin }} 分</span>
+                                            </div>
+                                            <input type="range" min="5" max="180" :value="settings.activeIntervalMin"
+                                                   @input="e => { settings.activeIntervalMin = Number(e.target.value) || 5; if (settings.activeIntervalMax < settings.activeIntervalMin) settings.activeIntervalMax = settings.activeIntervalMin; manageActiveTimer(); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                            <div class="flex items-center justify-between mb-1 mt-3">
+                                                <span class="text-[13px] text-text">发起间隔 · 最长</span>
+                                                <span class="text-[10px] text-muted tabular-nums">{{ settings.activeIntervalMax }} 分</span>
+                                            </div>
+                                            <input type="range" min="5" max="360" :value="settings.activeIntervalMax"
+                                                   @input="e => { settings.activeIntervalMax = Math.max(settings.activeIntervalMin, Number(e.target.value) || 5); manageActiveTimer(); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                            <div class="text-[10px] text-muted/60 leading-relaxed mt-1.5">
+                                                TA 在你没理它的时候，会在这两个值之间随机挑一个时间来搭话。<br>
+                                                刚聊完会先安静一会儿；越久没理，来得越勤。每个会话各自计时。
+                                            </div>
+                                        </div>
                                         <div class="flex items-center justify-between p-3.5">
                                             <span>标记</span>
                                             <button @click="settings.markEnabled = !settings.markEnabled" class="w-10 h-5 rounded-full relative" :class="settings.markEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.markEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
@@ -2611,7 +2909,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">每天最多写信（封）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('autoLetterMaxPerDay', -1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxPerDay }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.autoLetterMaxPerDay, v => { settings.autoLetterMaxPerDay = v; }, 1, 20)" @keydown="numKey($event, () => settings.autoLetterMaxPerDay, v => { settings.autoLetterMaxPerDay = v; }, 1, 20)" class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxPerDay }}</span>
                                                 <button @click="adjustSetting('autoLetterMaxPerDay', 1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2619,7 +2917,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">主动写信概率（%）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('autoLetterProb', -5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterProb }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.autoLetterProb, v => { settings.autoLetterProb = v; }, 0, 100)" @keydown="numKey($event, () => settings.autoLetterProb, v => { settings.autoLetterProb = v; }, 0, 100)" class="w-10 text-center text-text font-medium tabular-nums">{{ settings.autoLetterProb }}</span>
                                                 <button @click="adjustSetting('autoLetterProb', 5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2627,7 +2925,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">最短写信时间（分钟）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('autoLetterMinMin', -10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMinMin }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.autoLetterMinMin, v => { settings.autoLetterMinMin = v; }, 1, 1440)" @keydown="numKey($event, () => settings.autoLetterMinMin, v => { settings.autoLetterMinMin = v; }, 1, 1440)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMinMin }}</span>
                                                 <button @click="adjustSetting('autoLetterMinMin', 10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2635,7 +2933,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">最长写信时间（分钟）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('autoLetterMaxMin', -30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxMin }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.autoLetterMaxMin, v => { settings.autoLetterMaxMin = v; }, 1, 1440)" @keydown="numKey($event, () => settings.autoLetterMaxMin, v => { settings.autoLetterMaxMin = v; }, 1, 1440)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.autoLetterMaxMin }}</span>
                                                 <button @click="adjustSetting('autoLetterMaxMin', 30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2650,7 +2948,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">回信概率（%）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('replyLetterProb', -5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.replyLetterProb }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyLetterProb, v => { settings.replyLetterProb = v; }, 0, 100)" @keydown="numKey($event, () => settings.replyLetterProb, v => { settings.replyLetterProb = v; }, 0, 100)" class="w-10 text-center text-text font-medium tabular-nums">{{ settings.replyLetterProb }}</span>
                                                 <button @click="adjustSetting('replyLetterProb', 5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2658,7 +2956,7 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">最短回信时间（分钟）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('replyLetterMinMin', -10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMinMin }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyLetterMinMin, v => { settings.replyLetterMinMin = v; }, 1, 1440)" @keydown="numKey($event, () => settings.replyLetterMinMin, v => { settings.replyLetterMinMin = v; }, 1, 1440)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMinMin }}</span>
                                                 <button @click="adjustSetting('replyLetterMinMin', 10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
@@ -2666,12 +2964,71 @@ body { color: var(--color-text); }
                                             <span class="text-[13px]">最长回信时间（分钟）</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('replyLetterMaxMin', -30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMaxMin }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyLetterMaxMin, v => { settings.replyLetterMaxMin = v; }, 1, 1440)" @keydown="numKey($event, () => settings.replyLetterMaxMin, v => { settings.replyLetterMaxMin = v; }, 1, 1440)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.replyLetterMaxMin }}</span>
                                                 <button @click="adjustSetting('replyLetterMaxMin', 30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
                                     </div>
                                 </section>
+
+                                <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
+                                    这些参数下一批会接到主动写信 / 回信逻辑里，当前修改会保存但暂不影响实际行为。
+                                </div>
+                                </template>
+
+                                <!-- ===== 子页 3：字卡权重设置 ===== -->
+                                <template v-else-if="replySettingsPage === '字卡权重设置'">
+                                <!-- 子 tab：私聊 / 群聊 / 主动来信 / 回信 -->
+                                <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
+                                    <button v-for="sub in ['私聊','群聊','主动来信','回信']" :key="sub"
+                                            @click="replySubTab = sub"
+                                            class="shrink-0 px-3 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+                                            :class="replySubTab === sub ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sub }}</button>
+                                </div>
+
+                                <div v-if="!currentSession" class="text-center text-xs text-muted/60 py-8">请先进入一个会话</div>
+                                <template v-else>
+                                    <div v-if="!replySettingsGroups.length" class="text-center text-xs text-muted/60 py-8">当前会话没有任何字卡书册</div>
+                                    <template v-for="sc in [replySubTab]" :key="sc">
+                                        <template v-for="grp in replySettingsGroups" :key="sc + '-' + grp.catName">
+                                            <section class="bg-surface border border-border/60 rounded-xl overflow-hidden mb-3">
+                                                <div class="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-bg/40">
+                                                    <span class="text-[12px] text-text tracking-widest font-medium">{{ grp.catName }}</span>
+                                                    <button @click="toggleAllInCategory(sc, grp.catName, grp.boxes)"
+                                                            class="text-[11px] text-muted hover:text-text tracking-widest">
+                                                        {{ grp.boxes.some(b => getPoolWeight(sc, b) > 0) ? '全不选' : '全选' }}
+                                                    </button>
+                                                </div>
+                                                <div class="p-3 space-y-3">
+                                                    <div v-for="boxName in grp.boxes" :key="boxName" class="flex items-center gap-3">
+                                                        <button @click="togglePool(sc, boxName)"
+                                                                class="w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors"
+                                                                :class="getPoolWeight(sc, boxName) > 0 ? 'bg-text border-text' : 'border-border'">
+                                                            <svg v-if="getPoolWeight(sc, boxName) > 0" viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="white" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+                                                        </button>
+                                                        <span class="text-[13px] text-text w-24 shrink-0 truncate">{{ boxLabel[boxName] || boxName }}</span>
+                                                        <input type="range" min="0" max="100"
+                                                               :value="getPoolWeight(sc, boxName)"
+                                                               @input="e => setPoolWeight(sc, boxName, e.target.value)"
+                                                               class="flex-1"
+                                                               :disabled="getPoolWeight(sc, boxName) === 0"
+                                                               :style="getPoolWeight(sc, boxName) === 0 ? 'opacity:0.3;' : ''">
+                                                        <span class="text-[11px] text-muted w-8 text-right tabular-nums shrink-0">{{ getPoolWeight(sc, boxName) }}</span>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </template>
+                                        <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
+                                            权重按归一化计算（不必凑 100）。权重为 0 或未勾选 = 该场景不使用此书册。<br>
+                                            <template v-if="sc === '主动来信' || sc === '回信'">此设置用于梦角写信 / 回信的语料，全局生效，所有会话共用。</template>
+                                            <template v-else>此设置全局生效，所有会话共用。</template>
+                                        </div>
+                                    </template>
+                                </template>
+                                </template>
+
+                                <!-- ===== 子页 4：通用拼接设置 ===== -->
+                                <template v-else-if="replySettingsPage === '通用拼接设置'">
                                 <!-- ===== 信件语料来源 ===== -->
                                 <section class="mb-4">
                                     <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">信件语料来源</h3>
@@ -2705,46 +3062,80 @@ body { color: var(--color-text); }
                                         </div>
                                     </div>
                                 </section>
-                                <!-- ===== 信件内容 ===== -->
+
+                                <!-- ===== 主动来信 · 字卡条数 ===== -->
                                 <section class="mb-4">
-                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">信件内容</h3>
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">主动来信 · 字卡条数</h3>
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
-                                            <span class="text-[13px]">最少字卡条数</span>
+                                            <span class="text-[13px]">最少条数</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('letterMinCards', -1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMinCards }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.letterMinCards, v => { settings.letterMinCards = v; }, 1, 100)" @keydown="numKey($event, () => settings.letterMinCards, v => { settings.letterMinCards = v; }, 1, 100)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMinCards }}</span>
                                                 <button @click="adjustSetting('letterMinCards', 1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
-                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
-                                            <span class="text-[13px]">最多字卡条数</span>
+                                        <div class="flex items-center justify-between px-3.5 py-3">
+                                            <span class="text-[13px]">最多条数</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustSetting('letterMaxCards', -1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMaxCards }}</span>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.letterMaxCards, v => { settings.letterMaxCards = v; }, 1, 200)" @keydown="numKey($event, () => settings.letterMaxCards, v => { settings.letterMaxCards = v; }, 1, 200)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterMaxCards }}</span>
                                                 <button @click="adjustSetting('letterMaxCards', 1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                             </div>
                                         </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 回信 · 字卡条数 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">回信 · 字卡条数</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                            <span class="text-[13px]">最少条数</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('letterReplyMinCards', -1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.letterReplyMinCards, v => { settings.letterReplyMinCards = v; }, 1, 100)" @keydown="numKey($event, () => settings.letterReplyMinCards, v => { settings.letterReplyMinCards = v; }, 1, 100)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterReplyMinCards }}</span>
+                                                <button @click="adjustSetting('letterReplyMinCards', 1, 1, 100)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between px-3.5 py-3">
+                                            <span class="text-[13px]">最多条数</span>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="adjustSetting('letterReplyMaxCards', -1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                                <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.letterReplyMaxCards, v => { settings.letterReplyMaxCards = v; }, 1, 200)" @keydown="numKey($event, () => settings.letterReplyMaxCards, v => { settings.letterReplyMaxCards = v; }, 1, 200)" class="w-12 text-center text-text font-medium tabular-nums">{{ settings.letterReplyMaxCards }}</span>
+                                                <button @click="adjustSetting('letterReplyMaxCards', 1, 1, 200)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 信件拼接 ===== -->
+                                <section class="mb-4">
+                                    <h3 @click="toggleSection('信件拼接')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                        <span>信件拼接</span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('信件拼接') ? 'rotate-180' : ''"></i>
+                                    </h3>
+                                    <div v-if="isSectionOpen('信件拼接')" class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between p-3.5">
                                             <span>信件拼接随机标点</span>
                                             <button @click="settings.letterRandomPunctuation = !settings.letterRandomPunctuation; debouncedSave();" class="w-10 h-5 rounded-full relative" :class="settings.letterRandomPunctuation ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.letterRandomPunctuation ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                         </div>
                                     </div>
                                 </section>
+                                </template>
 
-                                <div class="text-[10px] text-muted/60 leading-relaxed px-2 pt-2">
-                                    这些参数下一批会接到主动写信 / 回信逻辑里，当前修改会保存但暂不影响实际行为。
-                                </div>
                             </template>
                         </template>
-
                         <!-- ===== Tab: 互动设置 ===== -->
                         <template v-if="settingsTab === '互动设置'">
                             <section class="mb-3">
-                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">红包</h3>
+                                <h3 @click="toggleSection('红包')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>红包</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('红包') ? 'rotate-180' : ''"></i>
+                            </h3>
 
                                                                <!-- 我的范围 -->
-                                <div class="bg-surface border border-border rounded-xl overflow-hidden text-[13px] mb-3">
+                                <div v-if="isSectionOpen('红包')" class="bg-surface border border-border rounded-xl overflow-hidden text-[13px] mb-3">
                                     <div class="p-3.5">
                                         <div class="flex items-center justify-between mb-1">
                                             <span>我的范围
@@ -2796,17 +3187,20 @@ body { color: var(--color-text); }
                                         </div>
                                     </div>
                                     <div v-else class="p-3.5 text-muted text-[12px]">进入某个会话后可调整红包档位</div>
+                                    </div>
                                 </div>
                             </section>
                         </template>
-
                         <!-- ===== Tab: 系统 ===== -->
                                                 
                                                 <template v-if="settingsTab === '系统'">
                             <!-- ===== 数据 ===== -->
                             <section class="mb-4">
-                                <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">数据</h3>
-                                <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <h3 @click="toggleSection('数据')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>数据</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('数据') ? 'rotate-180' : ''"></i>
+                            </h3>
+                                <div v-if="isSectionOpen('数据')" class="bg-surface border border-border rounded-xl overflow-hidden">
                                     <!-- 全量备份 -->
                                     <div class="p-4 border-b border-border">
                                         <div class="text-[13px] text-text mb-1">全量备份</div>
@@ -2827,11 +3221,13 @@ body { color: var(--color-text); }
                                 </div>
                             </section>
 
-                            <section>
-                                <!-- ===== 版本 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2">版本</h3>
-                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                            <!-- ===== 版本 ===== -->
+                            <section class="mb-4">
+                                <h3 @click="toggleSection('版本')" class="text-[11px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                    <span>版本</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('版本') ? 'rotate-180' : ''"></i>
+                                </h3>
+                                    <div v-if="isSectionOpen('版本')" class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div @click="openUpdateNotice"
                                              class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
                                             <div class="flex items-center gap-3 min-w-0">
@@ -3788,6 +4184,7 @@ body { color: var(--color-text); }
     </template>
 </div>
         </transition>
+    </div>
 
 
         <!-- 交谈菜单弹窗（改为增加好友/新增群聊） -->
@@ -5573,9 +5970,9 @@ body { color: var(--color-text); }
                     </div>
                 </transition>
 
-                <!-- 输入框（回显正在打的拼音） -->
-                <div class="relative shrink-0 px-4 py-3 border-t" style="border-color: rgba(0,0,0,0.06);">
-                    <div class="flex items-center gap-2 rounded-full px-4 py-2.5" style="background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.06);">
+                               <!-- 输入框（回显正在打的拼音） -->
+                <div class="relative shrink-0 px-4 py-2.5 border-t" style="border-color: rgba(0,0,0,0.06);">
+                    <div class="flex items-center gap-2 rounded-full px-4 py-2" style="background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.06);">
                         <template v-if="chattyTypingText">
                             <span class="text-[15px] flex-1 font-medium tracking-wide" style="color:#222;">{{ chattyTypingText }}<span class="animate-pulse">▍</span></span>
                         </template>
@@ -5583,6 +5980,39 @@ body { color: var(--color-text); }
                             <span class="text-[13px] flex-1" style="color:#aaa;">发消息…</span>
                         </template>
                         <span class="text-[13px]" style="color:#aaa;">⊕</span>
+                    </div>
+                </div>
+
+                <!-- 模拟键盘 -->
+                <div class="relative shrink-0 px-2 pb-3 pt-1.5" style="background: rgba(0,0,0,0.04);">
+                    <div v-for="(row, ri) in CHATTY_KEYBOARD_ROWS" :key="ri"
+                         class="flex justify-center gap-[3px] mb-[3px]">
+                        <div v-for="k in row" :key="k"
+                             class="flex-1 h-[30px] rounded-[5px] flex items-center justify-center text-[12px] transition-colors duration-75"
+                             :style="chattyKeyActive === k
+                                 ? 'background: var(--nav-icon-color); color: #fff;'
+                                 : 'background: rgba(255,255,255,0.85); color: #333; box-shadow: 0 1px 1px rgba(0,0,0,0.06);'">
+                            {{ k }}
+                        </div>
+                    </div>
+                                        <!-- 标点行 -->
+                    <div class="flex justify-center gap-[3px] mt-[3px]">
+                        <div v-for="p in CHATTY_PUNCT_ROW" :key="p"
+                             class="flex-1 h-[28px] rounded-[5px] flex items-center justify-center text-[11px] transition-colors duration-75"
+                             :style="chattyKeyActive === p
+                                 ? 'background: var(--nav-icon-color); color: #fff;'
+                                 : 'background: rgba(255,255,255,0.85); color: #333; box-shadow: 0 1px 1px rgba(0,0,0,0.06);'">
+                            {{ p }}
+                        </div>
+                    </div>
+                    <!-- 空格 + 删除 -->
+                    <div class="flex justify-center gap-[3px] mt-[3px]">
+                        <div class="flex-[3] h-[28px] rounded-[5px] flex items-center justify-center text-[11px]"
+                             :style="chattyKeyActive === ' '
+                                 ? 'background: var(--nav-icon-color); color: #fff;'
+                                 : 'background: rgba(255,255,255,0.7); color: #888;'">空格</div>
+                        <div class="flex-[2] h-[28px] rounded-[5px] flex items-center justify-center text-[11px]"
+                             style="background: rgba(255,255,255,0.7); color: #888;">⌫</div>
                     </div>
                 </div>
 
@@ -5903,31 +6333,193 @@ const genId = () => Date.now().toString(36) + '-' + Math.random().toString(36).s
 // ===== chatty · 紧凑拼音表（约 2500 常用字，拼音 → 字串）=====
 // 内存：每拼音一个 key，约为原"每字一键"的 1/6
 // 加字：找到对应拼音行，把字加进字符串即可
-const CHATTY_PINYIN_COMPACT = {
-'a':'啊阿吖','ai':'爱哀挨碍艾唉矮癌皑蔼隘暧','an':'安按案暗岸俺胺庵氨鞍谙','ang':'昂肮盎','ao':'奥澳傲熬凹敖翱袄懊拗',
-'ba':'八把爸吧巴拔跋罢霸芭疤笆粑靶','bai':'白百摆败拜柏掰佰稗','ban':'半办班般搬板版伴拌扮瓣颁斑扳绊','bang':'帮邦棒绑榜膀磅蚌谤','bao':'包抱报保宝爆薄饱堡褒苞胞剥雹鲍','bei':'北被备背贝倍杯悲卑辈碑惫钡狈','ben':'本奔笨苯畚','beng':'崩蹦泵甭绷迸','bi':'比笔必逼鼻彼碧毕币避闭臂弊壁蔽庇陛痹辟敝','bian':'边变便遍编辩辨鞭贬匾辫','biao':'表标彪膘镖飙','bie':'别憋鳖瘪','bin':'宾滨彬斌殡鬓缤','bing':'并病冰兵丙饼柄炳秉禀','bo':'波播博伯驳脖拨薄泊勃搏玻铂帛舶卜','bu':'不部布步补捕怖哺埠簿',
-'ca':'擦','cai':'才财采菜彩裁猜材踩蔡','can':'参残餐灿蚕惭惨','cang':'藏仓苍舱沧','cao':'草操曹槽糙','ce':'策侧测册厕','ceng':'层曾蹭','cha':'查差茶插叉察刹岔诧茬','chai':'拆柴豺','chan':'产缠禅颤铲阐馋蝉','chang':'长常场唱厂昌畅偿尝肠倡敞猖裳','chao':'超朝潮抄吵炒巢嘲','che':'车扯彻撤澈','chen':'陈沉辰晨尘臣衬趁忱嗔','cheng':'成城程承称诚乘呈撑惩澄橙逞','chi':'吃池迟持尺齿赤斥耻驰翅匙痴嗤','chong':'冲重虫充宠崇涌','chou':'抽愁筹丑臭仇酬稠绸畴','chu':'出处初除厨楚储触畜橱础矗','chuan':'穿船传川喘串椽','chuang':'床创窗闯疮','chui':'吹垂锤炊椎','chun':'春纯唇醇蠢淳','chuo':'戳绰','ci':'次此词辞慈磁瓷刺茨赐雌','cong':'从聪丛葱匆囱','cou':'凑','cu':'粗醋促猝簇','cuan':'窜篡攒','cui':'催脆翠摧璀萃','cun':'存村寸忖','cuo':'错措搓挫磋撮',
-'da':'大打达答搭瘩','dai':'带代待戴袋贷呆逮歹怠殆黛','dan':'但单担淡弹蛋丹耽胆诞氮掸','dang':'当党挡档荡铛','dao':'到道倒刀岛导盗稻蹈悼叨捣','de':'的地得德','deng':'等登灯凳瞪邓蹬','di':'低第底弟敌滴递抵帝堤笛狄涤嫡','dian':'点电店典垫甸殿碘惦掂','diao':'掉调吊雕刁钓凋碉','die':'叠爹跌蝶碟谍迭','ding':'定顶订丁钉鼎叮锭','diu':'丢','dong':'动东冬懂洞董冻栋侗','dou':'都斗豆抖逗兜陡痘','du':'读度独毒堵杜渡督睹镀妒犊','duan':'段短端断锻缎','dui':'对队堆兑怼','dun':'顿吨盾蹲敦钝炖盹','duo':'多夺朵躲剁舵惰堕哆',
-'e':'额俄鹅饿恶厄遏鄂娥峨讹','en':'恩嗯摁','er':'二而儿耳尔饵贰洱',
-'fa':'发法罚乏伐筏阀珐','fan':'反饭翻凡犯范繁返烦贩帆番藩矾','fang':'方放房防仿访妨纺芳肪','fei':'飞非费肺废肥匪沸菲啡诽吠','fen':'分份粉奋愤坟纷芬氛焚酚吩','feng':'风封丰峰疯缝蜂奉凤逢讽','fo':'佛','fou':'否','fu':'服副付负复富父夫扶幅浮福肤辅府腐妇附抚符伏赴缚覆芙孵俘',
-'ga':'嘎尬','gai':'该改盖概钙丐','gan':'干感敢赶甘肝杆竿尴赣擀','gang':'刚钢岗港纲缸杠罡','gao':'高告搞稿膏糕睾篙','ge':'个各歌哥格隔割阁革胳搁咯戈鸽疙铬','gei':'给','gen':'跟根','geng':'更耕梗耿羹埂','gong':'工公功共攻供宫恭巩贡躬汞拱','gou':'够狗构购勾沟钩苟垢','gu':'古故顾骨股鼓固孤姑估雇菇辜咕沽蛊','gua':'挂瓜刮寡褂','guai':'怪拐乖','guan':'关观官管馆惯灌冠罐棺贯','guang':'光广逛','gui':'贵归规鬼桂柜跪轨诡硅龟闺','gun':'滚棍','guo':'国过果锅郭裹帼',
-'ha':'哈蛤','hai':'还海害孩咳嗨骸','han':'汉汗喊含寒韩函涵旱焊憾罕憨','hang':'行航杭夯','hao':'好号毫豪嚎浩耗郝蚝','he':'和合河喝何盒核贺荷呵赫褐鹤嘿','hei':'黑嘿','hen':'很恨狠痕','heng':'横哼恒衡亨','hong':'红洪宏虹轰哄烘鸿弘','hou':'后候厚猴喉吼侯','hu':'户湖呼胡护壶糊狐虎互沪忽蝴葫唬弧','hua':'话花化画华划滑哗桦','huai':'坏怀淮槐徊','huan':'还换环欢缓患幻唤焕涣奂豢寰','huang':'黄皇慌荒晃煌惶蝗谎凰簧幌','hui':'会回灰挥汇惠辉毁慧绘徽讳诲晦贿秽','hun':'混婚魂昏浑荤馄','huo':'火或活货获祸惑霍豁',
-'ji':'几机记及级即急集季继纪济挤鸡既技辑忌圾籍姬寂绩讥稽','jia':'家加价假架甲佳夹驾嫁稼贾颊枷钾痂','jian':'见件间建坚剑健简检肩减剪鉴渐践键荐箭溅监歼拣俭茧碱舰','jiang':'将讲江降强奖蒋酱匠疆僵桨','jiao':'叫教角交脚觉较焦骄饺搅郊胶椒礁娇','jie':'接节解姐界街结洁借戒届皆揭捷劫介疥秸','jin':'今进近金紧尽仅禁劲津筋襟锦谨晋浸','jing':'经京精惊静竟境镜睛警景敬净竞径颈鲸荆','jiong':'窘炯','jiu':'就九久酒旧究救舅揪玖咎灸韭','ju':'句局举据巨具距剧聚居拘菊矩沮拒锯炬俱驹鞠','juan':'卷捐倦娟眷绢','jue':'决绝掘倔诀爵嚼','jun':'军均君俊峻骏竣菌钧',
-'ka':'卡咖喀咔','kai':'开凯慨楷揩铠','kan':'看刊砍堪坎侃勘','kang':'康抗扛炕亢慷','kao':'靠考烤拷铐','ke':'可科克课刻客颗壳渴柯棵磕咳苛','ken':'肯啃恳垦','keng':'坑吭铿','kong':'空孔控恐','kou':'口扣寇抠叩','ku':'苦哭库裤酷枯窟','kua':'跨夸垮挎胯','kuai':'快块筷','kuan':'宽款','kuang':'况狂框矿旷筐眶','kui':'愧亏葵溃馈盔窥','kun':'困昆捆坤','kuo':'阔扩括廓',
-'la':'拉啦辣蜡腊喇','lai':'来赖莱睐','lan':'蓝兰烂篮览懒栏拦揽缆阑澜婪','lang':'浪郎朗狼廊琅榔','lao':'老劳牢捞姥涝唠','le':'了乐勒','lei':'类累雷泪蕾垒擂肋镭','leng':'冷愣棱','li':'里力立利理离李例历丽厉礼栗莉梨粒璃犁漓篱俐痢哩','lia':'俩','lian':'连脸练莲链恋联廉怜帘敛炼','liang':'两量亮凉粮良梁辆谅晾','liao':'料聊疗辽撩僚寥缭','lie':'列烈裂猎劣冽','lin':'林临邻淋霖琳磷鳞凛吝','ling':'令领零灵铃龄岭凌陵羚翎伶','liu':'六流留刘柳溜硫瘤榴馏','long':'龙隆笼聋垄拢窿咙','lou':'楼漏陋搂篓','lu':'路陆录露鹿卢炉芦虏卤鲁碌赂撸','lv':'绿律旅虑率滤铝履屡缕侣','luan':'乱卵峦','lue':'略掠','lun':'论轮伦沦抡','luo':'落罗洛络骆裸萝锣逻',
-'ma':'吗妈马麻码骂嘛玛蚂','mai':'买卖麦脉埋霾','man':'满慢蛮曼漫瞒馒蔓谩','mang':'忙盲芒茫莽氓','mao':'毛猫冒贸茂帽矛茅锚貌卯','me':'么','mei':'没每美妹梅煤霉玫枚眉媒镁寐魅','men':'们门闷焖','meng':'梦猛盟蒙孟萌锰懵','mi':'米密迷秘眯谜弥蜜觅泌糜','mian':'面免棉眠绵勉缅腼','miao':'秒妙描庙瞄渺苗','mie':'灭蔑','min':'民敏闽皿悯抿','ming':'明名命鸣铭冥','miu':'谬','mo':'末莫摸摩魔抹沫膜漠墨默磨陌寞蘑','mou':'某谋眸','mu':'木目母亩墓幕慕牧穆拇募牡暮沐',
-'na':'那拿哪纳娜呐钠','nai':'奶耐乃奈氖','nan':'难南男楠','nang':'囊','nao':'脑闹恼挠','ne':'呢','nei':'内','nen':'嫩','neng':'能','ni':'你尼泥逆腻匿妮倪霓溺','nian':'年念粘碾捻蔫','niang':'娘酿','niao':'鸟尿','nie':'捏聂镍孽涅','nin':'您','ning':'宁凝拧柠狞','niu':'牛扭纽钮妞','nong':'农浓弄脓侬','nu':'怒努奴','nv':'女','nuan':'暖','nuo':'诺挪懦糯',
-'o':'哦噢喔','ou':'欧偶呕藕鸥殴',
-'pa':'怕爬趴帕啪耙','pai':'排派拍牌徘湃','pan':'盘判盼攀潘畔磐','pang':'旁胖庞磅乓彷','pao':'跑炮泡抛袍刨咆','pei':'陪配培赔佩胚沛','pen':'喷盆','peng':'朋碰捧棚蓬鹏膨烹砰澎篷','pi':'批皮披疲屁劈匹脾啤僻譬痞琵毗','pian':'片篇偏骗翩','piao':'票飘漂瓢','pie':'撇瞥','pin':'品频贫拼聘','ping':'平评苹瓶凭屏乒萍','po':'破迫坡泼婆颇泊魄粕','pou':'剖','pu':'普铺扑朴葡蒲谱浦瀑仆',
-'qi':'起其气七期奇齐器汽骑棋旗弃欺漆契砌泣凄歧祈脐','qia':'恰掐','qian':'前钱千签浅遣潜歉牵迁谦欠铅钳乾','qiang':'强抢枪墙腔呛羌蔷','qiao':'桥巧敲瞧乔翘悄俏峭窍锹','qie':'切且窃茄怯惬','qin':'亲琴勤秦侵沁寝芹擒','qing':'情青清轻请庆倾晴氢卿擎顷','qiong':'穷琼','qiu':'球求秋丘囚泅酋邱蚯','qu':'去区取曲趣屈趋驱渠娶龋','quan':'全权圈拳泉劝犬痊蜷','que':'却确缺雀鹊瘸','qun':'群裙',
-'ran':'然燃染冉','rang':'让嚷壤攘','rao':'绕饶扰','re':'热惹','ren':'人认任忍仁韧刃饪妊','reng':'仍扔','ri':'日','rong':'容荣融绒溶熔蓉茸冗','rou':'肉柔揉','ru':'如入乳辱汝儒褥蠕茹','ruan':'软阮','rui':'瑞锐睿蕊','run':'润闰','ruo':'若弱偌',
-'sa':'撒洒萨','sai':'赛塞腮','san':'三散伞叁','sang':'嗓丧桑','sao':'扫骚嫂搔瘙','se':'色涩瑟','sen':'森','seng':'僧','sha':'沙杀傻啥纱刹砂煞莎鲨','shai':'晒筛','shan':'山善闪衫扇珊删杉煽擅讪','shang':'上商伤尚赏晌裳','shao':'少烧稍绍哨勺韶邵','she':'社设舍蛇射涉摄舌赦奢','shei':'谁','shen':'身深神什甚审申伸肾慎渗绅呻','sheng':'生声胜升圣省剩绳盛甥笙','shi':'是十事时使实史式市士师始世试石视识拾湿诗尸失释饰柿虱匙侍嗜','shou':'手受收首守瘦兽授售寿绶','shu':'书数树熟输术属述舒叔疏鼠署蜀薯蔬赎','shua':'刷耍','shuai':'帅摔甩率衰','shuan':'栓拴涮','shuang':'双爽霜','shui':'水睡税','shun':'顺瞬舜','shuo':'说硕烁朔','si':'四死思私司丝似寺撕饲肆嘶','song':'送松宋诵颂怂耸','sou':'搜艘擞嗽','su':'素速苏诉俗宿塑肃粟酥溯','suan':'算酸蒜','sui':'岁虽随碎穗髓遂隧','sun':'孙损笋','suo':'所索缩锁梭嗦',
-'ta':'他她它塔踏塌榻獭','tai':'太台态抬泰胎汰苔','tan':'谈弹探坦炭摊贪滩瘫坛潭痰毯袒碳','tang':'堂唐糖汤躺烫趟膛塘','tao':'讨套逃桃陶涛淘掏滔','te':'特','teng':'疼腾藤誊','ti':'体提题踢梯替剃惕啼蹄剔','tian':'天田甜添填舔佃','tiao':'条跳挑调迢','tie':'铁贴帖','ting':'听停挺厅庭亭艇汀蜓','tong':'同通痛童统筒铜桐瞳彤桶捅','tou':'头投偷透','tu':'图土突途徒涂吐兔屠凸秃','tuan':'团湍','tui':'退推腿颓褪','tun':'吞屯囤臀','tuo':'脱托拖妥拓椭唾',
-'wa':'哇娃瓦挖蛙洼袜','wai':'外歪','wan':'完万晚玩碗弯丸湾挽顽宛婉豌','wang':'王网往望忘亡旺汪枉','wei':'为位未委威围维伟味微唯尾喂慰胃谓魏违惟伪危纬苇萎猥','wen':'文问闻温稳吻纹蚊瘟','weng':'翁嗡','wo':'我握卧窝沃蜗涡','wu':'无五物务误屋舞武污吴悟雾午伍侮捂呜巫诬钨',
-'xi':'西系习喜吸细席希息析稀洗悉膝熄锡牺嘻','xia':'下夏吓虾瞎峡霞侠狭暇辖','xian':'先现显线县鲜闲咸险贤限陷献腺羡衔掀馅','xiang':'想向像香乡相响享项箱详祥巷镶厢','xiao':'小笑校消效孝肖萧晓销霄哮潇','xie':'写些谢鞋协血斜泄泻卸屑械懈蟹挟','xin':'心新信欣辛薪芯锌衅','xing':'行形性兴星醒姓幸型杏腥刑邢','xiong':'兄凶胸雄熊汹','xiu':'修秀休袖绣嗅锈羞朽','xu':'需许续须徐序虚绪叙蓄嘘旭絮戌','xuan':'选宣悬旋玄炫绚喧轩','xue':'学雪血削靴穴','xun':'寻迅训询巡讯循旬熏勋逊殉',
-'ya':'呀压雅牙亚鸭芽押哑讶崖衙','yan':'眼言严烟研盐颜沿延演验厌咽燕淹艳宴谚焰岩掩衍雁焉阉','yang':'样阳养洋杨扬央羊痒氧秧殃','yao':'要药摇腰咬邀遥妖耀尧谣瑶','ye':'也业夜叶野爷页液冶椰噎曳','yi':'一以已义议艺忆异意溢易依疑医衣移遗宜仪姨益抑毅翼亦矣亿倚椅译疫谊彝轶蚁','yin':'因音引银阴印饮隐姻殷淫寅瘾尹','ying':'应英影硬营迎赢映鹰婴樱盈蝇莹荧颖莺','yo':'哟','yong':'用永勇拥涌庸佣咏泳踊雍臃','you':'有又由右友邮优游尤油犹幼诱悠幽忧釉佑','yu':'于与语雨鱼玉遇育预域余娱渔予羽愚宇裕瑜榆逾狱郁喻御禹芋淤屿俞','yuan':'远元原员院愿圆园源缘援怨袁猿垣媛冤鸳','yue':'月越约跃阅岳曰悦粤','yun':'云运晕孕允韵匀蕴陨耘',
-'za':'杂砸咋匝','zai':'在再载灾栽宰崽','zan':'咱赞暂攒簪','zang':'脏藏葬赃','zao':'早遭造糟枣澡灶燥躁噪凿皂蚤','ze':'则责择泽啧仄','zei':'贼','zen':'怎','zeng':'增曾赠憎','zha':'扎炸诈查渣眨栅闸咤','zhai':'摘窄债宅斋寨','zhan':'站战占展沾粘斩崭盏栈蘸','zhang':'张章长掌涨帐账丈障胀樟彰','zhao':'找照着招朝赵召昭沼罩爪','zhe':'这着者折遮哲浙辙褶','zhen':'真阵镇针振震珍诊枕疹贞侦帧榛','zheng':'正政整争证征睁挣郑蒸铮症','zhi':'只之知直制指纸至志治质织支枝职值植执止址掷芝脂滞秩帜稚痔趾','zhong':'中种重众终钟忠肿仲衷盅','zhou':'周州洲皱粥轴昼咒肘舟','zhu':'住主注助祝著猪竹逐筑铸驻柱贮嘱瞩蛛株拄蛀','zhua':'抓爪','zhuan':'转专砖赚撰','zhuang':'装状庄撞壮妆桩幢','zhui':'追坠缀锥','zhun':'准','zhuo':'桌捉拙卓灼酌琢浊','zi':'子字自资紫滋姿兹咨籽渍孜','zong':'总宗综纵踪棕鬃','zou':'走奏邹揍','zu':'组足族阻租祖卒诅','zuan':'钻攥','zui':'最嘴罪醉','zun':'尊遵','zuo':'做作坐左座昨佐撮',
+// ===== chatty · 拼音音节表（按声母分组，三次骰用）=====
+const CHATTY_PINYIN_BY_INITIAL = {
+    '': {  // 零声母（a/o/e 开头）
+        'a':'啊阿吖','ai':'爱哀挨碍艾唉矮癌皑蔼隘暧','an':'安按案暗岸俺胺庵氨鞍谙','ang':'昂肮盎','ao':'奥澳傲熬凹敖翱袄懊拗',
+        'e':'额俄鹅饿恶厄遏鄂娥峨讹','ei':'诶','en':'恩嗯摁','eng':'鞥','er':'二而儿耳尔饵贰洱',
+        'o':'哦噢喔','ou':'欧偶呕藕鸥殴',
+    },
+    'b': {
+        'a':'八把爸吧巴拔跋罢霸芭疤笆粑靶','ai':'白百摆败拜柏掰佰稗','an':'半办班般搬板版伴拌扮瓣颁斑扳绊','ang':'帮邦棒绑榜膀磅蚌谤','ao':'包抱报保宝爆薄饱堡褒苞胞剥雹鲍',
+        'ei':'北被备背贝倍杯悲卑辈碑惫钡狈','en':'本奔笨苯畚','eng':'崩蹦泵甭绷迸',
+        'i':'比笔必逼鼻彼碧毕币避闭臂弊壁蔽庇陛痹辟敝','ian':'边变便遍编辩辨鞭贬匾辫','iao':'表标彪膘镖飙','ie':'别憋鳖瘪','in':'宾滨彬斌殡鬓缤','ing':'并病冰兵丙饼柄炳秉禀',
+        'o':'波播博伯驳脖拨薄泊勃搏玻铂帛舶卜','u':'不部布步补捕怖哺埠簿',
+    },
+    'p': {
+        'a':'怕爬趴帕啪耙','ai':'排派拍牌徘湃','an':'盘判盼攀潘畔磐','ang':'旁胖庞磅乓彷','ao':'跑炮泡抛袍刨咆',
+        'ei':'陪配培赔佩胚沛','en':'喷盆','eng':'朋碰捧棚蓬鹏膨烹砰澎篷',
+        'i':'批皮披疲屁劈匹脾啤僻譬痞琵毗','ian':'片篇偏骗翩','iao':'票飘漂瓢','ie':'撇瞥','in':'品频贫拼聘','ing':'平评苹瓶凭屏乒萍',
+        'o':'破迫坡泼婆颇泊魄粕','ou':'剖','u':'普铺扑朴葡蒲谱浦瀑仆',
+    },
+    'm': {
+        'a':'吗妈马麻码骂嘛玛蚂','ai':'买卖麦脉埋霾','an':'满慢蛮曼漫瞒馒蔓谩','ang':'忙盲芒茫莽氓','ao':'毛猫冒贸茂帽矛茅锚貌卯',
+        'e':'么','ei':'没每美妹梅煤霉玫枚眉媒镁寐魅','en':'们门闷焖','eng':'梦猛盟蒙孟萌锰懵',
+        'i':'米密迷秘眯谜弥蜜觅泌糜','ian':'面免棉眠绵勉缅腼','iao':'秒妙描庙瞄渺苗','ie':'灭蔑','in':'民敏闽皿悯抿','ing':'明名命鸣铭冥','iu':'谬',
+        'o':'末莫摸摩魔抹沫膜漠墨默磨陌寞蘑','ou':'某谋眸','u':'木目母亩墓幕慕牧穆拇募牡暮沐',
+    },
+    'f': {
+        'a':'发法罚乏伐筏阀珐','an':'反饭翻凡犯范繁返烦贩帆番藩矾','ang':'方放房防仿访妨纺芳肪',
+        'ei':'飞非费肺废肥匪沸菲啡诽吠','en':'分份粉奋愤坟纷芬氛焚酚吩','eng':'风封丰峰疯缝蜂奉凤逢讽',
+        'o':'佛','ou':'否','u':'服副付负复富父夫扶幅浮福肤辅府腐妇附抚符伏赴缚覆芙孵俘',
+    },
+    'd': {
+        'a':'大打达答搭瘩','ai':'带代待戴袋贷呆逮歹怠殆黛','an':'但单担淡弹蛋丹耽胆诞氮掸','ang':'当党挡档荡铛','ao':'到道倒刀岛导盗稻蹈悼叨捣',
+        'e':'的地得德','ei':'', 'en':'', 'eng':'等登灯凳瞪邓蹬',
+        'i':'地低第底弟敌滴递抵帝堤笛狄涤嫡','ian':'点电店典垫甸殿碘惦掂','iao':'掉调吊雕刁钓凋碉','ie':'叠爹跌蝶碟谍迭','ing':'定顶订丁钉鼎叮锭','iu':'丢',
+        'ong':'动东冬懂洞董冻栋侗','ou':'都斗豆抖逗兜陡痘','u':'读度独毒堵杜渡督睹镀妒犊',
+        'uan':'段短端断锻缎','ui':'对队堆兑怼','un':'顿吨盾蹲敦钝炖盹','uo':'多夺朵躲剁舵惰堕哆',
+    },
+    't': {
+        'a':'他她它塔踏塌榻獭','ai':'太台态抬泰胎汰苔','an':'谈弹探坦炭摊贪滩瘫坛潭痰毯袒碳','ang':'堂唐糖汤躺烫趟膛塘','ao':'讨套逃桃陶涛淘掏滔',
+        'e':'特','eng':'疼腾藤誊',
+        'i':'体提题踢梯替剃惕啼蹄剔','ian':'天田甜添填舔佃','iao':'条跳挑调迢','ie':'铁贴帖','ing':'听停挺厅庭亭艇汀蜓',
+        'ong':'同通痛童统筒铜桐瞳彤桶捅','ou':'头投偷透','u':'图土突途徒涂吐兔屠凸秃',
+        'uan':'团湍','ui':'退推腿颓褪','un':'吞屯囤臀','uo':'脱托拖妥拓椭唾',
+    },
+    'n': {
+        'a':'那拿哪纳娜呐钠','ai':'奶耐乃奈氖','an':'难南男楠','ang':'囊','ao':'脑闹恼挠',
+        'e':'呢','ei':'内','en':'嫩','eng':'能',
+        'i':'你尼泥逆腻匿妮倪霓溺','ian':'年念粘碾捻蔫','iang':'娘酿','iao':'鸟尿袅','ie':'捏聂镍孽涅','in':'您','ing':'宁凝拧柠狞','iu':'牛扭纽钮妞',
+        'ong':'农浓弄脓侬','ou':'','u':'怒努奴','v':'女','ve':'虐疟','uan':'暖','uo':'诺挪懦糯',
+    },
+    'l': {
+        'a':'拉啦辣蜡腊喇','ai':'来赖莱睐','an':'蓝兰烂篮览懒栏拦揽缆阑澜婪','ang':'浪郎朗狼廊琅榔','ao':'老劳牢捞姥涝唠烙',
+        'e':'了乐勒','ei':'类累雷泪蕾垒擂肋镭','eng':'冷愣棱',
+        'i':'里力立利理离李例历丽厉礼栗莉梨粒璃犁漓篱俐痢哩','ia':'俩','ian':'连脸练莲链恋联廉怜帘敛炼','iang':'两量亮凉粮良梁辆谅晾','iao':'料聊疗辽撩僚寥缭了','ie':'列烈裂猎劣冽','in':'林临邻淋霖琳磷鳞凛吝','ing':'令领零灵铃龄岭凌陵羚翎伶','iu':'六流留刘柳溜硫瘤榴馏',
+        'ong':'龙隆笼聋垄拢窿咙','ou':'楼漏陋搂篓','u':'路陆录露鹿卢炉芦虏卤鲁碌赂撸','v':'绿律旅虑率滤铝履屡缕侣','ve':'略掠',
+        'uan':'乱卵峦','un':'论轮伦沦抡','uo':'落罗洛络骆裸萝锣逻烙',
+    },
+    'g': {
+        'a':'嘎尬','ai':'该改盖概钙丐','an':'干感敢赶甘肝杆竿尴赣擀','ang':'刚钢岗港纲缸杠罡','ao':'高告搞稿膏糕睾篙',
+        'e':'个各歌哥格隔割阁革胳搁咯戈鸽疙铬','ei':'给','en':'跟根','eng':'更耕梗耿羹埂',
+        'ong':'工公功共攻供宫恭巩贡躬汞拱','ou':'够狗构购勾沟钩苟垢','u':'古故顾骨股鼓固孤姑估雇菇辜咕沽蛊',
+        'ua':'挂瓜刮寡褂','uai':'怪拐乖','uan':'关观官管馆惯灌冠罐棺贯','uang':'光广逛','ui':'贵归规鬼桂柜跪轨诡硅龟闺','un':'滚棍','uo':'国过果锅郭裹帼',
+    },
+    'k': {
+        'a':'卡咖喀咔','ai':'开凯慨楷揩铠','an':'看刊砍堪坎侃勘','ang':'康抗扛炕亢慷','ao':'靠考烤拷铐',
+        'e':'可科克课刻客颗壳渴柯棵磕咳苛','en':'肯啃恳垦','eng':'坑吭铿',
+        'ong':'空孔控恐','ou':'口扣寇抠叩','u':'苦哭库裤酷枯窟',
+        'ua':'跨夸垮挎胯','uai':'快块筷','uan':'宽款','uang':'况狂框矿旷筐眶','ui':'愧亏葵溃馈盔窥','un':'困昆捆坤','uo':'阔扩括廓',
+    },
+    'h': {
+        'a':'哈蛤','ai':'还海害孩咳嗨骸','an':'汉汗喊含寒韩函涵旱焊憾罕憨','ang':'行航杭夯','ao':'好号毫豪嚎浩耗郝蚝',
+        'e':'和合河喝何盒核贺荷呵赫褐鹤','ei':'黑嘿','en':'很恨狠痕','eng':'横哼恒衡亨',
+        'ong':'红洪宏虹轰哄烘鸿弘','ou':'后候厚猴喉吼侯','u':'户湖呼胡护壶糊狐虎互沪忽蝴葫唬弧',
+        'ua':'话花化画华划滑哗桦','uai':'坏怀淮槐徊','uan':'还换环欢缓患幻唤焕涣奂豢寰','uang':'黄皇慌荒晃煌惶蝗谎凰簧幌','ui':'会回灰挥汇惠辉毁慧绘徽讳诲晦贿秽','un':'混婚魂昏浑荤馄','uo':'火或活货获祸惑霍豁',
+    },
+    'j': {
+        'i':'几机记及级即急集季继纪济挤鸡既技辑忌圾籍姬寂绩讥稽','ia':'戛家加价假架甲佳夹驾嫁稼贾颊枷钾痂','ian':'见件间建坚剑健简检肩减剪鉴渐践键荐箭溅监歼拣俭茧碱舰','iang':'将讲江降强奖蒋酱匠疆僵桨','iao':'叫教角交脚觉较焦骄饺搅郊胶椒礁娇','ie':'接节解姐界街结洁借戒届皆揭捷劫介疥秸','in':'今进近金紧尽仅禁劲津筋襟锦谨晋浸','ing':'经京精惊静竟境镜睛警景敬净竞径颈鲸荆','iong':'窘炯','iu':'就九久酒旧究救舅揪咎灸韭纠鹫疚',
+        'u':'句局举据巨具距剧聚居拘菊矩沮拒锯炬俱驹鞠','uan':'卷捐倦娟眷绢','ue':'决绝掘倔诀爵嚼','un':'军均君俊峻骏竣菌钧',
+    },
+    'q': {
+        'i':'起其气七期奇齐器汽骑棋旗弃欺漆契砌泣凄歧祈脐','ia':'恰掐','ian':'前钱千签浅遣潜歉牵迁谦欠铅钳乾','iang':'强抢枪墙腔呛羌蔷','iao':'桥巧敲瞧乔翘悄俏峭窍锹','ie':'切且窃茄怯惬','in':'亲琴勤秦侵沁寝芹擒','ing':'情青清轻请庆倾晴氢卿擎顷','iong':'穷琼','iu':'球求秋丘囚泅酋邱蚯',
+        'u':'去区取曲趣屈趋驱渠娶龋','uan':'全权圈拳泉劝犬痊蜷','ue':'却确缺雀鹊瘸','un':'群裙',
+    },
+    'x': {
+        'i':'西系习喜吸细席希息析稀洗悉膝熄锡牺嘻','ia':'下夏吓虾瞎峡霞侠狭暇辖','ian':'先现显线县鲜闲咸险贤限陷献腺羡衔掀馅','iang':'想向像香乡相响享项箱详祥巷镶厢','iao':'小笑校消效孝肖萧晓销霄哮潇','ie':'写些谢鞋协血斜泄泻卸屑械懈蟹挟','in':'心新信欣辛薪芯锌衅','ing':'行形性兴星醒姓幸型杏腥刑邢','iong':'兄凶胸雄熊汹','iu':'修秀休袖绣嗅锈羞朽',
+        'u':'需许续须徐序虚绪叙蓄嘘旭絮戌','uan':'选宣悬旋玄炫绚喧轩','ue':'学雪血削靴穴','un':'寻迅训询巡讯循旬熏勋逊殉',
+    },
+    'zh': {
+        'a':'扎炸诈查渣眨栅闸咤','ai':'摘窄债宅斋寨','an':'站战占展沾粘斩崭盏栈蘸','ang':'张章长掌涨帐账丈障胀樟彰','ao':'找照着招朝赵召昭沼罩爪',
+        'e':'这着者折遮哲浙辙褶','ei':'','en':'真阵镇针振震珍诊枕疹贞侦帧榛','eng':'正政整争证征睁挣郑蒸铮症',
+        'i':'只之知直制指纸至志治质织支枝职值植执止址掷芝脂滞秩帜稚痔趾','ong':'中种重众终钟忠肿仲衷盅','ou':'周州洲皱粥轴昼咒肘舟',
+        'u':'住主注助祝著猪竹逐筑铸驻柱贮嘱瞩蛛株拄蛀','ua':'抓爪','uai':'拽','uan':'转专砖赚撰','uang':'装状庄撞壮妆桩幢','ui':'追坠缀锥','un':'准','uo':'桌捉拙卓灼酌琢浊',
+    },
+    'ch': {
+        'a':'查差茶插叉察刹岔诧茬','ai':'拆柴豺','an':'产缠禅颤铲阐馋蝉','ang':'长常场唱厂昌畅偿尝肠倡敞猖裳','ao':'超朝潮抄吵炒巢嘲',
+        'e':'车扯彻撤澈','en':'陈沉辰晨尘臣衬趁忱嗔','eng':'成城程承称诚乘呈撑惩澄橙逞',
+        'i':'吃池迟持尺齿赤斥耻驰翅匙痴嗤','ong':'冲重虫充宠崇','ou':'抽愁筹丑臭仇酬稠绸畴',
+        'u':'出处初除厨楚储触畜橱础矗','ua':'','uai':'揣','uan':'穿船传川喘串椽','uang':'床创窗闯疮','ui':'吹垂锤炊椎','un':'春纯唇醇蠢淳','uo':'戳绰',
+    },
+    'sh': {
+        'a':'沙杀傻啥纱刹砂煞莎鲨','ai':'晒筛','an':'山善闪衫扇珊删杉煽擅讪','ang':'上商伤尚赏晌裳','ao':'少烧稍绍哨勺韶邵',
+        'e':'社设舍蛇射涉摄舌赦奢','ei':'谁','en':'身深神什甚审申伸肾慎渗绅呻','eng':'生声胜升圣省剩绳盛甥笙',
+        'i':'是十事时使实史式市士师始世试石视识拾湿诗尸失释饰柿虱匙侍嗜','ou':'手受收首守瘦兽授售寿绶',
+        'u':'书数树熟输术属述舒叔疏鼠署蜀薯蔬赎','ua':'刷耍','uai':'帅摔甩率衰','uan':'栓拴涮','uang':'双爽霜','ui':'水睡税','un':'顺瞬舜','uo':'说硕烁朔',
+    },
+    'r': {
+        'an':'然燃染冉','ang':'让嚷壤攘','ao':'绕饶扰','e':'热惹','en':'人认任忍仁韧刃饪妊','eng':'仍扔','i':'日',
+        'ong':'容荣融绒溶熔蓉茸冗','ou':'肉柔揉','u':'如入乳辱汝儒褥蠕茹','uan':'软阮','ui':'瑞锐睿蕊','un':'润闰','uo':'若弱偌',
+    },
+    'z': {
+        'a':'杂砸咋匝','ai':'在再载灾栽宰崽','an':'咱赞暂攒簪','ang':'脏藏葬赃','ao':'早遭造糟枣澡灶燥躁噪凿皂蚤',
+        'e':'则责择泽啧仄','ei':'贼','en':'怎','eng':'增曾赠憎',
+        'i':'子字自资紫滋姿兹咨籽渍孜','ong':'总宗综纵踪棕鬃','ou':'走奏邹揍','u':'组足族阻租祖卒诅','uan':'钻攥','ui':'最嘴罪醉','un':'尊遵','uo':'做作坐左座昨佐撮',
+    },
+    'c': {
+        'a':'擦','ai':'才财采菜彩裁猜材踩蔡','an':'参残餐灿蚕惭惨','ang':'藏仓苍舱沧','ao':'草操曹槽糙',
+        'e':'策侧测册厕','en':'岑参','eng':'层蹭曾',
+        'i':'次此词辞慈磁瓷刺茨赐雌','ong':'从聪丛葱匆囱','ou':'凑','u':'粗醋促猝簇','uan':'窜篡攒','ui':'催脆翠摧璀萃','un':'存村寸忖','uo':'错措搓挫磋撮',
+    },
+    's': {
+        'a':'撒洒萨','ai':'赛塞腮','an':'三散伞叁','ang':'嗓丧桑','ao':'扫骚嫂搔瘙',
+        'e':'色涩瑟','en':'森','eng':'僧',
+        'i':'四死思私司丝似寺撕饲肆嘶','ong':'送松宋诵颂怂耸','ou':'搜艘擞嗽','u':'素速苏诉俗宿塑肃粟酥溯','uan':'算酸蒜','ui':'岁虽随碎穗髓遂隧','un':'孙损笋','uo':'所索缩锁梭嗦',
+    },
+    'y': {
+        'a':'呀压雅牙亚鸭芽押哑讶崖衙','an':'眼言严烟研盐颜沿延演验厌咽燕淹艳宴谚焰岩掩衍雁焉阉','ang':'样阳养洋杨扬央羊痒氧秧殃','ao':'要药摇腰咬邀遥妖耀尧谣瑶钥',
+        'e':'也业夜叶野爷页液冶椰噎曳','i':'一以已义议艺忆异意溢易依疑医衣移遗宜仪姨益抑毅翼亦矣亿倚椅译疫谊彝轶蚁','in':'因音引银阴印饮隐姻殷淫寅瘾尹','ing':'应英影硬营迎赢映鹰婴樱盈蝇莹荧颖莺',
+        'o':'哟','ong':'用永勇拥涌庸佣咏泳踊雍臃','ou':'有又由右友邮优游尤油犹幼诱悠幽忧釉佑',
+        'u':'于与语雨鱼玉遇育预域余娱渔予羽愚宇裕瑜榆逾狱郁喻御禹芋淤屿俞','uan':'远元原员院愿圆园源缘援怨袁猿垣媛冤鸳','ue':'月越约跃阅岳曰悦粤钥乐','un':'云运晕孕允韵匀蕴陨耘',
+    },
+    'w': {
+        'a':'哇娃瓦挖蛙洼袜','ai':'外歪','an':'完万晚玩碗弯丸湾挽顽宛婉豌','ang':'王网往望忘亡旺汪枉',
+        'ei':'为位未委威围维伟味微唯尾喂慰胃谓魏违惟伪危纬苇萎猥','en':'文问闻温稳吻纹蚊瘟','eng':'翁嗡',
+        'o':'我握卧窝沃蜗涡','u':'无五物务误屋舞武污吴悟雾午伍侮捂呜巫诬钨',
+    },
 };
+
+// ===== chatty · 高频音节权重（C 方案：日常打字分布）=====
+const CHATTY_HIGH_FREQ = {
+    'de':20,'le':18,'shi':16,'yi':15,'wo':15,'ni':15,'bu':14,'zai':12,'you':12,'ren':10,
+    'ta':12,'hui':10,'jiu':10,'dou':10,'yao':10,'gei':8,'hen':8,'zhe':10,'na':8,'me':8,
+    'hao':10,'ma':8,'ne':6,'ba':8,'qu':8,'lai':8,'kan':8,'shuo':8,'xiang':8,'ai':8,
+    'zhong':6,'guo':6,'dao':6,'shang':6,'xia':6,'chu':6,'zhi':8,'xian':6,'sheng':6,
+    'huo':6,'dong':6,'jia':6,'zhu':6,'li':6,'xing':6,'neng':6,'shui':6,'chi':6,'wan':6,
+};
+const _chattySyllableWeight = (syl) => CHATTY_HIGH_FREQ[syl] || 1;
+const _chattyWeightedPick = (items) => {
+    const total = items.reduce((s, it) => s + (it.weight || 1), 0);
+    if (total <= 0) return null;
+    let r = Math.random() * total;
+    for (const it of items) {
+        r -= (it.weight || 1);
+        if (r <= 0) return it;
+    }
+    return items[items.length - 1];
+};
+
+
+// ===== chatty · 从分组表展开成扁平表（下游代码不用改）=====
+const CHATTY_PINYIN_COMPACT = (() => {
+    const m = {};
+    Object.entries(CHATTY_PINYIN_BY_INITIAL).forEach(([initial, finals]) => {
+        Object.entries(finals).forEach(([final, chars]) => {
+            if (!chars) return;
+            const syllable = (initial === '' ? '' : initial) + final;
+            if (m[syllable]) {
+                console.warn('[chatty] 音节冲突：', syllable);
+                return;
+            }
+            m[syllable] = chars;
+        });
+    });
+    return m;
+})();
+
+// ===== chatty · 校验函数（F12 控制台跑 __chattyCheck()）=====
+window.__chattyCheck = () => {
+    const have = Object.keys(CHATTY_PINYIN_COMPACT);
+    console.log('音节总数：', have.length);
+    console.log('按声母分布：');
+    Object.entries(CHATTY_PINYIN_BY_INITIAL).forEach(([ini, finals]) => {
+        const valid = Object.keys(finals).filter(f => finals[f] && finals[f].length);
+        console.log(`  ${ini || '(零)'}: ${valid.length} 个韵母`);
+    });
+    return have;
+};
+
 
 // 运行时展开一次：字 → 拼音（正向表）
 const CHATTY_PINYIN = (() => {
@@ -5955,7 +6547,7 @@ let _chattyCommonMapCache = null;
 let _chattyCommonMapCacheKey = '';
 
 const _getChattyCommonMap = () => {
- const sb = window.__chattySharedBoxes;
+    const sb = window.__chattySharedBoxes;
     const box = sb && sb['词典'];
     if (!box || !Array.isArray(box.groups)) return {};
     let total = 0;
@@ -5991,23 +6583,79 @@ const _getChattyCommonMap = () => {
     return map;
 };
 
-// ===== chatty · 自由组合审核：把"不常用字"改成常用字，标红 =====
-const _reviewFreeComposeUnits = (units) => {
-    const commonMap = _getChattyCommonMap();
-    const st = window.__chattySettings || {};
-    const reviewProb = Number(st.chattyReviewProb);
-    const prob = isNaN(reviewProb) ? 0.3 : reviewProb;
-    return units.map(u => {
-        const common = commonMap[u.py];
-        if (!common) return { ...u, corrected: false };
-        if (u.ch === common) return { ...u, corrected: false };
-        if (Math.random() < prob) {
-            return { ...u, ch: common, corrected: true };
-        }
-        return { ...u, corrected: false };
+// ===== chatty · 词级映射（连续拼音 → 词语）=====
+let _chattyCommonWordCache = null;
+let _chattyCommonWordCacheKey = '';
+const _getChattyCommonWordMap = () => {
+    const sb = window.__chattySharedBoxes;
+    const box = sb && sb['词典'];
+    if (!box || !Array.isArray(box.groups)) return {};
+    let total = 0;
+    (box.groups || []).forEach(g => total += (g.replies || []).length);
+    const key = (box.groups || []).length + '|' + total;
+    if (_chattyCommonWordCache && _chattyCommonWordCacheKey === key) return _chattyCommonWordCache;
+
+    const map = {};
+    (box.groups || []).forEach(g => {
+        (g.replies || []).forEach(r => {
+            if (r.enabled === false) return;
+            const t = (r.text || '').trim();
+            if (!t || t.startsWith('data:')) return;
+            const chars = [...t];
+            if (chars.length < 2 || chars.length > 4) return;
+            const pys = chars.map(c => CHATTY_PINYIN[c]);
+            if (pys.some(p => !p)) return;
+            const py = pys.join('');
+            if (!map[py]) map[py] = t;
+        });
     });
+    _chattyCommonWordCache = map;
+    _chattyCommonWordCacheKey = key;
+    return map;
 };
 
+// ===== chatty · 自由组合审核：把"不常用字"改成常用字，标红 =====
+const _reviewFreeComposeUnits = (units) => {
+    if (!units || !units.length) return [];
+    const st = window.__chattySettings || {};
+    const charMap = _getChattyCommonMap();
+    const wordMap = _getChattyCommonWordMap();
+    const charProb = (() => { const v = Number(st.chattyReviewCharProb); return isNaN(v) ? 0.3 : v; })();
+    const wordProb = (() => { const v = Number(st.chattyReviewWordProb); return isNaN(v) ? 0.3 : v; })();
+
+    const result = units.map(u => ({ ...u, corrected: false }));
+
+    // ① 词级：从长到短扫（4→3→2）
+    for (let len = Math.min(result.length, 4); len >= 2; len--) {
+        for (let start = 0; start + len <= result.length; start++) {
+            const seg = result.slice(start, start + len);
+            const py = seg.map(u => u.py).join('');
+            const word = wordMap[py];
+            if (!word) continue;
+            if (Math.random() >= wordProb) continue;
+            const wChars = [...word];
+            if (wChars.length !== len) continue;
+            for (let i = 0; i < len; i++) {
+                if (result[start + i].ch !== wChars[i]) {
+                    result[start + i].ch = wChars[i];
+                    result[start + i].corrected = true;
+                }
+            }
+        }
+    }
+    // ② 字级（跳过已被词级纠正的）
+    result.forEach(u => {
+        if (u.corrected) return;
+        const common = charMap[u.py];
+        if (!common) return;
+        if (u.ch === common) return;
+        if (Math.random() < charProb) {
+            u.ch = common;
+            u.corrected = true;
+        }
+    });
+    return result;
+};
 
 // 生成错字版：把句子里某个字换成同音字
 const _makeWrongVersion = (text) => {
@@ -7560,9 +8208,9 @@ return items;
             if (s.type === 'group') return;
             (s.envelopes || []).forEach((e) => {
               if (e.from === 'dream' && e.status === 'pending' && e.arriveAt && e.arriveAt <= now) {
-                // 生成回信内容（用 letterMinCards~MaxCards 参数）
-                const minC = Math.max(1, settings.letterMinCards || 20);
-                const maxC = Math.max(minC, settings.letterMaxCards || 50);
+                // 生成回信内容（用回信独立条数 letterReplyMinCards~letterReplyMaxCards）
+                const minC = Math.max(1, settings.letterReplyMinCards || 20);
+                const maxC = Math.max(minC, settings.letterReplyMaxCards || 50);
                 const count = minC + Math.floor(Math.random() * (maxC - minC + 1));
                  e.cards = drawEnvelopeCards(count, s, '回信');
                 e.status = 'arrived';
@@ -9085,11 +9733,15 @@ const exportSelectedBoxes = ref([]);
     const profiles = reactive({ me: { name: '我', avatar: '' } });
     const settings = reactive({
       darkMode: false,
+      visualStyle: '',        // 视觉方案：''=默认 / frosted=磨砂玻璃 / glass=毛玻璃 / clear=透明 / wechat=仿微信
+      mainTypingProb: 0.2,    // 主回复拼音打字玩法的触发概率（0 = 关闭）
       showAvatar: true,
       avatarRadius: 50,
       autoReply: true,
       activeMessage: false,
-      activeInterval: 60,
+      activeInterval: 60,          // 旧字段（保留兼容，见下方迁移）
+      activeIntervalMin: 30,       // 主动搭话最短间隔（分钟）
+      activeIntervalMax: 120,      // 主动搭话最长间隔（分钟）
       soundEnabled: true,
       typewriter: false,
       replyDelayMin: 2, // 徐徐道来·最短回复时间（秒）
@@ -9109,7 +9761,8 @@ const exportSelectedBoxes = ref([]);
       chattySendProb: 0.3,          // 字卡分支：打完字卡后发送的概率
       chattyTypeSpeed: 'normal',    // 'slow' | 'normal' | 'fast'
       chattyFreeComposeProb: 0.3,   // 每轮走自由组合的概率
-      chattyReviewProb: 0.3,        // 自由组合里，字被"审核"换掉的概率
+chattyReviewCharProb: 0.3,    // 字级审核概率
+      chattyReviewWordProb: 0.3,    // 词级审核概率
       chattyBackstageEnabled: false, // 后台触发总开关
       chattyBackstageInterval: 60,  // 后台触发间隔（分钟）
 chattyTypeSpeed: 'normal',   // 'slow' | 'normal' | 'fast'
@@ -9140,6 +9793,9 @@ themeId: 'day',
       replyLetterMaxMin: 480,
       letterMinCards: 20,
       letterMaxCards: 50,
+      // ===== 回信字卡条数（与主动来信分开，互不影响） =====
+      letterReplyMinCards: 20,
+      letterReplyMaxCards: 50,
       letterRandomPunctuation: true,
  replyLetterMaxPerDay: 5,
       // ===== 主动留言结束 =====
@@ -9242,11 +9898,25 @@ const getFreeComposeSettings = (sessionId) => {
             weightDefault: 25,
             srcDict: true,         // 语料·词典
             weightDict: 25,
-            method: 1,             // 造句手法 0/1/2a/2b → 用数字 0/1/2/3
+            method: 0,             // 造句手法：0=语气词式 1=换词式 2=换句式 3=混用
             publicRatio: 0.55,     // 存公用库概率
         };
     }
-    return freeComposeSettingsMap[sessionId];
+    // 老档兼容：只迁移一次（用 methodSchema 标记），之后绝不覆盖你的选择。
+    // 旧编号：0语气词 1撤回式 2换词 3换句 4混用
+    // 新编号：0语气词 1换词   2换句 3混用   （撤回式已移出，交给撤回玩法）
+    const fs2 = freeComposeSettingsMap[sessionId];
+    if (fs2.methodSchema === undefined) {
+        const m = fs2.method;
+        if (m === 1)      fs2.method = 0;   // 旧「撤回式」→ 语气词式（语义最近的保留项）
+        else if (m === 2) fs2.method = 1;   // 旧「换词式」→ 换词式
+        else if (m === 3) fs2.method = 2;   // 旧「换句式」→ 换句式
+        else if (m === 4) fs2.method = 3;   // 旧「混用」  → 混用
+        else if (m == null) fs2.method = 0;
+        fs2.methodSchema = 2;               // 标记：以后按新编号解释
+    }
+    if (fs2.method == null || fs2.method > 3 || fs2.method < 0) fs2.method = 0;  // 越界兜底
+    return fs2;
 };
 
 
@@ -9281,10 +9951,9 @@ const getGroupFreeComposeSettings = (sessionId) => {
 const getRetractSettings = (sessionId) => {
     const s = getFreeComposeGroupSettings(sessionId);
     if (s.retractEnabled === undefined) s.retractEnabled = false;
-    if (s.retractProb === undefined) s.retractProb = 0.5;
     if (s.retractMethod === undefined) s.retractMethod = 1;
     if (s.retractTriggerProb === undefined) s.retractTriggerProb = 0.5; // 撤回玩法触发概率
-    if (s.retractMode === undefined) s.retractMode = 1;                 // 1/2/3
+    if (s.retractMode === undefined) s.retractMode = 1;                 // 1/2/3/4
     return s;
 };
 
@@ -9336,21 +10005,27 @@ const retractSentence = (text, method) => {
 // ===== 撤回玩法 · 说明弹窗 =====
 const showRetractModeHelp = () => {
     appAlert(
-        '梦角撤回手法说明：\n\n' +
+        '撤回玩法说明：\n\n' +
         '每次触发时，TA 抽 2~3 条字卡。\n' +
         '每条独立掷骰，结果是：\n' +
         '  · 整撤（整条收回）\n' +
         '  · 半撤（撤掉一部分，剩碎片）\n' +
         '  · 不撤（完整保留发出）\n\n' +
-        '模式 1（默认）\n' +
-        '  每条骰三选一，剩下的碎片拼一起发出。\n\n' +
-        '模式 2\n' +
-        '  每条先骰是否造句（造句/原句），再骰三选一。\n\n' +
-        '模式 3\n' +
-        '  每条先骰三选一，剩下的碎片合起来再骰一次造句。\n\n' +
-        '模式 4\n' +
-        '  每次在 1 / 2 / 3 里随机挑一种。',
-        '撤回'
+        '撤回模式 1　单独撤回\n' +
+        '  抽卡 → 撤回 → 直接发送（不造句）\n\n' +
+        '撤回模式 2　先造句，再撤回\n' +
+        '  抽卡 → 造句 → 撤回 → 发送\n' +
+        '  （造句失败时退回原句继续）\n\n' +
+        '撤回模式 3　先撤回，再造句\n' +
+        '  抽卡 → 撤回 → 再造句 → 发送\n' +
+        '  这一模式内部还有两条随机分支：\n' +
+        '    A. 把所有碎片合成一句，再造句\n' +
+        '    B. 随机挑其中一条碎片造句，其余保留\n\n' +
+        '撤回模式 4　随机\n' +
+        '  每次在 1 / 2 / 3 里随机挑一种。\n\n' +
+        '注：如果撤回后一条碎片都不剩，会从字卡里随机抽一条拼上，\n' +
+        '避免发出空消息。',
+        '撤回玩法'
     );
 };
 const showRetractMethodHelp = () => {
@@ -9358,7 +10033,9 @@ const showRetractMethodHelp = () => {
         '撤回手法说明：\n\n' +
         '1 = 按标点拆（按逗号句号切开，随机保留几段）\n' +
         '2 = 按字数撤（从开头或结尾截掉一段）\n' +
-        '3 = 混合（上面两种随机）',
+        '3 = 混合（上面两种随机）\n\n' +
+        '撤回模式里统一使用"混合"，即每次手法都在 1 / 2 里随机，\n' +
+        '你不需要为每种模式单独挑手法。',
         '撤回手法'
     );
 };
@@ -9628,17 +10305,7 @@ const composeMethod0 = (src) => {
     }
 };
 
-// ===== 手法 1：撤回式（截后半句） =====
-const composeMethod1 = (src) => {
-    if (src.length <= 3) return null;
-    const ratio = 0.3 + Math.random() * 0.4;  // 截掉 30%~70%
-    const cutLen = Math.max(1, Math.floor(src.length * ratio));
-    const keep = src.slice(0, src.length - cutLen).replace(TAIL_PUNC_RE, '');
-    if (keep.length < 2) return null;
-    return keep;
-};
-
-// ===== 手法 2a：换词式 =====
+// ===== 手法 1：换词式 =====
 const composeMethod2a = (src, session) => {
     if (src.length < 4) return null;
     const start = Math.floor(Math.random() * (src.length - 2));
@@ -9650,7 +10317,7 @@ const composeMethod2a = (src, session) => {
     return result !== src ? result : null;
 };
 
-// ===== 手法 2b：换句式 =====
+// ===== 手法 2：换句式 =====
 const composeMethod2b = (src, session) => {
     if (src.length < 6) return null;
     const start = Math.floor(Math.random() * (src.length - 4));
@@ -9670,17 +10337,18 @@ const composeSentence = (src, session) => {
     const settings = getFreeComposeSettings(session.id);
     let method = settings.method;
 
-    // 混用模式：随机选 0~3 中的一种
-    if (method === 4) {
-        method = Math.floor(Math.random() * 4);
+    // 混用模式（3）：随机选 0 / 1 / 2 中的一种
+    // 注：原「撤回式」已移出造句手法（改由撤回玩法统一负责），故不再参与混用
+    if (method === 3) {
+        method = [0, 1, 2][Math.floor(Math.random() * 3)];
     }
+    if (method > 2 || method < 0) method = 0;   // 越界兜底
 
     let result = null;
     for (let i = 0; i < 3 && !result; i++) {
         if (method === 0) result = composeMethod0(src);
-        else if (method === 1) result = composeMethod1(src);
-        else if (method === 2) result = composeMethod2a(src, session);
-        else if (method === 3) result = composeMethod2b(src, session);
+        else if (method === 1) result = composeMethod2a(src, session);   // 换词式
+        else if (method === 2) result = composeMethod2b(src, session);   // 换句式
     }
     if (!result || result === src) return null;
     return result;
@@ -9725,9 +10393,11 @@ const triggerGroupRetractPlay = (member, group) => {
         copy.splice(idx, 1);
     }
 
+    // ===== 撤回模式（与私聊一致）=====
+    //  1 = 抽卡 → 撤回 → 直接发送； 2 = 造句 → 撤回； 3 = 撤回 → 再造句； 4 = 随机
     let mode = rs.retractMode || 1;
     if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
-    const method = rs.retractMethod || 1;
+    const method = 3;
 
     const remainingParts = [];
     const removedList = [];
@@ -9757,34 +10427,41 @@ const triggerGroupRetractPlay = (member, group) => {
         picked.forEach(item => {
             const t = (item.text || '').trim();
             if (!t) return;
-            let base = t;
-            if (Math.random() < 0.5) {
-                const composed = composeSentence(t, member);
-                if (composed) base = composed;
-            }
-            rollOne(base);
+            const composed = composeSentence(t, member);
+            rollOne(composed || t);
         });
     } else if (mode === 3) {
         picked.forEach(item => rollOne(item.text));
-        if (remainingParts.length) {
-            const merged = remainingParts.join('  ');
-            if (Math.random() < 0.5) {
+        if (Math.random() < 0.5) {
+            if (remainingParts.length) {
+                const merged = remainingParts.join('  ');
                 const composed = composeSentence(merged, member);
                 if (composed) {
                     remainingParts.length = 0;
                     remainingParts.push(composed);
                 }
             }
+        } else {
+            if (remainingParts.length) {
+                const i = Math.floor(Math.random() * remainingParts.length);
+                const composed = composeSentence(remainingParts[i], member);
+                if (composed) remainingParts[i] = composed;
+            }
         }
     }
 
     if (!removedList.length) return false;
-    const finalText = remainingParts.join('  ');
+
+    let finalText = remainingParts.join('  ');
+    if (!finalText) {
+        const extra = drawSentenceOrWordFromAllBoxes(member);
+        if (extra) finalText = extra.trim();
+    }
+
     sendMessage(member.id, finalText || ' ', {
         session: group,
         retracted: true,
         originalContents: removedList,
-        blank: !finalText,
     });
     if (finalText) saveGroupFreeComposedSentence(finalText);
     return true;
@@ -9798,24 +10475,10 @@ const triggerGroupFreeCompose = (member, group) => {
     const lastMsg = group.messages[group.messages.length - 1];
     if (lastMsg && lastMsg.content === newSentence) return false;
 
-    // ===== 撤回半句判定 =====
-    const rs = getRetractSettings(group.id);
-    let finalSend = newSentence;
-    let retractInfo = null;
-    if (rs.retractEnabled && Math.random() < rs.retractProb) {
-        const r = retractSentence(newSentence, rs.retractMethod);
-        if (r) {
-            retractInfo = r;
-            finalSend = r.remaining;
-        }
-    }
+    // 「撤回半句」已移除：撤回统一由「撤回玩法」负责（避免两套撤回机制重复）
+    const finalSend = newSentence;
 
     const opts = { session: group, freeCompose: true };
-           if (retractInfo) {
-        opts.retracted = true;
-        opts.originalContents = [retractInfo.original];
-        opts.removedPart = retractInfo.removed || '';
-    }
     sendMessage(member.id, finalSend, opts);
     saveGroupFreeComposedSentence(finalSend);
     return true;
@@ -9909,9 +10572,15 @@ const triggerRetractPlay = (session) => {
         copy.splice(idx, 1);
     }
 
+    // ===== 撤回模式 =====
+    //  1 = 抽卡 → 撤回 → 直接发送（不造句）
+    //  2 = 抽卡 → 造句 → 撤回 → 发送
+    //  3 = 抽卡 → 先撤回 → 再造句 → 发送（两条随机分支）
+    //  4 = 以上 1/2/3 随机
+    // 撤回手法：统一走"混合"（retractSentence 内部按查表随机 1/2，不再掷骰子）
     let mode = rs.retractMode || 1;
     if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
-    const method = rs.retractMethod || 1;
+    const method = 3;
 
     const remainingParts = [];
     const removedList = [];
@@ -9940,45 +10609,81 @@ const triggerRetractPlay = (session) => {
     };
 
     if (mode === 1) {
+        // 单独撤回：不造句
         picked.forEach(item => rollOne(item.text));
     } else if (mode === 2) {
+        // 先造句，再撤回
         picked.forEach(item => {
             const t = (item.text || '').trim();
             if (!t) return;
-            let base = t;
-            if (Math.random() < 0.5) {
-                const composed = composeSentence(t, session);
-                if (composed) base = composed;
-            }
-            rollOne(base);
+            const composed = composeSentence(t, session);
+            rollOne(composed || t);   // 造句失败 → 退回原句（第 2 点拍板）
         });
     } else if (mode === 3) {
+        // 先撤回，再造句：两条随机分支
         picked.forEach(item => rollOne(item.text));
-        // 碎片合起来再骰一次造句
-        if (remainingParts.length) {
-            const merged = remainingParts.join('  ');
-            if (Math.random() < 0.5) {
+        if (Math.random() < 0.5) {
+            // 分支 A：所有碎片合成一句，再造句
+            if (remainingParts.length) {
+                const merged = remainingParts.join('  ');
                 const composed = composeSentence(merged, session);
                 if (composed) {
                     remainingParts.length = 0;
                     remainingParts.push(composed);
                 }
             }
+        } else {
+            // 分支 B：随机挑一条碎片造句，其余保留
+            if (remainingParts.length) {
+                const i = Math.floor(Math.random() * remainingParts.length);
+                const composed = composeSentence(remainingParts[i], session);
+                if (composed) remainingParts[i] = composed;
+            }
         }
     }
 
     if (!removedList.length) return false; // 全都"不撤" → 不算撤回，让原流程走
-    const finalText = remainingParts.join('  ');
+
+    // 拼接随机一条句子（第 2 点拍板）：仅当"有撤回、但剩余碎片为空"时补一条
+    let finalText = remainingParts.join('  ');
+    if (!finalText) {
+        const extra = drawSentenceOrWordFromAllBoxes(session);
+        if (extra) finalText = extra.trim();
+    }
+
     sendMessage('them', finalText || ' ', {
         session,
         retracted: true,
         originalContents: removedList,
-        blank: !finalText,
     });
     if (finalText) saveFreeComposedSentence(finalText, session);
     return true;
 };
   
+// ===== 主回复「拼音打字」玩法 =====
+// 与撤回/造句同级的特殊玩法：每次回复前骰一次概率，中了就走 chatty 那套完整的
+// 「拼音自由组合」——分段+标点 → 词级/字级审核纠错 → 拼音注音渲染 → 角标。
+// 直接复用 chatty 现成的 _makeFreeComposeText + _pushFreeComposeToChat，保证观感一致。
+// 不在这里做打字动画；发送时机由 triggerReply 的「最短~最长回复时间」自然约束。
+const triggerTypingPlay = (session, opts) => {
+    if (!session) return false;
+    const prob = Number(settings.mainTypingProb ?? 0.2);
+    if (prob <= 0) return false;
+    if (Math.random() >= prob) return false;
+
+    const free = _makeFreeComposeText();
+    if (!free) return false;
+    _pushFreeComposeToChat(session, free);
+    // 主聊天里补一次滚到底（_pushFreeComposeToChat 内部的滚动只服务 chatty 屏幕）
+    try { if (typeof scrollToBottom === 'function') scrollToBottom(); } catch (e) {}
+    // 群聊：跟着群里的一位成员发言（与 chatty 屏幕保持一致）
+    if (opts && opts.groupMemberId) {
+        const last = session.messages[session.messages.length - 1];
+        if (last && last.sender === 'them') last.sender = opts.groupMemberId;
+    }
+    return true;
+};
+
 // ===== 梦角自由造句触发 =====
 const triggerFreeCompose = (session) => {
     if (!session) return false;
@@ -9999,25 +10704,11 @@ const triggerFreeCompose = (session) => {
     const lastMsg = session.messages[session.messages.length - 1];
     if (lastMsg && lastMsg.content === newSentence) return false;
 
-    // ===== 撤回半句判定 =====
-    const rs = getRetractSettings(session.id);
-    let finalSend = newSentence;
-    let retractInfo = null;
-    if (rs.retractEnabled && Math.random() < rs.retractProb) {
-        const r = retractSentence(newSentence, rs.retractMethod);
-        if (r) {
-            retractInfo = r;
-            finalSend = r.remaining;
-        }
-    }
+    // 「撤回半句」已移除：撤回统一由「撤回玩法」负责（避免两套撤回机制重复）
+    const finalSend = newSentence;
 
     // 发送
     const opts = { session, freeCompose: true };
-                if (retractInfo) {
-        opts.retracted = true;
-        opts.originalContents = [retractInfo.original];
-        opts.removedPart = retractInfo.removed || '';
-    }
     sendMessage('them', finalSend, opts);
 
     // 存入字卡（存发出去的内容）
@@ -11417,6 +12108,8 @@ const selectTag = (type, text) => {
     if (!txt) return;
     const cur = currentSession.value;
     const isGroup = cur && cur.type === 'group';
+    // 主动搭话钩子：记录用户最后发消息时间（每会话独立冷却的基准）
+    if (cur) cur._lastUserMsgAt = Date.now();
     const mention = isGroup ? mentionTarget.value : null;
     const opts = { mention, tag: selectedTag.value ? { ...selectedTag.value } : null };
     if (pendingQuote.value) opts.quote = pendingQuote.value;
@@ -11777,6 +12470,10 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
             delete typingSessions[cur.id];
             return;
         }
+        // ===== 主回复「拼音打字」玩法：第三优先 =====
+        if (cur.type !== 'group' && triggerTypingPlay(cur)) {
+            return;   // 已由 _pushFreeComposeToChat 推送（含注音/标红/角标）
+        }
         const acts = [];
         let totalChars = 0;
         if (cur.type !== 'group') {
@@ -12076,18 +12773,52 @@ if (Math.random() < 0.1) {
       if (cur && cur.type === 'group') triggerGroupReply(300);
       else triggerReply(300);
     };
+    // ===== 主动搭话：冷却钩子（越久没理 TA，冷却越短）=====
+    const computeActiveCoolDown = (gapSinceUserMsg) => {
+      const min = 60 * 1000, hour = 60 * min;
+      if (gapSinceUserMsg < 5 * min)  return 30 * min;   // 5 分钟内聊过 → 不打扰
+      if (gapSinceUserMsg < 30 * min) return 15 * min;
+      if (gapSinceUserMsg < 1 * hour) return 10 * min;
+      if (gapSinceUserMsg < 3 * hour) return 5 * min;
+      if (gapSinceUserMsg < 6 * hour) return 2 * min;
+      return 0;                                          // 6 小时以上没理 → 随时可来
+    };
+    // ===== 主动搭话：每分钟扫一遍「所有会话」，每个会话独立计时 =====
+    // 旧版只对 currentSession 触发 → 导致只有最近常聊的那一两个会冒泡（已修复）
     const manageActiveTimer = () => {
       if (activeTimer) clearInterval(activeTimer);
-      if (settings.activeMessage) {
-        // 最小按 5 分钟算，防止旧存档里 0 分钟导致一条都不发
-        const intervalMs = Math.max((settings.activeInterval || 0) * 60 * 1000, 5 * 60 * 1000);
-        activeTimer = setInterval(() => {
-          const cur = currentSession.value;
-          // 隐藏的聊天室不主动搭话（即使全局搭话开着）
-          // 群聊不触发私聊回复（否则会以「them」身份发言显示成群名）：群聊有自己的 groupChatEnabled 定时器
-          if (cur && !cur.hidden && cur.type !== 'group') triggerReply(500);
-        }, intervalMs);
-      }
+      if (!settings.activeMessage) return;
+      activeTimer = setInterval(() => {
+        const now = Date.now();
+        const minMs = Math.max(1, settings.activeIntervalMin || 30) * 60 * 1000;
+        const maxMs = Math.max(minMs, (settings.activeIntervalMax || 120) * 60 * 1000);
+        let firedThisTick = 0;                       // 每分钟最多触发 2 个会话，避免一口气冒 20 条
+        sessions.value.forEach(s => {
+          if (!s || s.hidden || s.type === 'group') return;
+          // 正在看的会话不打扰
+          if (currentView.value === 'chat' && currentSessionId.value === s.id) return;
+          // 首次初始化：只排一个下次时间，不当场触发
+          if (!s._activeInited) {
+            s._activeInited = true;
+            s._nextActiveAt = now + randomMs(minMs, maxMs);
+            return;
+          }
+          if (now < (s._nextActiveAt || 0)) return;
+          // 冷却检查：刚聊完 → 往后推
+          const gap = now - (s._lastUserMsgAt || 0);
+          const coolDown = computeActiveCoolDown(gap);
+          if (gap < coolDown) {
+            s._nextActiveAt = now + randomMs(minMs, maxMs);
+            return;
+          }
+          if (firedThisTick >= 2) return;             // 本分钟额度用完
+          firedThisTick++;
+          s._nextActiveAt = now + randomMs(minMs, maxMs);
+          s._lastActiveMsgAt = now;
+          triggerReply(500, s);
+        });
+        debouncedSave();
+      }, 60 * 1000);                                  // 每分钟检查一次
     };
     // 切换「主动搭话」总开关：翻转后立即启停定时器（不再等发消息/刷新）
     const toggleActiveMessage = () => {
@@ -12825,6 +13556,14 @@ const THEMES = {
         surface: '#f5f5f5', text: '#f5f5f5', muted: '#a0a0a0', border: '#333333',
         accent: '#ffffff', navIcon: '#e0e0e0', dark: true, swatch: '#0a0a0a',
     },
+    // ===== 微信配色（供「视觉方案：仿微信」一键切换使用）=====
+    wechat: {
+        label: '微信',
+        bgBase: '#ededed',
+        bgColors: ['#ededed', '#ededed', '#ededed'],
+        surface: '#ffffff', text: '#191919', muted: '#7f7f7f', border: '#e5e5e5',
+        accent: '#07c160', navIcon: '#07c160', dark: false, swatch: '#95ec69',
+    },
 };
 // 水墨晕染：3 色 radial-gradient 叠加
 const buildLayeredBg = (t) => {
@@ -12843,6 +13582,16 @@ const applyTheme = (id) => {
     root.style.setProperty('--color-bg', t.bgBase || t.bgColors[0]);
     root.style.setProperty('--color-bg-layered', layered);
     root.style.setProperty('--color-surface', t.surface);
+    // 补齐 --color-surface-rgb（给玻璃/视觉方案用；原来这个变量一直被引用却从未定义）
+    {
+        const m = String(t.surface || '').match(/^#([0-9a-f]{6})$/i);
+        if (m) {
+            const n = parseInt(m[1], 16);
+            root.style.setProperty('--color-surface-rgb', `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`);
+        } else {
+            root.style.setProperty('--color-surface-rgb', t.dark ? '23, 23, 25' : '255, 255, 255');
+        }
+    }
     root.style.setProperty('--color-text', t.text);
     root.style.setProperty('--color-muted', t.muted);
     root.style.setProperty('--color-border', t.border);
@@ -12902,6 +13651,54 @@ const adjustReplyDelay = (which, delta) => {
     debouncedSave();
 };
 
+// ===== 视觉方案（默认 / 磨砂玻璃 / 毛玻璃 / 透明 / 仿微信）=====
+// 主题管颜色，视觉方案管"卡片通透度"，两者独立叠加。
+// 例外：「仿微信」是整套方案——会自动切到微信配色（需要时切回你原来的主题）。
+const applyVisualStyle = (v) => {
+    try {
+        const el = document.documentElement;
+        if (!v) el.removeAttribute('data-visual');
+        else el.setAttribute('data-visual', v);
+    } catch (e) {}
+};
+let prevThemeId = null;   // 进入「仿微信」前用户用的主题，退出时恢复
+watch(() => settings.visualStyle, (v) => {
+    applyVisualStyle(v);
+    // 「仿微信」= 整套：自动套微信配色（微信主题本身就是日间浅色）
+    if (v === 'wechat') {
+        if (settings.themeId !== 'wechat') {
+            if (prevThemeId == null) prevThemeId = settings.themeId || 'day';
+            applyTheme('wechat');
+        }
+    } else if (prevThemeId != null) {
+        // 退出「仿微信」：恢复用户原来的主题
+        const back = prevThemeId;
+        prevThemeId = null;
+        if (settings.themeId === 'wechat') applyTheme(back);
+    }
+    nextTick(() => { try { if (window.lucide) lucide.createIcons(); } catch (e) {} });
+}, { immediate: true });
+// 反向：从主题网格直接选「微信」时，视觉方案也跟着切到仿微信
+watch(() => settings.themeId, (id) => {
+    if (id === 'wechat' && settings.visualStyle !== 'wechat') settings.visualStyle = 'wechat';
+});
+
+// 视觉方案预览小工具：给出该方案的"卡片不透明度"示意值
+const VISUAL_STYLES = [    { id: '',        label: '默认' },
+    { id: 'frosted', label: '磨砂玻璃' },
+    { id: 'glass',   label: '毛玻璃' },
+    { id: 'clear',   label: '透明' },
+    { id: 'wechat',  label: '仿微信' },
+];
+const visualAlpha = (id) => (id === 'frosted' ? 0.55 : id === 'glass' ? 0.28 : id === 'clear' ? 0.06 : 1);
+
+// ===== 设置项折叠（点击标题展开/收起，收起时 v-if 让 DOM 里不存在，省内存）=====
+// 默认：全部展开（保持你熟悉的观感）。点标题收起，状态记在内存里（不落存档）。
+const sectionOpen = reactive({});
+const secKey = (k) => 's_' + String(k).replace(/\s+/g, '');
+const isSectionOpen = (k) => sectionOpen[secKey(k)] !== false;
+const toggleSection = (k) => { sectionOpen[secKey(k)] = !isSectionOpen(k); };
+
 // ===== 回复设置（全局） =====
 const settingsTab = ref('外观');
     // 切换设置 Tab 时重绘 lucide 图标
@@ -12911,6 +13708,10 @@ const settingsTab = ref('外观');
         });
     });
 const replySubTab = ref('私聊');
+    // ===== 回复设置层级重构：当前打开的子页（null = 首页卡片列表） =====
+    // 用 v-if 控制，收起时 DOM 里不存在，省内存；切 Tab 时自动回首页
+    const replySettingsPage = ref(null);
+    watch(settingsTab, () => { replySettingsPage.value = null; });
 
 // 数字调整（- + 按钮用）
 const adjustSetting = (key, delta, min, max) => {
@@ -12921,6 +13722,40 @@ const adjustSetting = (key, delta, min, max) => {
     settings[key] = next;
     debouncedSave();
 };
+
+// ===== 数字框：点一下直接输入数值 =====
+// 把只读的数字显示改成可编辑：点击全选、回车/失焦提交、Esc 还原、上下键微调
+const toNum = (v) => {
+    const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+    return isNaN(n) ? null : n;
+};
+const commitNumInput = (e, getter, setter, min, max) => {
+    const raw = (e.target.textContent || '').trim();
+    const n = toNum(raw);
+    const cur = toNum(getter());
+    let next = n === null ? cur : n;          // 输错/清空 → 还原
+    if (next == null) next = 0;
+    if (min != null) next = Math.max(min, next);
+    if (max != null) next = Math.min(max, next);
+    setter(Math.round(next));
+    e.target.textContent = String(getter());  // 把当前值写回去显示
+    if (typeof debouncedSave === 'function') debouncedSave();
+};
+const numKey = (e, getter, setter, min, max) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    else if (e.key === 'Escape') { e.target.textContent = String(getter()); e.target.blur(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const d = e.key === 'ArrowUp' ? 1 : -1;
+        const n = toNum(getter()) ?? 0;
+        let v = n + d;
+        if (min != null) v = Math.max(min, v);
+        if (max != null) v = Math.min(max, v);
+        setter(Math.round(v));
+        e.target.textContent = String(getter());
+    }
+};
+const selectAllText = (e) => { try { document.getSelection().selectAllChildren(e.target); } catch (err) {} };
 
 // ===== 字卡计数 =====
 const _countReplyCards = (replies) => {
@@ -13285,6 +14120,19 @@ const chattyInstalledSessions = computed(() =>
     sessions.value.filter(s => s.type !== 'group' && s.chattyInstalled)
 );
 
+// ===== chatty · 模拟键盘 =====
+const CHATTY_KEYBOARD_ROWS = [
+    ['q','w','e','r','t','y','u','i','o','p'],
+    ['a','s','d','f','g','h','j','k','l'],
+    ['z','x','c','v','b','n','m'],
+];
+const CHATTY_PUNCT_ROW = ['，','。','？','！','——','~','；','…'];
+const CHATTY_PUNCT_PROB = 0.3;
+const CHATTY_PUNCT_END_RE = /[，。！？；：、,.!?;:~—…]$/;
+const chattyKeyActive = ref('');
+
+
+
 // ===== chatty 阶段 3：模拟打字 =====
 const chattyTaStatus = ref('online');         // 'online' | 'busy' | 'offline'
 const chattyTypingText = ref('');              // 正在打的拼音
@@ -13307,6 +14155,7 @@ const _stopChattyLoop = () => {
     chattyTypingText.value = '';
     chattyCandidates.value = [];
     chattyCandidatePicked.value = null;
+    chattyKeyActive.value = '';
 };
 
 const _stopChattyStatusTimer = () => {
@@ -13316,6 +14165,8 @@ const _stopChattyStatusTimer = () => {
 // 拼音反推（取前 2 字，查表；不够就取 1 字；再不够返回 null）
 const _getPinyinForCard = (text) => {
     if (!text) return null;
+    const key = 'typing:' + String(text).trim();
+    if (_chattyPinyinCache.has(key)) return _chattyPinyinCache.get(key);
     const chars = [...String(text).trim()];
     if (!chars.length) return null;
     const maxLen = Math.min(chars.length, 5);
@@ -13323,12 +14174,21 @@ const _getPinyinForCard = (text) => {
     const len = minLen + Math.floor(Math.random() * (maxLen - minLen + 1));
     const slice = chars.slice(0, len);
     const pys = slice.map(c => CHATTY_PINYIN[c]).filter(Boolean);
-    if (pys.length >= 2) return pys.join('');
-    const fb = chars.slice(0, 2).map(c => CHATTY_PINYIN[c]).filter(Boolean);
-    if (fb.length) return fb.join('');
-    const one = chars.slice(0, 1).map(c => CHATTY_PINYIN[c]).filter(Boolean);
-    return one.length ? one[0] : null;
+    let result = null;
+    if (pys.length >= 2) result = pys.join('');
+    else {
+        const fb = chars.slice(0, 2).map(c => CHATTY_PINYIN[c]).filter(Boolean);
+        if (fb.length) result = fb.join('');
+        else {
+            const one = chars.slice(0, 1).map(c => CHATTY_PINYIN[c]).filter(Boolean);
+            result = one.length ? one[0] : null;
+        }
+    }
+    if (_chattyPinyinCache.size > 800) _chattyPinyinCache.clear();
+    _chattyPinyinCache.set(key, result);
+    return result;
 };
+
 // 掷发送条数
 const _rollChattySendCount = () => {
     const r = Math.random();
@@ -13341,15 +14201,17 @@ const _rollChattySendCount = () => {
 // 逐字母打拼音
 const _getTypeSpeedBase = () => {
     const mode = settings.chattyTypeSpeed || 'normal';
-    if (mode === 'slow') return { online: [200, 400], busy: [500, 900] };
-    if (mode === 'fast') return { online: [50, 100], busy: [150, 250] };
-    return { online: [100, 220], busy: [280, 500] };
+    if (mode === 'slower') return { online: [400, 800], busy: [1000, 1800] };
+    if (mode === 'fast')   return { online: [120, 240], busy: [300, 520] };
+    return { online: [200, 400], busy: [500, 900] };
 };
 
 const _typeChattyLetters = (py, onDone) => {
+    const myEpoch = _chattyEpoch;
     chattyTypingText.value = '';
     chattyCandidates.value = [];
     chattyCandidatePicked.value = null;
+    chattyKeyActive.value = '';
     const base = _getTypeSpeedBase();
     const range = chattyTaStatus.value === 'busy' ? base.busy : base.online;
     const speed = randomMs(range[0], range[1]);
@@ -13357,29 +14219,59 @@ const _typeChattyLetters = (py, onDone) => {
     const willBackspace = py.length > 3 && Math.random() < 0.2;
     let backspaced = false;
     const step = () => {
-        if (!chattyScreenOpen.value) return;
-        if (i >= py.length) { if (onDone) onDone(); return; }
+        if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+        if (i >= py.length) { chattyKeyActive.value = ''; if (onDone) onDone(); return; }
         if (willBackspace && !backspaced && i >= 2 && i <= py.length - 2) {
             backspaced = true;
             setTimeout(() => {
-                if (!chattyScreenOpen.value) return;
+                if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
                 const del = 1 + Math.floor(Math.random() * 2);
                 chattyTypingText.value = chattyTypingText.value.slice(0, -del);
+                chattyKeyActive.value = '';
                 i -= del;
                 setTimeout(step, randomMs(300, 700));
             }, randomMs(200, 500));
             return;
         }
-        chattyTypingText.value += py[i];
+        const ch = py[i];
+        chattyTypingText.value += ch;
+        chattyKeyActive.value = ch;
         i++;
         const pause = Math.random() < 0.05 ? randomMs(300, 700) : 0;
-        _chattyTypeTimer = setTimeout(step, speed + pause);
+        _chattyTypeTimer = setTimeout(() => {
+            chattyKeyActive.value = '';
+            step();
+        }, speed + pause);
     };
     step();
 };
+
+// ===== chatty · 真候选浮层（随机高亮）=====
+const _showRealCandidates = (s, cards, onDone) => {
+    if (!cards || !cards.length) { if (onDone) onDone(null); return; }
+    const myEpoch = _chattyEpoch;
+    const shuffled = cards.slice().sort(() => Math.random() - 0.5).slice(0, 8);
+    chattyCandidates.value = shuffled.map(c => ({ text: c.text }));
+    chattyCandidatePicked.value = null;
+    const pickIdx = Math.floor(Math.random() * shuffled.length);
+    setTimeout(() => {
+        if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+        chattyCandidatePicked.value = pickIdx;
+        setTimeout(() => {
+            if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+            chattyCandidates.value = [];
+            chattyCandidatePicked.value = null;
+            chattyTypingText.value = '';
+            if (onDone) onDone(shuffled[pickIdx]);
+        }, randomMs(500, 1000));
+    }, randomMs(800, 1500));
+};
+
+
 // 弹出候选字卡 → 高亮目标 → 停 → 回调
 const _showChattyCandidates = (s, targetCard, onDone) => {
     if (!s || !targetCard) { if (onDone) onDone(); return; }
+    const myEpoch = _chattyEpoch;
     const extras = drawWeightedCards(s, null, 12, { boxNames: ['私聊', '梦角自由造句', '公共'] });
     const pool = [targetCard];
     extras.forEach(e => {
@@ -13390,10 +14282,10 @@ const _showChattyCandidates = (s, targetCard, onDone) => {
     chattyCandidatePicked.value = null;
     const targetIdx = shuffled.findIndex(c => c.text === targetCard.text);
     setTimeout(() => {
-        if (!chattyScreenOpen.value) return;
+        if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
         chattyCandidatePicked.value = targetIdx >= 0 ? targetIdx : 0;
         setTimeout(() => {
-            if (!chattyScreenOpen.value) return;
+            if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
             chattyCandidates.value = [];
             chattyCandidatePicked.value = null;
             chattyTypingText.value = '';
@@ -13402,6 +14294,7 @@ const _showChattyCandidates = (s, targetCard, onDone) => {
     }, randomMs(800, 1500));
 };
 
+
 // ===== chatty · 存档节流（打字循环里连续发送时，合并成一次保存）=====
 let _chattySaveTimer = null;
 const _chattySaveThrottled = () => {
@@ -13409,25 +14302,48 @@ const _chattySaveThrottled = () => {
     _chattySaveTimer = setTimeout(() => {
         _chattySaveTimer = null;
         debouncedSave();
-    }, 4000);   // 4 秒内多次发送，只存一次
+    }, 15000);   // 打字循环里连续发消息时，15 秒才真存一次
 };
+
 const _chattySaveFlush = () => {
     if (_chattySaveTimer) { clearTimeout(_chattySaveTimer); _chattySaveTimer = null; }
     debouncedSave();
 };
 
+// ===== chatty · 滚动节流（打字循环里连续发消息时避免反复滚动）=====
+let _chattyScrollTimer = null;
+const _chattyScrollThrottled = () => {
+    if (_chattyScrollTimer) return;
+    _chattyScrollTimer = setTimeout(() => {
+        _chattyScrollTimer = null;
+        scrollToBottom();
+    }, 800);
+};
+
+
 // 真正写入 messages
 const _pushChattySendToChat = (s, card, correctedInfo) => {
     if (!s || !card) return;
-    const rawText = card.text || '';
+    let rawText = card.text || '';
+    // 30% 概率加标点
+    let punct = '';
+    if (rawText && !CHATTY_PUNCT_END_RE.test(rawText) && Math.random() < CHATTY_PUNCT_PROB) {
+        punct = CHATTY_PUNCT_ROW[Math.floor(Math.random() * CHATTY_PUNCT_ROW.length)];
+        rawText += punct;
+        if (chattyScreenOpen.value) {
+            chattyKeyActive.value = punct;
+            setTimeout(() => { if (chattyKeyActive.value === punct) chattyKeyActive.value = ''; }, 350);
+        }
+    }
+    // ✅ displayHTML 生成也带上标点
     let displayHTML = '';
     if (correctedInfo && typeof correctedInfo.idx === 'number') {
-        const chars = [...rawText];
+        const chars = [...(card.text || '')];
         const idx = correctedInfo.idx;
         if (idx >= 0 && idx < chars.length) {
             const before = chars.slice(0, idx).join('');
             const after = chars.slice(idx + 1).join('');
-            displayHTML = `${before}<span class="chatty-fix">${chars[idx]}</span>${after}`;
+            displayHTML = `${before}<span class="chatty-fix">${chars[idx]}</span>${after}${punct}`;
         }
     }
     s.messages.push({
@@ -13446,8 +14362,8 @@ const _pushChattySendToChat = (s, card, correctedInfo) => {
         chattySource: 'card',
         chattyDisplayHTML: displayHTML,
     });
-    _chattySaveThrottled();   // ← 改成节流版
-    if (currentSessionId.value === s.id && currentView.value === 'chat') scrollToBottom();
+    _chattySaveThrottled();
+    if (currentSessionId.value === s.id && currentView.value === 'chat') _chattyScrollThrottled();
     updateUnread();
 };
 
@@ -13464,7 +14380,7 @@ const _startChattyLoop = () => {
             _chattyLoopTimer = setTimeout(_chattyTickFn, 6000);
             return;
         }
-        // ① 自由组合分支（含审核 + 标红）
+        // ① 自由组合分支
         const freeProb = Number(settings.chattyFreeComposeProb);
         if (Math.random() < (isNaN(freeProb) ? 0.3 : freeProb)) {
             const free = _makeFreeComposeText();
@@ -13476,19 +14392,50 @@ const _startChattyLoop = () => {
                 return;
             }
         }
-        // ② 字卡分支（不打错、不审核）
-        const pool = drawWeightedCards(s, null, 20, { boxNames: ['私聊', '梦角自由造句', '公共'] });
-        const textCards = (pool || []).filter(c => c.text && c.text.trim() && !c.image);
+                // ② 字卡分支：三步正查
+        const initPool = drawWeightedCards(s, null, 30, { boxNames: ['私聊', '梦角自由造句', '公共'] });
+        const textCards = (initPool || []).filter(c => c.text && c.text.trim() && !c.image);
         if (!textCards.length) { _chattyLoopTimer = setTimeout(_chattyTickFn, 5000); return; }
-        const card = textCards[Math.floor(Math.random() * textCards.length)];
-        const py = _getPinyinForCard(card.text);
-        if (!py) { _chattyLoopTimer = setTimeout(_chattyTickFn, 1500); return; }
-        _typeChattyLetters(py, () => {
-            _showChattyCandidates(s, card, () => {
+
+        let targetPy = null;
+        let candidates = [];
+
+        // 第一步：三次骰出拼音 → 正查池
+        const rolled = _rollOneSyllable();
+        if (rolled) {
+            const matched = _findCardsByPinyin(s, rolled);
+            if (matched.length) {
+                targetPy = rolled;
+                candidates = matched;
+            }
+        }
+        // 第二步：未命中 → 从池抽卡取前缀 → 再正查
+        if (!candidates.length) {
+            const picked = textCards[Math.floor(Math.random() * textCards.length)];
+            const chars = [...picked.text.trim()];
+            const n = Math.min(chars.length, 2 + Math.floor(Math.random() * 3));
+            const prefixChars = chars.slice(0, n);
+            const prefixPys = prefixChars.map(c => CHATTY_PINYIN[c]).filter(Boolean);
+            if (prefixPys.length) {
+                targetPy = prefixPys.join('');
+                const matched2 = _findCardsByPinyin(s, targetPy);
+                if (matched2.length) candidates = matched2;
+            }
+        }
+        // 第三步：仍未命中 → 真的放弃，本轮不发
+        if (!candidates.length || !targetPy) {
+            _chattyLoopTimer = setTimeout(_chattyTickFn, 3000);
+            return;
+        }
+
+        // ③ 打字 → 候选 → 发送
+        _typeChattyLetters(targetPy, () => {
+            _showRealCandidates(s, candidates, (chosen) => {
+                if (!chosen) { _chattyLoopTimer = setTimeout(_chattyTickFn, 1500); return; }
                 const sendProb = Number(settings.chattySendProb) || 0.3;
                 if (Math.random() < sendProb) {
                     const count = _rollChattySendCount();
-                    _sendChattyMultiple(s, card, count, () => {
+                    _sendChattyMultipleFromFirst(s, chosen, count, () => {
                         const gap = chattyTaStatus.value === 'busy' ? randomMs(8000, 15000) : randomMs(3000, 7000);
                         _chattyLoopTimer = setTimeout(_chattyTickFn, gap);
                     });
@@ -13502,13 +14449,15 @@ const _startChattyLoop = () => {
     _chattyTickFn();
 };
 
+
 // 打错 → 停 → 回删 → 重打 → 纠正 → 发送
 const _typeWithCorrection = async (s, card, wrongInfo) => {
+const myEpoch = _chattyEpoch;
     const py = _getPinyinForCard(card.text) || 'a';
     const base = _getTypeSpeedBase();
     const range = chattyTaStatus.value === 'busy' ? base.busy : base.online;
     const speed = randomMs(range[0], range[1]);
-    const alive = () => chattyScreenOpen.value;
+    const alive = () => chattyScreenOpen.value && _chattyEpoch === myEpoch;
 
     chattyTypingText.value = '';
     chattyCandidates.value = [];
@@ -13570,43 +14519,149 @@ const _typeWithCorrection = async (s, card, wrongInfo) => {
 };
 
 // ===== 阶段 4：自由组合 =====
+// ===== chatty · 拼音缓存（拼音反查用，节流）=====
+const _chattyPinyinCache = new Map();
+
+// 取字卡完整拼音（前 8 字，用于候选匹配）
+const _getFullPinyin = (text) => {
+    if (!text) return null;
+    const key = 'full:' + String(text).trim();
+    if (_chattyPinyinCache.has(key)) return _chattyPinyinCache.get(key);
+    const chars = [...String(text).trim()].slice(0, 8);
+    const pys = chars.map(c => CHATTY_PINYIN[c]).filter(Boolean);
+    const result = pys.length ? pys.join('') : null;
+    if (_chattyPinyinCache.size > 800) _chattyPinyinCache.clear();
+    _chattyPinyinCache.set(key, result);
+    return result;
+};
+
+// 三次骰 + 选字 → {py, ch}
+const _rollOneUnit = () => {
+    const syl = _rollOneSyllable();
+    if (!syl) return null;
+    const chars = CHATTY_PINYIN_COMPACT[syl];
+    if (!chars || !chars.length) return null;
+    const ch = chars[Math.floor(Math.random() * chars.length)];
+    return { py: syl, ch };
+};
+
+
+// 三次骰出一个拼音（不选字）
+const _rollOneSyllable = () => {
+    const initials = Object.keys(CHATTY_PINYIN_BY_INITIAL);
+    if (!initials.length) return null;
+    const initCands = initials.map(ini => {
+        const fm = CHATTY_PINYIN_BY_INITIAL[ini] || {};
+        let w = 0;
+        Object.entries(fm).forEach(([f, chars]) => {
+            if (!chars || !chars.length) return;
+            w += _chattySyllableWeight((ini === '' ? '' : ini) + f);
+        });
+        return { key: ini, weight: w };
+    }).filter(x => x.weight > 0);
+    if (!initCands.length) return null;
+    const pickedInit = _chattyWeightedPick(initCands);
+    if (!pickedInit) return null;
+    const initial = pickedInit.key;
+    const fm = CHATTY_PINYIN_BY_INITIAL[initial] || {};
+    const finalCands = Object.entries(fm)
+        .filter(([, chars]) => chars && chars.length)
+        .map(([f]) => ({
+            key: f,
+            weight: _chattySyllableWeight((initial === '' ? '' : initial) + f),
+        }));
+    if (!finalCands.length) return null;
+    const pickedFinal = _chattyWeightedPick(finalCands);
+    if (!pickedFinal) return null;
+    return (initial === '' ? '' : initial) + pickedFinal.key;
+};
+
+// 正查字卡池：找拼音前缀匹配 targetPy 的卡
+const _findCardsByPinyin = (s, targetPy) => {
+    if (!s || !targetPy) return [];
+    const pool = drawWeightedCards(s, null, 200, { boxNames: ['私聊', '梦角自由造句', '公共'] });
+    const seen = new Set();
+    const matched = [];
+    pool.forEach(c => {
+        if (!c.text || c.image) return;
+        const t = c.text.trim();
+        if (!t || seen.has(t)) return;
+        seen.add(t);
+        const cp = _getFullPinyin(t);
+        if (cp && cp.startsWith(targetPy)) matched.push(c);
+    });
+    return matched;
+};
+
 // 从拼音库随机抽 2~4 个拼音，每个随机抽一个字
 const _makeFreeComposeText = () => {
-    const keys = Object.keys(CHATTY_PINYIN_COMPACT);
-    if (!keys.length) return null;
-    const n = 2 + Math.floor(Math.random() * 4);  // 2~5 字
-    const units = [];  // [{ py, ch }]
-    for (let i = 0; i < n; i++) {
-        const py = keys[Math.floor(Math.random() * keys.length)];
-        const chars = CHATTY_PINYIN_COMPACT[py];
-        if (!chars || !chars.length) continue;
-        const ch = chars[Math.floor(Math.random() * chars.length)];
-        units.push({ py, ch });
+    const MAX_SEGS = 5;
+    const SEG_MIN = 2, SEG_MAX = 5;
+    const PUNCT_PROB = 0.4;   // 段长≥3 时加标点的概率
+
+    const segments = [];
+    for (let segIdx = 0; segIdx < MAX_SEGS; segIdx++) {
+        const len = SEG_MIN + Math.floor(Math.random() * (SEG_MAX - SEG_MIN + 1));
+        const units = [];
+        for (let i = 0; i < len; i++) {
+            const u = _rollOneUnit();
+            if (u) units.push(u);
+        }
+        if (!units.length) break;
+
+        let punct = '';
+        if (units.length >= 3 && Math.random() < PUNCT_PROB) {
+            punct = CHATTY_PUNCT_ROW[Math.floor(Math.random() * CHATTY_PUNCT_ROW.length)];
+        }
+        segments.push({ units, punct });
+
+        if (!punct) break;   // 没加标点 → 结束
     }
-    if (!units.length) return null;
-    return {
-        units,
-        text: units.map(u => u.ch).join(''),
-        pinyin: units.map(u => u.py).join(''),
-    };
+    if (!segments.length) return null;
+    return { segments };
 };
 
 const _pushFreeComposeToChat = (s, free) => {
-    if (!s || !free) return;
-    const reviewed = _reviewFreeComposeUnits(free.units);
-    const displayHTML = reviewed.map(u =>
-        '<span style="display:inline-flex;flex-direction:column;align-items:center;'
-        + 'margin:0 3px;vertical-align:bottom;line-height:1.1;">'
-        + '<span style="font-size:10px;color:#999;">' + u.py + '</span>'
-        + '<span style="font-size:15px;line-height:1.3;'
-        + (u.corrected ? 'color:#e11d48;font-weight:500;' : '')
-        + '">' + u.ch + '</span>'
-        + '</span>'
+    if (!s || !free || !free.segments) return;
+
+    // ① 展平所有 units，走一遍审核
+    const flatUnits = [];
+    free.segments.forEach(seg => seg.units.forEach(u => flatUnits.push(u)));
+    const reviewed = _reviewFreeComposeUnits(flatUnits);
+
+    // ② 把审核结果塞回 segments
+    let idx = 0;
+    const reviewedSegs = free.segments.map(seg => ({
+        units: seg.units.map(() => reviewed[idx++]),
+        punct: seg.punct,
+    }));
+
+    // ③ 渲染 HTML：每段字 + 段末标点
+    const displayHTML = reviewedSegs.map(seg => {
+        const segHTML = seg.units.map(u =>
+            '<span style="display:inline-flex;flex-direction:column;align-items:center;'
+            + 'margin:0 3px;vertical-align:bottom;line-height:1.1;">'
+            + '<span style="font-size:10px;color:#999;">' + u.py + '</span>'
+            + '<span style="font-size:15px;line-height:1.3;'
+            + (u.corrected ? 'color:#e11d48;font-weight:500;' : '')
+            + '">' + u.ch + '</span>'
+            + '</span>'
+        ).join('');
+        const punctHTML = seg.punct
+            ? '<span style="display:inline-flex;vertical-align:bottom;margin:0 3px;font-size:15px;">' + seg.punct + '</span>'
+            : '';
+        return segHTML + punctHTML;
+    }).join('');
+
+    // ④ 纯文本内容
+    const finalText = reviewedSegs.map(seg =>
+        seg.units.map(u => u.ch).join('') + (seg.punct || '')
     ).join('');
+
     s.messages.push({
         id: genId(),
         sender: 'them',
-        content: reviewed.map(u => u.ch).join(''),
+        content: finalText,
         image: null,
         timestamp: Date.now(),
         status: 'read',
@@ -13617,84 +14672,113 @@ const _pushFreeComposeToChat = (s, free) => {
         quote: null,
         chattyTyped: true,
         chattySource: 'free',
-        chattyPinyin: free.pinyin,
+        chattyPinyin: flatUnits.map(u => u.py).join(''),
         chattyDisplayHTML: displayHTML,
     });
-    _chattySaveThrottled();   // ← 改成节流版
-    if (currentSessionId.value === s.id && currentView.value === 'chat') scrollToBottom();
+    _chattySaveThrottled();
+    if (currentSessionId.value === s.id && currentView.value === 'chat') _chattyScrollThrottled();
     updateUnread();
 };
 
 // 自由组合的打字流程：打拼音 → 弹候选 → 选中 → 发送
 const _runFreeComposeFlow = (s, free, onDone) => {
+    if (!s || !free || !free.segments) { if (onDone) onDone(); return; }
+    const myEpoch = _chattyEpoch;
     const base = _getTypeSpeedBase();
     const range = chattyTaStatus.value === 'busy' ? base.busy : base.online;
     const speed = randomMs(range[0], range[1]);
     chattyTypingText.value = '';
     chattyCandidates.value = [];
     chattyCandidatePicked.value = null;
-    let i = 0;
-    const step = () => {
-        if (!chattyScreenOpen.value) return;
-        if (i >= free.pinyin.length) {
-            // 打完拼音 → 弹候选
-            const pool = [{ text: free.text }];
-            (drawWeightedCards(s, null, 12, { boxNames: ['私聊', '梦角自由造句', '公共'] }) || [])
-                .forEach(e => {
-                    if (e.text && pool.length < 8 && !pool.some(p => p.text === e.text)) pool.push({ text: e.text });
-                });
-            const shuffled = pool.slice().sort(() => Math.random() - 0.5);
-            chattyCandidates.value = shuffled.map(c => ({ text: c.text }));
-            const freeIdx = shuffled.findIndex(c => c.text === free.text);
-            setTimeout(() => {
-                if (!chattyScreenOpen.value) return;
-                chattyCandidatePicked.value = freeIdx >= 0 ? freeIdx : 0;
-                setTimeout(() => {
-                    if (!chattyScreenOpen.value) return;
-                    chattyCandidates.value = [];
-                    chattyCandidatePicked.value = null;
-                    chattyTypingText.value = '';
-                    _pushFreeComposeToChat(s, free);
-                    if (onDone) onDone();
-                }, randomMs(600, 1000));
-            }, randomMs(800, 1400));
+    chattyKeyActive.value = '';
+
+    const segs = free.segments;
+    let segIdx = 0;    // 第几段
+    let charIdx = 0;   // 段内第几个字
+
+    const typeNext = () => {
+        if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+        if (segIdx >= segs.length) {
+            // 全部打完 → 发送
+            chattyKeyActive.value = '';
+            chattyTypingText.value = '';
+            _pushFreeComposeToChat(s, free);
+            if (onDone) onDone();
             return;
         }
-        chattyTypingText.value += free.pinyin[i];
-        i++;
-        _chattyTypeTimer = setTimeout(step, speed);
+        const seg = segs[segIdx];
+
+        // ① 段内逐字
+        if (charIdx < seg.units.length) {
+            const u = seg.units[charIdx];
+            const pyStr = u.py;
+            let letterIdx = 0;
+            const typeLetter = () => {
+                if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+                if (letterIdx >= pyStr.length) {
+                    charIdx++;
+                    typeNext();
+                    return;
+                }
+                const ch = pyStr[letterIdx];
+                chattyTypingText.value += ch;
+                chattyKeyActive.value = ch;
+                letterIdx++;
+                _chattyTypeTimer = setTimeout(() => {
+                    chattyKeyActive.value = '';
+                    typeLetter();
+                }, speed);
+            };
+            typeLetter();
+            return;
+        }
+
+        // ② 段内字打完，若有标点 → 闪标点键
+        if (seg.punct) {
+            chattyKeyActive.value = seg.punct;
+            _chattyTypeTimer = setTimeout(() => {
+                if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
+                chattyKeyActive.value = '';
+                segIdx++;
+                charIdx = 0;
+                typeNext();
+            }, 400);
+            return;
+        }
+
+        // ③ 没标点，理论不会走到这（因为没标点就在生成时就 break 了）
+        segIdx++;
+        charIdx = 0;
+        typeNext();
     };
-    step();
+
+    typeNext();
 };
 
-
 // 连发 N 条
-const _sendChattyMultiple = (s, firstCard, count, onDone) => {
-    const toSend = [firstCard];
+const _sendChattyMultipleFromFirst = (s, firstCard, count, onDone) => {
+    if (!s || !firstCard) { if (onDone) onDone(); return; }
+    // 第一条已选好 → 直接发
+    _pushChattySendToChat(s, firstCard, false);
+    if (count <= 1) { if (onDone) onDone(); return; }
+    const rest = [];
     for (let i = 1; i < count; i++) {
         const pool = drawWeightedCards(s, null, 8, { boxNames: ['私聊', '梦角自由造句', '公共'] });
-        const textCards = (pool || []).filter(c => c.text && c.text.trim() && !c.image);
-        if (textCards.length) toSend.push(textCards[Math.floor(Math.random() * textCards.length)]);
+        const tc = (pool || []).filter(c => c.text && c.text.trim() && !c.image);
+        if (tc.length) rest.push(tc[Math.floor(Math.random() * tc.length)]);
     }
     let idx = 0;
     const next = () => {
         if (!chattyScreenOpen.value) return;
-        if (idx >= toSend.length) { if (onDone) onDone(); return; }
-        const card = toSend[idx];
-        const py = _getPinyinForCard(card.text) || 'a';
-                        _typeChattyLetters(py, () => {
+        if (idx >= rest.length) { if (onDone) onDone(); return; }
+        const card = rest[idx];
+        const py = _getFullPinyin(card.text) || _getPinyinForCard(card.text) || 'a';
+        const shortPy = py.slice(0, 8);
+        _typeChattyLetters(shortPy, () => {
             _showChattyCandidates(s, card, () => {
-                const sendProb = Number(settings.chattySendProb) || 0.3;
-                if (Math.random() < sendProb) {
-                    const count = _rollChattySendCount();
-                    _sendChattyMultiple(s, card, count, () => {
-                        const gap = chattyTaStatus.value === 'busy' ? randomMs(8000, 15000) : randomMs(3000, 7000);
-                        _chattyLoopTimer = setTimeout(tick, gap);
-                    });
-                } else {
-                    const gap = chattyTaStatus.value === 'busy' ? randomMs(5000, 10000) : randomMs(2000, 5000);
-                    _chattyLoopTimer = setTimeout(tick, gap);
-                }
+                _pushChattySendToChat(s, card, false);
+                idx++;
+                setTimeout(next, randomMs(800, 2000));
             });
         });
     };
@@ -13748,6 +14832,8 @@ const _startChattyBackstageTimer = () => {
         } catch (e) { console.error('[chatty backstage]', e); }
     }, 60000);  // 每分钟检查一次
 };
+
+let _chattyEpoch = 0;   // 切换会话时 +1，旧的异步流程全部失效
 
 // ===== chatty · 后台时暂停打字循环 =====
 let _chattyLoopPaused = false;
@@ -13833,8 +14919,25 @@ const closeChattyScreen = () => {
 };
 
 const switchChattyView = (sid) => {
+    if (sid === chattyViewingSessionId.value) {
+        chattySidePanelOpen.value = false;
+        return;
+    }
+    // ① epoch++ → 所有正在跑的异步流程全部失效
+    _chattyEpoch++;
+    // ② 停掉旧的循环和状态
+    _stopChattyLoop();
+    _stopChattyStatusTimer();
+    chattyTypingText.value = '';
+    chattyCandidates.value = [];
+    chattyCandidatePicked.value = null;
+    chattyKeyActive.value = '';
+    // ③ 切换目标
     chattyViewingSessionId.value = sid;
     chattySidePanelOpen.value = false;
+    // ④ 启动新的循环
+    _startChattyStatusTimer();
+    _startChattyLoop();
     nextTick(() => {
         const el = document.getElementById('chatty-messages-scroll');
         if (el) el.scrollTop = el.scrollHeight;
@@ -14162,9 +15265,9 @@ const removeGroupMember = (mid) => {
 
    // ===== 版本更新公告 =====
 // 想再弹一次公告：改这个版本号即可（日期格式最直观）
-const APP_VERSION = '2026.10.11.2';
+const APP_VERSION = '2026.10.11.3';
 const UPDATE_NOTES =
-    '📣 chatty 玩法上线\n\n' +
+    '📣 chatty 玩法上线，修复了发热bug\n\n' +
     '▎怎么用\n' +
     '主屏软件页 → 点 chatty → 输入两位暗号（如 42）邀请安装 → 装好后点 chatty → 进入 TA 的屏幕\n\n' +
     '▎chatty 能看啥\n' +
@@ -18956,6 +20059,11 @@ sessions.value.forEach((s) => {
         s.freeComposeWeightMap = defaultFreeComposeWeightMap();
     }
     if (s._lastAutoLetterAt === undefined) s._lastAutoLetterAt = 0;
+    // 主动搭话：每会话独立计时（方案见任务书）
+    if (s._lastUserMsgAt === undefined) s._lastUserMsgAt = 0;     // 用户最后一次发消息
+    if (s._lastActiveMsgAt === undefined) s._lastActiveMsgAt = 0; // TA 最后一次主动消息
+    if (s._nextActiveAt === undefined) s._nextActiveAt = 0;       // 下次允许主动的时间
+    if (s._activeInited === undefined) s._activeInited = false;   // 是否已初始化过
     if (s.chattyInstalled === undefined) s.chattyInstalled = false;
     if (s.chattySecretCode === undefined) s.chattySecretCode = '';
 if (s.chattyInstallStartAt === undefined) s.chattyInstallStartAt = null;
@@ -18991,10 +20099,23 @@ if (s._nextAutoLetterAt === undefined) s._nextAutoLetterAt = 0;
                 if (!settings.homeBgLibrary) settings.homeBgLibrary = [];
                 if (settings.homeBgImage === undefined) settings.homeBgImage = '';
  if (!Array.isArray(settings.apps)) settings.apps = defaultApps();
+                // 老档兼容：回信字卡条数与主动来信分开（旧存档没有这两个字段）
+                if (settings.letterReplyMinCards === undefined) settings.letterReplyMinCards = settings.letterMinCards ?? 20;
+                if (settings.letterReplyMaxCards === undefined) settings.letterReplyMaxCards = settings.letterMaxCards ?? 50;
                 if (!settings.checkBgLibrary) settings.checkBgLibrary = [];
                 if (settings.checkBgImage === undefined) settings.checkBgImage = '';
                 if (!settings.allowanceBg) settings.allowanceBg = { spring: '', summer: '', autumn: '', winter: '' };
                 if (settings.accentColor === undefined) settings.accentColor = null;
+                // 老档兼容：视觉方案（缺省 = 默认）
+                if (settings.visualStyle === undefined) settings.visualStyle = '';
+                // 老档兼容：主回复拼音打字玩法概率（缺省 20%）
+                if (settings.mainTypingProb === undefined) settings.mainTypingProb = 0.2;
+                // 老档兼容：主动搭话由单值 activeInterval 迁移成 min/max 双值
+                if (settings.activeIntervalMin === undefined) {
+                    settings.activeIntervalMin = settings.activeInterval || 30;
+                    settings.activeIntervalMax = Math.max(settings.activeIntervalMin, (settings.activeInterval || 30) * 2);
+                }
+                if (settings.activeIntervalMax === undefined) settings.activeIntervalMax = Math.max(settings.activeIntervalMin, 120);
 	       // 恢复共享书册
 if (stored.sharedBoxes) {
     // 新版本：直接恢复
@@ -19231,7 +20352,7 @@ removeGroupMember,
 currentSession,
       draftText,
       plusOpen,
-      typingSessions,
+      typingSessions, triggerTypingPlay,
       profiles,
       settings,
       replyGroups,
@@ -19274,6 +20395,7 @@ perfTest, startPerfTest, stopPerfTest, runPerfOptimize, sysCardOpen,
 chattyInstall, isChattyInstalled, openChattyInstall, closeChattyInstall, submitChattyCode,
 chattyInstalledModal, openChattyInstalledModal, closeChattyInstalledModal, enterChattyScreen,
 chattyScreenOpen, chattyViewingSessionId, chattySidePanelOpen, chattyNow, chattyTaStatus, chattyTypingText, chattyCandidates, chattyCandidatePicked,
+CHATTY_KEYBOARD_ROWS, chattyKeyActive, CHATTY_PINYIN_BY_INITIAL,CHATTY_PUNCT_ROW,
       chattyViewingSession, chattyInstalledSessions,
       openChattyScreen, closeChattyScreen, switchChattyView,
       shouldShowAvatar,
@@ -19695,7 +20817,7 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tr
 // P2-b 撤回
       getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,showRetractModeHelp, showRetractMethodHelp,
 // 回复设置（全局）
-  settingsTab, replySubTab, boxHasCards,adjustSetting,
+  settingsTab, replySubTab, replySettingsPage, boxHasCards,adjustSetting, commitNumInput, numKey, selectAllText, VISUAL_STYLES, visualAlpha, isSectionOpen, toggleSection,
       replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,groupSessions, toggleGroupChatFor, adjustGroupChatInterval, adjustReplyDelay,
 countBoxCards, countCategoryCards, countGroupCards,
 _clearPoolCache,
@@ -19751,7 +20873,6 @@ drawWordFromAllBoxes,
 drawSentenceOrWordFromAllBoxes,
 FREE_COMPOSE_TONES,
 composeMethod0,
-composeMethod1,
 composeMethod2a,
 composeMethod2b,
 composeSentence,
