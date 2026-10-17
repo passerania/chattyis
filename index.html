@@ -772,7 +772,7 @@ body { color: var(--color-text); }
     <div class="home-track flex h-full transition-transform duration-300 ease-out" :style="{ transform: `translateX(-${homePage * 100}%)` }">
 
         <!-- ===== 第 1 页：会话列表（原主屏内容） ===== -->
-        <div class="w-full h-full shrink-0 flex flex-col justify-between pt-24 px-8 overflow-hidden">
+        <div class="w-full h-full shrink-0 flex flex-col justify-between pt-10 px-8 overflow-hidden">
                 <!-- 顶部大图标导航已移除（方案 B：改为顶栏小图标 + 全局底部 tab） -->
                 <!-- ===== 方案 B 顶栏：会话名 + 搜索 + 加号 ===== -->
                 <div class="flex items-center justify-between mb-3 px-1">
@@ -1008,8 +1008,8 @@ body { color: var(--color-text); }
 
     </div>
 
-    <!-- 分页圆点（移到顶部留白区，不遮挡内容、不干扰底部 tab）-->
-    <div class="absolute top-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-40">
+    <!-- 分页圆点（顶部留白区，不遮挡内容、不干扰底部 tab）-->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-40">
         <span v-for="i in 3" :key="i" @click="homePage = i - 1"
               class="h-1.5 rounded-full cursor-pointer transition-all"
               :class="homePage === i - 1 ? 'bg-text w-4' : 'bg-muted/40 w-1.5'"></span>
@@ -1509,12 +1509,6 @@ body { color: var(--color-text); }
             </span>
         </div>
     </div>
-    <!-- 解译条（气泡下方独立条） -->
-    <div v-if="msg.jieyi && msg.jieyi.text && !msg.retracted"
-         @click.stop="openJieyiEditor(msg)"
-         class="msg-jieyi custom-css-jieyi">
-        {{ msg.jieyi.text }}
-    </div>
     <!-- 标记小圆点 -->
     <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
 </div>
@@ -1536,7 +1530,16 @@ body { color: var(--color-text); }
                 </div>
 
 
-                <!-- 时间戳 & 状态 -->
+                <!-- 解译条（所有消息类型通用：文字/图片/红包/占卜/派活…） -->
+<div v-if="msg.jieyi && msg.jieyi.text && !msg.retracted"
+     class="mt-1 px-1 flex"
+     :class="msg.sender === 'me' ? 'justify-end' : (msg.sender === 'them' ? 'justify-start' : 'justify-center')">
+    <div @click.stop="openJieyiEditor(msg)" class="msg-jieyi custom-css-jieyi" style="max-width:88%;">
+        {{ msg.jieyi.text }}
+    </div>
+</div>
+
+<!-- 时间戳 & 状态 -->
                 <div class="flex items-center gap-2 mt-1 px-1">
 <span v-if="msg.dictTag" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
 <span v-if="msg.chattyTyped" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(120,120,180,0.12);color:#666;">{{ chattyLabel(msg) }}</span>
@@ -1649,6 +1652,25 @@ body { color: var(--color-text); }
 </div>
                             <!-- 内容 -->
                             <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+
+                                <!-- ===== 需求 B：TA 的语言（回应字卡用）===== -->
+                                <div v-if="currentSession && currentSession.type !== 'group'">
+                                    <div class="text-[13px] text-muted tracking-widest mb-2">TA 的语言</div>
+                                    <div class="bg-bg/50 rounded-xl p-3 border border-border/30">
+                                        <div class="flex gap-1.5">
+                                            <button v-for="opt in [{k:'zh',label:'中文'},{k:'it',label:'意大利语'},{k:'ja',label:'日语'}]"
+                                                    :key="opt.k"
+                                                    @click="currentSession.replyLang = opt.k; debouncedSave();"
+                                                    class="flex-1 py-1.5 rounded-lg text-[14px] border transition-colors"
+                                                    :class="(currentSession.replyLang || 'zh') === opt.k ? 'border-text bg-surface text-text' : 'border-border text-muted'">
+                                                {{ opt.label }}
+                                            </button>
+                                        </div>
+                                        <div class="text-[12px] text-muted/60 leading-relaxed mt-2">
+                                            用回应字卡时：中文 + 该语言混合（外语每次 10~30% 随机）
+                                        </div>
+                                    </div>
+                                </div>
 
                                 
                                 <!-- ===== 2. 字卡拼接设置 ===== -->
@@ -3340,6 +3362,90 @@ body { color: var(--color-text); }
                                         </template>
                                     </div>
                                 </section>
+
+                                <!-- ===== 需求 B：聊天回应字卡 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">聊天回应字卡</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>启用回应字卡</span>
+                                            <button @click="settings.replyCardEnabled = !settings.replyCardEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.replyCardEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.replyCardEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.replyCardEnabled">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">回应卡概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.replyCardProb ?? 0.30) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.replyCardProb ?? 0.30) * 100"
+                                                       @input="e => { settings.replyCardProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">命中：先发一条回应卡（如「嗯」「好的」），再发正常回复（两条气泡）</div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">连接词追加概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.replyLinkProb ?? 0.20) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.replyLinkProb ?? 0.20) * 100"
+                                                       @input="e => { settings.replyLinkProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">命中：正常回复末尾追加一个连接词（如「但是」「然后」）</div>
+                                            </div>
+                                        </template>
+                                        <div class="px-3.5 py-2.5 border-t border-border/40 text-[12px] text-muted/60 leading-relaxed">
+                                            字卡在「字卡 → 公共字卡 → 回应字卡（中文 8 组）/ 回应·意 / 回应·日」里编辑；
+                                            TA 的语言在聊天页右上角「更多设置」里选。
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- ===== 解译拾取：梦角收集你写的解译 ===== -->
+                                <section class="mb-4">
+                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">解译拾取</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>梦角不定期拾取解译</span>
+                                            <button @click="settings.jieyiHarvestEnabled = !settings.jieyiHarvestEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.jieyiHarvestEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.jieyiHarvestEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.jieyiHarvestEnabled">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">每次检查的拾取概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.jieyiHarvestProb ?? 0.35) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.jieyiHarvestProb ?? 0.35) * 100"
+                                                       @input="e => { settings.jieyiHarvestProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">每 30 分钟检查一次；拾取后入该会话的「梦角自由造句」字卡（自动去重）</div>
+                                            </div>
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">长句切分（按标点）</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.jieyiChunkProb ?? 0.5) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.jieyiChunkProb ?? 0.5) * 100"
+                                                       @input="e => { settings.jieyiChunkProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">超过 30 字的解译，按概率切成多段再入库；每段约 {{ settings.jieyiChunkLen ?? 3 }} 个标点</div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <button @click="runJieyiHarvest()"
+                                                        class="w-full py-2 rounded-lg border border-border text-[14px] text-text hover:bg-bg">立即拾取一次（测试）</button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
                                 </template>
 
                             </template>
@@ -4627,7 +4733,9 @@ body { color: var(--color-text); }
                     <button @click="clearLetterDivination" class="text-muted hover:text-text text-xs">✕</button>
                 </div>
                 <div class="flex flex-wrap gap-2 mb-2">
-                    <div v-for="(c, ci) in letterDraft.divination.cards" :key="ci" class="divi-msg-card">
+                    <div v-for="(c, ci) in letterDraft.divination.cards" :key="ci" class="divi-msg-card cursor-pointer"
+                         title="点击看牌意"
+                         @click.stop="openCardReview(letterDraft.divination.deck, c.cardId)">
                         <div>{{ c.name }}</div>
                         <div v-if="c.reversed" class="text-[10px] opacity-60 mt-0.5">逆</div>
                     </div>
@@ -6072,7 +6180,9 @@ body { color: var(--color-text); }
             <div v-if="mailDetail.item?.raw?.divination" class="mt-4 pt-4 border-t border-border/40">
                 <div class="text-[11px] text-muted tracking-widest mb-2">🔮 {{ mailDetail.item.raw.divination.deckLabel }}</div>
                 <div class="flex flex-wrap gap-2 mb-3">
-                    <div v-for="(c, ci) in mailDetail.item.raw.divination.cards" :key="ci" class="divi-msg-card">
+                    <div v-for="(c, ci) in mailDetail.item.raw.divination.cards" :key="ci" class="divi-msg-card cursor-pointer"
+                         title="点击看牌意"
+                         @click.stop="openCardReview(mailDetail.item.raw.divination.deck, c.cardId)">
                         <div>{{ c.name }}</div>
                         <div v-if="c.reversed" class="text-[10px] opacity-60 mt-0.5">逆</div>
                     </div>
@@ -9958,7 +10068,7 @@ const startMailTimer = () => {
     // 5 个固定箱子；箱内用「卷宗(分组)+留白句(字卡)」结构，与旧 replyGroups 一致
     const corpusBoxList = ['私聊', '群聊', '主动写信', '信封回复', '红包备注'];
     // 6 本专属书册（拍一拍/问号/状态）：固定服务对应功能，不参与书架情境链接，仅书册选择面板可编辑
-const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图', '吐槽', '公共', '词典', '梦角自由造句', '公共梦角自由造句', '意大利语', '日语'];
+const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图', '吐槽', '公共', '词典', '梦角自由造句', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'];
     // 书册选择面板显示全部书册（含专属）；书架情境链接只用 corpusBoxList
     const corpusBoxListAll = [...corpusBoxList, ...specialBoxList];
     // 5 个情境；默认每个情境连接与其同名的箱子
@@ -9982,6 +10092,9 @@ const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '�
 '梦角自由造句': '梦角自由造句',
 '公共梦角自由造句': '梦角自由造句',
 '意大利语': '意大利语',
+'回应字卡': '回应字卡',
+'回应字卡·意语': '回应·意',
+'回应字卡·日语': '回应·日',
 '日语': '日语',
     };
     // 红包备注箱固定三档隔板：小红包=高概率 / 红包=中概率 / 转账=低概率，不可删
@@ -10248,7 +10361,7 @@ if (boxes['公共梦角自由造句']) {
     };
 
 // ===== 共享书册（所有会话共享一份） =====
-const SHARED_BOXES = ['公共', '词典', '公共梦角自由造句', '意大利语', '日语'];
+const SHARED_BOXES = ['公共', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'];
 const sharedBoxes = reactive({
     '公共': { groups: [{ id: genId(), name: '公共', replies: [] }] },
     '词典': { groups: [
@@ -10265,11 +10378,41 @@ const sharedBoxes = reactive({
     // ===== 外文字卡（共享书册）：text 永远是键盘能打的字母（意语原文 / 罗马字）
     '意大利语': { groups: [{ id: genId(), name: '常用词', replies: [] }] },
     '日语': { groups: [{ id: genId(), name: '常用词', replies: [] }] },
+    // ===== 回应字卡（需求 B）：中文有 8 组；意/日先留空，用户自己补 =====
+    '回应字卡': { groups: [
+        { id: genId(), name: '接话', replies: [] },
+        { id: genId(), name: '确认', replies: [] },
+        { id: genId(), name: '继续', replies: [] },
+        { id: genId(), name: '轻追问', replies: [] },
+        { id: genId(), name: '连接词', replies: [] },
+        { id: genId(), name: '转折', replies: [] },
+        { id: genId(), name: '停顿', replies: [] },
+        { id: genId(), name: '收束对话', replies: [] },
+    ] },
+    '回应字卡·意语': { groups: [{ id: genId(), name: '默认', replies: [] }] },
+    '回应字卡·日语': { groups: [{ id: genId(), name: '默认', replies: [] }] },
 });
 // 老档兼容：缺这两个书册时补上（只补缺失，不动已有数据）
 ['意大利语', '日语'].forEach(k => {
     if (!sharedBoxes[k]) sharedBoxes[k] = { groups: [{ id: genId(), name: '常用词', replies: [] }] };
     else if (!Array.isArray(sharedBoxes[k].groups)) sharedBoxes[k].groups = [{ id: genId(), name: '常用词', replies: [] }];
+});
+// 老档兼容：回应字卡三册
+if (!sharedBoxes['回应字卡'] || !Array.isArray(sharedBoxes['回应字卡'].groups) || !sharedBoxes['回应字卡'].groups.length) {
+    sharedBoxes['回应字卡'] = { groups: [
+        { id: genId(), name: '接话', replies: [] },
+        { id: genId(), name: '确认', replies: [] },
+        { id: genId(), name: '继续', replies: [] },
+        { id: genId(), name: '轻追问', replies: [] },
+        { id: genId(), name: '连接词', replies: [] },
+        { id: genId(), name: '转折', replies: [] },
+        { id: genId(), name: '停顿', replies: [] },
+        { id: genId(), name: '收束对话', replies: [] },
+    ] };
+}
+['回应字卡·意语', '回应字卡·日语'].forEach(k => {
+    if (!sharedBoxes[k]) sharedBoxes[k] = { groups: [{ id: genId(), name: '默认', replies: [] }] };
+    else if (!Array.isArray(sharedBoxes[k].groups)) sharedBoxes[k].groups = [{ id: genId(), name: '默认', replies: [] }];
 });
 window.__chattySharedBoxes = sharedBoxes;
 
@@ -10582,7 +10725,7 @@ const visibleSessions = computed(() => {
 // ===== 字卡页大分类映射 =====
 const bigCategoryMap = {
     '个人主字卡': ['私聊', '主动写信', '信封回复', '梦角自由造句'],
-    '公共字卡': ['公共', '群聊', '词典', '公共梦角自由造句', '意大利语', '日语'],
+    '公共字卡': ['公共', '群聊', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'],
     '互动字卡': ['红包备注', '拍一拍'],
     '互动其他字卡': ['问号', '状态', '情绪', '心意', '交流意图', '吐槽'],
 };
@@ -10889,6 +11032,15 @@ themeId: 'day',
       todoDiviSources: ['问号', '公共', '私聊'],  // 从哪些书册抽
       focusDurationMin: 25,           // 番茄钟默认时长
       forestArchiveSizeMB: 5,         // 归档触发大小（MB）
+      // ===== 需求 B：聊天回应字卡 =====
+      replyCardEnabled: true,         // 总开关
+      replyCardProb: 0.30,            // 回应卡概率（路径①）
+      replyLinkProb: 0.20,            // 连接词追加概率（路径②）
+      // ===== 解译拾取：梦角不定期收集用户写的解译，入「梦角自由造句」字卡 =====
+      jieyiHarvestEnabled: true,      // 开关
+      jieyiHarvestProb: 0.35,         // 每次检查的拾取概率
+      jieyiChunkProb: 0.5,            // 长句按标点切分的概率
+      jieyiChunkLen: 3,               // 每几个标点切一段
  replyLetterMaxPerDay: 5,
       // ===== 主动留言结束 =====
       replyWeightMap: {
@@ -11757,6 +11909,70 @@ const triggerRetractPlay = (session) => {
     return true;
 };
   
+// ===== 需求 B：聊天回应字卡 =====
+// 中文「回应字卡」有 8 组：接话 / 确认 / 继续 / 轻追问 / 连接词 / 转折 / 停顿 / 收束对话
+// 意/日书册暂为「默认」组，用户自己补；抽外语时不筛分组
+let _pendingLinkWord = null;    // 路径②：下一次普通回复末尾追加的连接词
+let _skipTypingPlay = false;    // 路径①命中后：本次跳过拼音打字
+
+const _replyCardPool = (boxName, category) => {
+    const box = sharedBoxes[boxName];
+    if (!box || !Array.isArray(box.groups)) return [];
+    const out = [];
+    box.groups.forEach(g => {
+        if (category && g.name !== category) return;
+        (g.replies || []).forEach(r => {
+            if (r.enabled === false) return;
+            const t = (r.text || '').trim();
+            if (t) out.push(t);
+        });
+    });
+    return out;
+};
+
+// 抽一张回应卡：中文池 + 该会话语言的外语池，外语占比每次 10~30% 随机波动
+const _drawReplyCard = (s, category) => {
+    const lang = s?.replyLang || 'zh';
+    const foreignBox = lang === 'ja' ? '回应字卡·日语' : (lang === 'it' ? '回应字卡·意语' : '');
+    const zhPool = _replyCardPool('回应字卡', category);
+    const fPool = foreignBox ? _replyCardPool(foreignBox, null) : [];
+    if (!zhPool.length && !fPool.length) return null;
+    if (fPool.length) {
+        const ratio = 0.10 + Math.random() * 0.20;   // 10% ~ 30%
+        if (Math.random() < ratio) return fPool[Math.floor(Math.random() * fPool.length)];
+    }
+    if (zhPool.length) return zhPool[Math.floor(Math.random() * zhPool.length)];
+    return fPool[Math.floor(Math.random() * fPool.length)];
+};
+
+// 连接词（路径②）
+const _drawLinkWord = (s) => _drawReplyCard(s, '连接词');
+
+// 回应卡分支：命中返回 true（本次不再走普通回复/拼音）
+const triggerReplyCardBranch = (s) => {
+    if (!s) return false;
+    if (!settings.replyCardEnabled) return false;
+    const p1 = Number(settings.replyCardProb ?? 0.30);
+    const p2 = Number(settings.replyLinkProb ?? 0.20);
+    const roll = Math.random();
+
+    // 路径①：整条回复 = 回应卡（先发一条），然后继续走普通回复发第二条
+    if (roll < p1) {
+        const card = _drawReplyCard(s, null);
+        if (!card) return false;
+        sendMessage('them', card, { session: s, replyCard: true });
+        _skipTypingPlay = true;   // 本条不打拼音，让普通回复接着发第二条
+        return false;             // 不 return，让普通回复继续
+    }
+    // 路径②：正常回复末尾追加连接词
+    if (roll < p1 + p2) {
+        const w = _drawLinkWord(s);
+        if (w) _pendingLinkWord = w;
+        return false;
+    }
+    return false;
+};
+
 // ===== 主回复「拼音打字」玩法 =====
 // 与撤回/造句同级的特殊玩法：每次回复前骰一次概率，中了就走 chatty 那套完整的
 // 「拼音自由组合」——分段+标点 → 词级/字级审核纠错 → 拼音注音渲染 → 角标。
@@ -13668,10 +13884,15 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
             delete typingSessions[cur.id];
             return;
         }
+        // ===== 需求 B：回应字卡（先判；路径①发了回应卡后继续走普通回复）=====
+        triggerReplyCardBranch(cur);
         // ===== 主回复「拼音打字」玩法：第三优先 =====
-        if (cur.type !== 'group' && triggerTypingPlay(cur)) {
+        if (!_skipTypingPlay && cur.type !== 'group' && triggerTypingPlay(cur)) {
+            _skipTypingPlay = false;
+            delete typingSessions[cur.id];   // 必须清掉，否则一直"输入中"且阻塞后续回复
             return;   // 已由 _pushFreeComposeToChat 推送（含注音/标红/角标）
         }
+        _skipTypingPlay = false;
         const acts = [];
         let totalChars = 0;
         if (cur.type !== 'group') {
@@ -13792,7 +14013,9 @@ const opts = { marked, session: cur };
                             acts.push(() => sendMessage('them', fallback.text || '……', opts));
                         }
                     } else {
-                        const finalText = selected.map(item => item.text).filter(t => t).join('  ');
+                        let finalText = selected.map(item => item.text).filter(t => t).join('  ');
+                        // 需求 B 路径②：末尾追加连接词
+                        if (_pendingLinkWord) { finalText = finalText + '  ' + _pendingLinkWord; _pendingLinkWord = null; }
                         const finalImage = selected.find(item => item.image)?.image || null;
                         if (finalImage) {
                             const imgOpts = { ...opts, image: finalImage };
@@ -13808,7 +14031,10 @@ const opts = { marked, session: cur };
                         const imgOpts = { ...opts, image: pick.image };
                         acts.push(() => sendMessage('them', '', imgOpts));
                     } else {
-                        acts.push(() => sendMessage('them', pick.text || '……', opts));
+                        // 需求 B 路径②：末尾追加连接词
+                        let pickText = pick.text || '……';
+                        if (_pendingLinkWord) { pickText = pickText + '  ' + _pendingLinkWord; _pendingLinkWord = null; }
+                        acts.push(() => sendMessage('them', pickText, opts));
                     }
                 }
 
@@ -14548,6 +14774,94 @@ const saveJieyi = () => {
 const deleteJieyi = () => { jieyiEditor.text = ''; saveJieyi(); };
 
 const msgMenuJieyi = () => { const m = msgMenu.msg; if (!m) return; closeMsgMenu(); openJieyiEditor(m); };
+
+// ===== 解译拾取：梦角不定期收集用户写的解译 → 入该会话「梦角自由造句」字卡 =====
+// 按中英文标点切分（保留标点）
+const _jieyiSplitByPunct = (text) => {
+    const parts = String(text || '').match(/[^，。！？；、,.!?;]+[，。！？；、,.!?;]?/g) || [];
+    return parts.map(s => s.trim()).filter(Boolean);
+};
+
+// 长句按「每 N 个标点」切段
+const _jieyiChunk = (text, perChunk) => {
+    const n = Math.max(1, Number(perChunk) || 3);
+    const parts = _jieyiSplitByPunct(text);
+    if (parts.length <= n) return [String(text || '').trim()].filter(Boolean);
+    const chunks = [];
+    for (let i = 0; i < parts.length; i += n) {
+        const c = parts.slice(i, i + n).join('').trim();
+        if (c) chunks.push(c);
+    }
+    return chunks;
+};
+
+// 把一条解译入到该会话的「梦角自由造句」书册（返回新增条数）
+const _jieyiToCardBox = (s, text) => {
+    if (!s || !text) return 0;
+    const box = s.corpus?.boxes?.['梦角自由造句'];
+    if (!box) return 0;
+    if (!Array.isArray(box.groups) || !box.groups.length) {
+        box.groups = [{ id: genId(), name: '梦角自由造句', replies: [] }];
+    }
+    const g = box.groups[0];
+    if (!Array.isArray(g.replies)) g.replies = [];
+    let chunks = [text];
+    // 长文本按概率按标点切分
+    if (text.length > 30 && Math.random() < Number(settings.jieyiChunkProb ?? 0.5)) {
+        chunks = _jieyiChunk(text, settings.jieyiChunkLen ?? 3);
+    }
+    let added = 0;
+    chunks.forEach(c => {
+        const t = String(c || '').trim();
+        if (!t) return;
+        if (g.replies.some(r => (r.text || '').trim() === t)) return;   // 去重
+        g.replies.push({ id: genId(), text: t, enabled: true });
+        added++;
+    });
+    return added;
+};
+
+// 拾取单个会话（返回是否拾取成功）
+const harvestJieyiForSession = (s) => {
+    if (!s || s.type === 'group') return false;
+    const cands = [];
+    (s.messages || []).forEach(m => {
+        if (!m || m.retracted) return;
+        const j = m.jieyi;
+        if (!j || !j.text || !String(j.text).trim()) return;
+        if (j.harvested) return;
+        cands.push(m);
+    });
+    if (!cands.length) return false;
+    if (Math.random() >= Number(settings.jieyiHarvestProb ?? 0.35)) return false;
+    const msg = cands[Math.floor(Math.random() * cands.length)];
+    const added = _jieyiToCardBox(s, String(msg.jieyi.text).trim());
+    if (added > 0) {
+        msg.jieyi.harvested = true;
+        msg.jieyi.harvestedAt = Date.now();
+        debouncedSave();
+        showToast('📖 梦角拾取了一句解译');
+        return true;
+    }
+    return false;
+};
+
+// 全局扫一遍（每次最多拾取 1 条，避免一次爆量）
+const runJieyiHarvest = () => {
+    if (!settings.jieyiHarvestEnabled) return;
+    const list = (sessions.value || []).filter(s => s && s.type !== 'group');
+    const shuffled = list.slice().sort(() => Math.random() - 0.5);
+    for (const s of shuffled) {
+        if (harvestJieyiForSession(s)) break;
+    }
+};
+
+let jieyiHarvestTimer = null;
+const startJieyiHarvestTimer = () => {
+    if (jieyiHarvestTimer) clearInterval(jieyiHarvestTimer);
+    setTimeout(() => runJieyiHarvest(), 30000);                                  // 启动 30 秒后先查一次
+    jieyiHarvestTimer = setInterval(() => runJieyiHarvest(), 30 * 60 * 1000);    // 之后每 30 分钟
+};
 let _pressX = 0, _pressY = 0;
 const onMsgPressStart = (msg, e) => {
     if (e && e.touches && e.touches[0]) {
@@ -21976,6 +22290,8 @@ sessions.value.forEach((s) => {
     if (s._lastActiveMsgAt === undefined) s._lastActiveMsgAt = 0; // TA 最后一次主动消息
     if (s._nextActiveAt === undefined) s._nextActiveAt = 0;       // 下次允许主动的时间
     if (s._activeInited === undefined) s._activeInited = false;   // 是否已初始化过
+// 需求 B：TA 的语言（回应字卡用）'zh' | 'it' | 'ja'
+if (s.replyLang === undefined) s.replyLang = 'zh';
     if (s.chattyInstalled === undefined) s.chattyInstalled = false;
     if (s.chattySecretCode === undefined) s.chattySecretCode = '';
 if (s.chattyInstallStartAt === undefined) s.chattyInstallStartAt = null;
@@ -22177,6 +22493,7 @@ if (stored.money.installment) {
             try { startEnvelopeTimer(); } catch (e) {}
 try { startMailTimer(); } catch (e) {}
                 try { startTodoTimer(); } catch (e) {}
+                try { startJieyiHarvestTimer(); } catch (e) {}
             try { startStatusTimer(); } catch (e) {}
 try { startChattyWatcher(); } catch (e) {}
 try { startChattyBackstageTimer(); } catch (e) {}
@@ -22804,6 +23121,7 @@ isMuted,
       onMsgPressStart, onMsgPressEnd,
       msgMenuCopy, msgMenuQuote, msgMenuRetract, msgMenuDelete,
       jieyiEditor, openJieyiEditor, saveJieyi, deleteJieyi, msgMenuJieyi,
+      runJieyiHarvest, harvestJieyiForSession, startJieyiHarvestTimer,
 // T2 软件页面
       AVAILABLE_APPS, appsPickerOpen, openAppsPicker, closeAppsPicker,
       addApp, removeApp, onAppPressStart, onAppPressEnd,
