@@ -1530,9 +1530,9 @@ body { color: var(--color-text); }
 
                 <!-- 解译条（所有消息类型通用：文字/图片/红包/占卜/派活…） -->
 <div v-if="msg.jieyi && msg.jieyi.text && !msg.retracted"
-     class="mt-1 px-1 flex"
+     class="mt-1 px-1 flex w-full"
      :class="msg.sender === 'me' ? 'justify-end' : (msg.sender === 'them' ? 'justify-start' : 'justify-center')">
-    <div @click.stop="openJieyiEditor(msg)" class="msg-jieyi custom-css-jieyi" style="max-width:88%;">
+    <div @click.stop="openJieyiEditor(msg)" class="msg-jieyi custom-css-jieyi" style="max-width:260px; max-width:min(260px, 78vw);">
         {{ msg.jieyi.text }}
     </div>
 </div>
@@ -3180,6 +3180,60 @@ body { color: var(--color-text); }
                                 <div class="text-[11px] text-muted/60 leading-relaxed px-2 pt-2">
                                     这些参数下一批会接到主动写信 / 回信逻辑里，当前修改会保存但暂不影响实际行为。
                                 </div>
+
+                                <!-- ===== 来电 ===== -->
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('来电', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">来电</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">TA 主动打电话的频率 · 接听后自动缩小</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('来电', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('来电', false)" class="border-t border-border/40">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>允许来电</span>
+                                            <button @click="settings.callEnabled = !settings.callEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.callEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.callEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.callEnabled">
+                                            <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                                <span class="text-[14px]">检查间隔下限（分钟）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('callIntervalMin', -5, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.callIntervalMin }}</span>
+                                                    <button @click="adjustSetting('callIntervalMin', 5, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                                <span class="text-[14px]">检查间隔上限（分钟）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('callIntervalMax', -5, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.callIntervalMax }}</span>
+                                                    <button @click="adjustSetting('callIntervalMax', 5, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">每次检查的来电概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ settings.callProb }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="settings.callProb"
+                                                       @input="e => { settings.callProb = Number(e.target.value) || 0; }"
+                                                       @change="debouncedSave()"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">
+                                                    每隔「下限~上限」分钟检查一次，按此概率决定要不要打过来。<br>
+                                                    想更频繁：把间隔调小、概率调大（概率 100% = 每次检查都来电）。
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
                                 </template>
 
                                 <!-- ===== 子页 3：字卡权重设置 ===== -->
@@ -5880,6 +5934,28 @@ body { color: var(--color-text); }
                 <button @click.stop="hangupCall(visibleCallNotification)" @mousedown.stop @touchstart.stop class="text-red-400 hover:text-red-300"><i data-lucide="phone-off" class="w-4 h-4"></i></button>
             </div>
         </div>
+
+        <!-- 应用内顶部横幅通知（类似 iPhone 通知） -->
+        <transition name="toastfade">
+            <div v-if="appBanner.show" @click="openAppBanner"
+                 class="fixed left-1/2 -translate-x-1/2 z-[270] cursor-pointer"
+                 style="top: calc(env(safe-area-inset-top, 0px) + 10px); width: min(92%, 360px);">
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-2xl shadow-xl"
+                     style="background: color-mix(in srgb, var(--color-surface) 94%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(128,128,128,0.18);">
+                    <div class="w-9 h-9 rounded-[10px] overflow-hidden shrink-0 flex items-center justify-center" style="background: rgba(128,128,128,0.16);">
+                        <img v-if="appBanner.avatar" :src="appBanner.avatar" class="w-full h-full object-cover">
+                        <span v-else class="text-[14px] text-text">{{ (appBanner.name || '?').charAt(0) }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[13px] font-medium text-text truncate">{{ appBanner.name }}</span>
+                            <span class="text-[11px] text-muted shrink-0">现在</span>
+                        </div>
+                        <div class="text-[13px] truncate" style="color: var(--color-text); opacity: 0.72;">{{ appBanner.text }}</div>
+                    </div>
+                </div>
+            </div>
+        </transition>
 
         <!-- 软边界提示（淡出） -->
         <transition name="toastfade">
@@ -11387,6 +11463,11 @@ themeId: 'day',
       jieyiHarvestProb: 0.35,         // 每次检查的拾取概率
       jieyiChunkProb: 0.5,            // 长句按标点切分的概率
       jieyiChunkLen: 3,               // 每几个标点切一段
+      // ===== 来电（以前硬编码 10~45 分钟、5% 概率）=====
+      callEnabled: true,              // 总开关
+      callIntervalMin: 10,            // 检查间隔下限（分钟）
+      callIntervalMax: 45,            // 检查间隔上限（分钟）
+      callProb: 5,                    // 每次检查的来电概率（%）
  replyLetterMaxPerDay: 5,
       // ===== 主动留言结束 =====
       replyWeightMap: {
@@ -13372,6 +13453,13 @@ const newMsg = {
       scrollToBottom();
       manageActiveTimer();
       updateUnread();
+      // 应用内顶部横幅：TA / 其他成员来的消息，且用户当前不在这个会话时弹出
+      try {
+        if (sender !== 'me' && sender !== 'system' && !opts.blank &&
+            (currentView.value !== 'chat' || currentSessionId.value !== target.id)) {
+          _showAppBanner(target, content || (isImage ? '[图片]' : ''));
+        }
+      } catch (e) {}
       // 打字机逐字动画已移除（移动端易卡）：消息直接完整显示
       newMsg.content = content;
       // 消息 DOM 新增后重绘 lucide 图标
@@ -18578,13 +18666,17 @@ const availableExportBoxes = computed(() => {
 
     // ============ 通话功能 ============
 
-    // 启动来电定时器：每 10-45 分钟掷一次骰子，5% 概率来电
+    // 启动来电定时器：间隔与概率都可在「回复设置 → 回复频率 → 来电」里调
     const startIncomingTimer = (session) => {
       if (session.type === 'group') return; // 群聊无电话功能
+      if (!settings.callEnabled) return;    // 总开关关闭
       if (session.call.status !== 'idle' || session.call.isPaused) return;
-      const interval = randomMs(10 * 60 * 1000, 45 * 60 * 1000);
+      const minM = Math.max(1, Number(settings.callIntervalMin) || 10);
+      const maxM = Math.max(minM, Number(settings.callIntervalMax) || 45);
+      const interval = randomMs(minM * 60 * 1000, maxM * 60 * 1000);
+      const prob = Math.min(1, Math.max(0, (Number(settings.callProb) || 0) / 100));
       session.call.incomingTimer = setTimeout(() => {
-        if (Math.random() < 0.05) {
+        if (Math.random() < prob) {
           triggerIncomingCall(session);
         } else {
           startIncomingTimer(session);
@@ -18721,6 +18813,8 @@ const availableExportBoxes = computed(() => {
         if (s.id !== session.id) hangupCall(s);
       });
       connectCall(session);
+      // 接听后直接缩成悬浮小条：不挡屏幕，用户可以正常去浏览其他会话
+      callMinimized.value = true;
       updateUnread();
     };
 
@@ -18752,6 +18846,35 @@ const availableExportBoxes = computed(() => {
 
     // ===== 通话界面状态（星空美化） =====
     const callMinimized = ref(false);
+
+    // ===== 应用内顶部横幅（类似 iPhone 通知）=====
+    const appBanner = reactive({ show: false, name: '', avatar: '', text: '', sessionId: null });
+    let _appBannerTimer = null;
+    const _showAppBanner = (s, text) => {
+      if (!s) return;
+      appBanner.name = s.name || '';
+      appBanner.avatar = s.avatar || '';
+      appBanner.desc = s.desc || '';
+      appBanner.text = String(text || '').replace(/<[^>]+>/g, '').slice(0, 50) || '发来一条消息';
+      appBanner.sessionId = s.id;
+      appBanner.show = true;
+      if (_appBannerTimer) clearTimeout(_appBannerTimer);
+      _appBannerTimer = setTimeout(() => { appBanner.show = false; }, 3400);
+    };
+    const closeAppBanner = () => {
+      appBanner.show = false;
+      if (_appBannerTimer) { clearTimeout(_appBannerTimer); _appBannerTimer = null; }
+    };
+    const openAppBanner = () => {
+      const id = appBanner.sessionId;
+      closeAppBanner();
+      if (!id) return;
+      const s = sessions.value.find(x => x.id === id);
+      if (!s) return;
+      currentSessionId.value = id;
+      currentView.value = 'chat';
+      nextTick(() => { scrollToBottom(); try { if (window.lucide) lucide.createIcons(); } catch (e) {} });
+    };
     const callSize = ref('standard');
     const callSizes = [
       { key: 'small', label: '小', w: 220, h: 350 },
@@ -23177,6 +23300,7 @@ CHATTY_KEYBOARD_ROWS, chattyKeyActive, CHATTY_PINYIN_BY_INITIAL,CHATTY_PUNCT_ROW
       acceptCall,
       rejectCall,
       callMinimized,
+      appBanner, openAppBanner, closeAppBanner,
       callSize,
       callSizes,
       callWindowStyle,
