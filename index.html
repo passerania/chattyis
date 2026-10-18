@@ -134,11 +134,9 @@ body { color: var(--color-text); }
     background: var(--nav-icon-color) !important;
     color: #fff !important;
 }
-        /* 长聊天记录优化：屏外的消息跳过渲染，点进会话不再卡 */
-        #capture-area > div {
-            content-visibility: auto;
-            contain-intrinsic-size: 0 80px;
-        }
+        /* 长聊天记录优化：屏外的消息跳过渲染，点进会话不再卡
+           注意：content-visibility 会裁剪溢出内容，导致气泡外侧的竖排工具栏被裁掉，
+           所以这里去掉它（已有 chatRenderLimit=50 限制渲染条数，性能足够） */
 
         /* 强化气泡玻璃拟态，稳定表现 */
                         .msg-bubble {
@@ -2797,9 +2795,15 @@ body { color: var(--color-text); }
                                 <!-- ===== 子页 1：对方页面设置 ===== -->
                                 <template v-if="replySettingsPage === '对方页面设置'">
 
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">打字速度</h3>
-                                    <section class="mb-4">
-                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="toggleSection('打字速度', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[14px] text-text">打字速度</div>
+                                                <div class="text-[12px] text-muted/70 mt-0.5">TA 在自己页面里逐字打字的快慢</div>
+                                            </div>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('打字速度', false) ? 'rotate-180' : ''"></i>
+                                        </div>
+                                        <div v-if="isSectionOpen('打字速度', false)" class="border-t border-border/40">
                                             <div class="p-3.5">
                                                 <div class="flex items-center justify-between mb-2">
                                                     <span class="text-[14px] text-text">打字速度</span>
@@ -2815,9 +2819,15 @@ body { color: var(--color-text); }
                                         </div>
                                     </section>
 
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">发送与自由组合</h3>
-                                    <section class="mb-4">
-                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="toggleSection('发送与自由组合', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[14px] text-text">发送与自由组合</div>
+                                                <div class="text-[12px] text-muted/70 mt-0.5">发送概率 · 字卡外自由组合概率</div>
+                                            </div>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('发送与自由组合', false) ? 'rotate-180' : ''"></i>
+                                        </div>
+                                        <div v-if="isSectionOpen('发送与自由组合', false)" class="border-t border-border/40">
                                             <div class="p-3.5 border-b border-border">
                                                 <div class="flex items-center justify-between mb-1">
                                                     <span class="text-[14px] text-text">发送概率</span>
@@ -2837,9 +2847,15 @@ body { color: var(--color-text); }
                                         </div>
                                     </section>
 
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">审核纠错</h3>
-                                    <section class="mb-4">
-                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="toggleSection('审核纠错', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[14px] text-text">审核纠错</div>
+                                                <div class="text-[12px] text-muted/70 mt-0.5">字级审核 · 词级审核概率</div>
+                                            </div>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('审核纠错', false) ? 'rotate-180' : ''"></i>
+                                        </div>
+                                        <div v-if="isSectionOpen('审核纠错', false)" class="border-t border-border/40">
                                             <div class="p-3.5 border-b border-border">
                                                 <div class="flex items-center justify-between mb-1">
                                                     <span class="text-[14px] text-text">字级审核概率</span>
@@ -2859,9 +2875,15 @@ body { color: var(--color-text); }
                                         </div>
                                     </section>
 
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">后台触发</h3>
-                                    <section class="mb-4">
-                                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="toggleSection('后台触发', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[14px] text-text">后台触发</div>
+                                                <div class="text-[12px] text-muted/70 mt-0.5">不在屏幕看时也随机发消息 · 触发间隔</div>
+                                            </div>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('后台触发', false) ? 'rotate-180' : ''"></i>
+                                        </div>
+                                        <div v-if="isSectionOpen('后台触发', false)" class="border-t border-border/40">
                                             <div class="p-3.5">
                                                 <div class="flex items-center justify-between">
                                                     <div class="min-w-0 pr-2">
@@ -2888,9 +2910,15 @@ body { color: var(--color-text); }
                                 <!-- ===== 子页 2：回复频率 ===== -->
                                 <template v-else-if="replySettingsPage === '回复频率'">
 
-<section>
-<h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">回复频率设置</h3>
-                            <div class="bg-surface border border-border rounded-xl overflow-hidden">
+<section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+<div @click="toggleSection('回复频率设置', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+    <div class="flex-1 min-w-0">
+        <div class="text-[14px] text-text">回复频率设置</div>
+        <div class="text-[12px] text-muted/70 mt-0.5">空灵回声 · 徐徐道来 · 回复间隔 · 概率开关</div>
+    </div>
+    <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('回复频率设置', false) ? 'rotate-180' : ''"></i>
+</div>
+                            <div v-if="isSectionOpen('回复频率设置', false)" class="border-t border-border/40">
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>空灵回声</span>
                                     <button @click="toggleSound" class="w-10 h-5 rounded-full relative transition-colors" :class="settings.soundEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.soundEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
@@ -2937,8 +2965,15 @@ body { color: var(--color-text); }
                             </div>
                         </section>
  <!-- 全局：梦角给牌 -->
-                            <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">梦角给牌</h3>
                             <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                <div @click="toggleSection('梦角给牌', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-[14px] text-text">梦角给牌</div>
+                                        <div class="text-[12px] text-muted/70 mt-0.5">梦角回复附带塔罗 / 雷诺曼 · 牌数 · 概率</div>
+                                    </div>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('梦角给牌', false) ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div v-if="isSectionOpen('梦角给牌', false)" class="border-t border-border/40">
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>梦角回复附带塔罗 / 雷诺曼</span>
                                     <button @click="settings.diviAttachEnabled = !settings.diviAttachEnabled; debouncedSave();"
@@ -2963,6 +2998,7 @@ body { color: var(--color-text); }
                                         群聊不触发；吐槽 / 拍一拍 / 红包 / 问卷 / 投票 / 分享等特殊卡片不触发。
                                     </div>
                                 </div>
+                                </div>
                             </section>
                             <!-- ===== 子页：字卡权重设置 ===== -->
                                 <div class="text-[12px] text-muted/80 leading-relaxed px-1 mb-3">
@@ -2970,9 +3006,15 @@ body { color: var(--color-text); }
                                 </div>
 
                                                               <!-- ===== 群聊主动会话 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">群聊主动会话</h3>
-                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('群聊主动会话', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">群聊主动会话</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">群聊成员自动发言 · 间隔 · 标记</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('群聊主动会话', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('群聊主动会话', false)" class="border-t border-border/40">
                                         <div v-if="!groupSessions.length" class="p-3.5 text-[13px] text-muted">
                                             还没有群聊
                                         </div>
@@ -3009,9 +3051,15 @@ body { color: var(--color-text); }
 
 
                                 <!-- ===== 主动搭话 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">主动搭话</h3>
-                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('主动搭话', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">主动搭话</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">发起间隔 · 冷却 · 每日上限</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('主动搭话', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('主动搭话', false)" class="border-t border-border/40">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
                                             <span>主动搭话</span>
                                             <button @click="toggleActiveMessage" class="w-10 h-5 rounded-full relative" :class="settings.activeMessage ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.activeMessage ? 'translate-x-5' : 'translate-x-0'"></div></button>
@@ -3044,9 +3092,15 @@ body { color: var(--color-text); }
                                 </section>
 
                                 <!-- ===== 联系人主动写信 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">联系人主动写信</h3>
-                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('联系人主动写信', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">联系人主动写信</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">发信间隔 · 每日上限 · 语料来源</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('联系人主动写信', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('联系人主动写信', false)" class="border-t border-border/40">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
                                             <span>联系人主动写信</span>
                                             <button @click="settings.autoLetterEnabled = !settings.autoLetterEnabled; debouncedSave();" class="w-10 h-5 rounded-full relative" :class="settings.autoLetterEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="settings.autoLetterEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
@@ -3087,9 +3141,15 @@ body { color: var(--color-text); }
                                 </section>
 
                                 <!-- ===== 联系人回信 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">联系人回信</h3>
-                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('联系人回信', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">联系人回信</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">回信概率 · 回信时间 · 每日上限</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('联系人回信', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('联系人回信', false)" class="border-t border-border/40">
                                         <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
                                             <span class="text-[14px]">回信概率（%）</span>
                                             <div class="flex items-center gap-2">
@@ -3124,8 +3184,17 @@ body { color: var(--color-text); }
 
                                 <!-- ===== 子页 3：字卡权重设置 ===== -->
                                 <template v-else-if="replySettingsPage === '字卡权重设置'">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('字卡权重', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">字卡权重</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">按场景给各书册分配权重（不必凑 100）</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('字卡权重', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('字卡权重', false)" class="border-t border-border/40">
                                 <!-- 子 tab：私聊 / 群聊 / 主动来信 / 回信 -->
-                                <div class="flex gap-1 mb-3 overflow-x-auto" style="scrollbar-width:none;">
+                                <div class="flex gap-1 p-3 pb-0 overflow-x-auto" style="scrollbar-width:none;">
                                     <button v-for="sub in ['私聊','群聊','主动来信','回信']" :key="sub"
                                             @click="replySubTab = sub"
                                             class="shrink-0 px-3 py-1.5 rounded-full text-[13px] tracking-widest transition-colors"
@@ -3164,12 +3233,25 @@ body { color: var(--color-text); }
                                                 </div>
                                             </section>
                                         </template>
-                                        <div class="text-[11px] text-muted/60 leading-relaxed px-2 pt-2">
+                                        <div class="text-[11px] text-muted/60 leading-relaxed px-2 pt-2 pb-3">
                                             权重按归一化计算（不必凑 100）。权重为 0 或未勾选 = 该场景不使用此书册。<br>
                                             <template v-if="sc === '主动来信' || sc === '回信'">此设置用于梦角写信 / 回信的语料，全局生效，所有会话共用。</template>
                                             <template v-else>此设置全局生效，所有会话共用。</template>
                                         </div>
-                                        <div v-if="sc === '私聊'" class="mt-3 pt-3 border-t border-border/40">
+                                        </template>
+                                    </template>
+                                    </div>
+                                </section>
+
+                                <section v-if="replySubTab === '私聊'" class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('外文语料', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">外文语料</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">自由组合时抽意语 / 日语词的概率</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('外文语料', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('外文语料', false)" class="border-t border-border/40 p-3.5">
                                             <div class="flex items-center justify-between mb-1">
                                                 <span class="text-[14px] text-text">外文语料</span>
                                                 <span class="text-[11px] text-muted tabular-nums">{{ Math.round((settings.foreignCardProb ?? 0.15) * 100) }}%</span>
@@ -3182,16 +3264,177 @@ body { color: var(--color-text); }
                                                 自由组合时，按此概率抽「意大利语 / 日语」书册里的词打出来（带中文翻译）。<br>
                                                 两个书册在「字卡」页里添加词条：意语填原文、日语填罗马字（可另填假名与翻译）。
                                             </div>
-                                        </div>
-                                    </template>
-                                </template>
+                                    </div>
+                                </section>
                                 </template>
 
+                                <!-- ===== 行为与概率（从「通用拼接设置」移来） ===== -->
+                                <section v-if="replySettingsPage === '字卡权重设置'" class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('梦角派活', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">梦角派活</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">按概率给你派 todo · 每日上限 · 语料来源</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('梦角派活', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('梦角派活', false)" class="border-t border-border/40">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>启用派活</span>
+                                            <button @click="settings.todoDiviEnabled = !settings.todoDiviEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.todoDiviEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.todoDiviEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.todoDiviEnabled">
+                                            <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                                <span class="text-[14px]">每天最多派活（条）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('todoDiviMaxPerDay', -1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.todoDiviMaxPerDay }}</span>
+                                                    <button @click="adjustSetting('todoDiviMaxPerDay', 1, 1, 20)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                                <span class="text-[14px]">派活概率（%）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('todoDiviProb', -5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-10 text-center text-text font-medium tabular-nums">{{ settings.todoDiviProb }}</span>
+                                                    <button @click="adjustSetting('todoDiviProb', 5, 0, 100)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                            <div class="px-3.5 py-3 border-b border-border">
+                                                <div class="text-[12px] text-muted tracking-widest mb-2">语料来源</div>
+                                                <div class="flex gap-2 flex-wrap">
+                                                    <label v-for="src in ['问号', '公共', '私聊']" :key="src" class="flex items-center gap-1.5 text-[13px]">
+                                                        <input type="checkbox"
+                                                               :checked="settings.todoDiviSources.includes(src)"
+                                                               @change="e => {
+                                                                   if (e.target.checked) { if (!settings.todoDiviSources.includes(src)) settings.todoDiviSources.push(src); }
+                                                                   else { settings.todoDiviSources = settings.todoDiviSources.filter(x => x !== src); }
+                                                                   debouncedSave();
+                                                               }">
+                                                        <span>{{ src }}</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
+                                                <span class="text-[14px]">最短派活时间（分钟）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('todoDiviMinMin', -10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.todoDiviMinMin }}</span>
+                                                    <button @click="adjustSetting('todoDiviMinMin', 10, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between px-3.5 py-3">
+                                                <span class="text-[14px]">最长派活时间（分钟）</span>
+                                                <div class="flex items-center gap-2">
+                                                    <button @click="adjustSetting('todoDiviMaxMin', -30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">−</button>
+                                                    <span class="w-12 text-center text-text font-medium tabular-nums">{{ settings.todoDiviMaxMin }}</span>
+                                                    <button @click="adjustSetting('todoDiviMaxMin', 30, 1, 1440)" class="w-7 h-7 rounded-full border border-border text-text flex items-center justify-center text-sm">+</button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
+
+                                <section v-if="replySettingsPage === '字卡权重设置'" class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('聊天回应字卡', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">聊天回应字卡</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">回应卡概率 · 连接词追加概率</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('聊天回应字卡', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('聊天回应字卡', false)" class="border-t border-border/40">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>启用回应字卡</span>
+                                            <button @click="settings.replyCardEnabled = !settings.replyCardEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.replyCardEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.replyCardEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.replyCardEnabled">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">回应卡概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.replyCardProb ?? 0.30) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.replyCardProb ?? 0.30) * 100"
+                                                       @input="e => { settings.replyCardProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">
+                                                    命中后：50% 概率加<b>前缀</b>（接话确认 / 停顿犹豫），50% 概率加<b>后缀</b>（连接词 / 连接短语 / 连接句子 / 收束），拼进正文发成<b>一条</b>气泡。
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <div class="px-3.5 py-2.5 border-t border-border/40 text-[12px] text-muted/60 leading-relaxed">
+                                            中文 6 组在「字卡 → 公共字卡 → 回应字卡」里编辑；意/日回应卡直接用「意大利语」「日语」书册（外语占比每次 10~30% 随机）；TA 的语言在聊天页右上角「更多设置」里选。
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section v-if="replySettingsPage === '字卡权重设置'" class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('解译拾取', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">解译拾取</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">梦角不定期收集你写的解译 · 长句按标点切分</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('解译拾取', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('解译拾取', false)" class="border-t border-border/40">
+                                        <div class="flex items-center justify-between p-3.5 border-b border-border">
+                                            <span>梦角不定期拾取解译</span>
+                                            <button @click="settings.jieyiHarvestEnabled = !settings.jieyiHarvestEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative transition-colors"
+                                                    :class="settings.jieyiHarvestEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.jieyiHarvestEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <template v-if="settings.jieyiHarvestEnabled">
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">每次检查的拾取概率</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.jieyiHarvestProb ?? 0.35) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.jieyiHarvestProb ?? 0.35) * 100"
+                                                       @input="e => { settings.jieyiHarvestProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">每 30 分钟检查一次；拾取后入该会话的「梦角自由造句」字卡（自动去重）</div>
+                                            </div>
+                                            <div class="p-3.5 border-b border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">长句切分（按标点）</span>
+                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.jieyiChunkProb ?? 0.5) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100" :value="(settings.jieyiChunkProb ?? 0.5) * 100"
+                                                       @input="e => { settings.jieyiChunkProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">超过 30 字的解译，按概率切成多段再入库；每段约 {{ settings.jieyiChunkLen ?? 3 }} 个标点</div>
+                                            </div>
+                                            <div class="p-3.5">
+                                                <button @click="runJieyiHarvest()"
+                                                        class="w-full py-2 rounded-lg border border-border text-[14px] text-text hover:bg-bg">立即拾取一次（测试）</button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
+
                                 <!-- ===== 子页 4：通用拼接设置 ===== -->
-                                <template v-else-if="replySettingsPage === '通用拼接设置'">
-                                <!-- ===== 信件语料来源 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">信件语料来源</h3>
+                                <template v-if="replySettingsPage === '通用拼接设置'">                                <!-- ===== 信件语料来源 ===== -->
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('信件语料来源', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">信件语料来源</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">主动来信 / 回信 用哪些书册</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('信件语料来源', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('信件语料来源', false)" class="border-t border-border/40 p-3">
                                     <div class="flex gap-1 mb-3">
                                         <button v-for="sc in ['主动来信','回信']" :key="sc"
                                                 @click="mailSourceScene = sc"
@@ -3221,11 +3464,19 @@ body { color: var(--color-text); }
                                             权重按归一化计算。此设置全局生效，所有会话共用。
                                         </div>
                                     </div>
+                                    </div>
                                 </section>
 
                                 <!-- ===== 主动来信 · 字卡条数 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">主动来信 · 字卡条数</h3>
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('主动来信 · 字卡条数', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">主动来信 · 字卡条数</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">每封信包含的字卡数量范围</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('主动来信 · 字卡条数', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('主动来信 · 字卡条数', false)" class="border-t border-border/40">
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
                                             <span class="text-[14px]">最少条数</span>
@@ -3244,11 +3495,19 @@ body { color: var(--color-text); }
                                             </div>
                                         </div>
                                     </div>
+                                    </div>
                                 </section>
 
                                 <!-- ===== 回信 · 字卡条数 ===== -->
-                                <section class="mb-4">
-                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">回信 · 字卡条数</h3>
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('回信 · 字卡条数', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">回信 · 字卡条数</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">每封回信包含的字卡数量范围</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('回信 · 字卡条数', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('回信 · 字卡条数', false)" class="border-t border-border/40">
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between px-3.5 py-3 border-b border-border">
                                             <span class="text-[14px]">最少条数</span>
@@ -3267,15 +3526,19 @@ body { color: var(--color-text); }
                                             </div>
                                         </div>
                                     </div>
+                                    </div>
                                 </section>
 
                                 <!-- ===== 信件拼接 ===== -->
-                                <section class="mb-4">
-                                    <h3 @click="toggleSection('信件拼接')" class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
-                                        <span>信件拼接</span>
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('信件拼接') ? 'rotate-180' : ''"></i>
-                                    </h3>
-                                    <div v-if="isSectionOpen('信件拼接')" class="bg-surface border border-border rounded-xl overflow-hidden">
+                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div @click="toggleSection('信件拼接', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[14px] text-text">信件拼接</div>
+                                            <div class="text-[12px] text-muted/70 mt-0.5">写信时随机带牌 · 拼接条数</div>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('信件拼接', false) ? 'rotate-180' : ''"></i>
+                                    </div>
+                                    <div v-if="isSectionOpen('信件拼接', false)" class="border-t border-border/40">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
                                             <div class="min-w-0 pr-2">
                                                 <div class="text-[14px] text-text">梦角写信时随机带牌</div>
@@ -3299,7 +3562,8 @@ body { color: var(--color-text); }
                                 </section>
 
                                 <!-- ===== TD-5：梦角派活 ===== -->
-                                <section class="mb-4">
+                                <!-- 梦角派活已移到「字卡权重设置」子页（此处停用） -->
+                                <section v-if="false" class="mb-4">
                                     <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">梦角派活</h3>
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
@@ -3364,7 +3628,8 @@ body { color: var(--color-text); }
                                 </section>
 
                                 <!-- ===== 需求 B：聊天回应字卡 ===== -->
-                                <section class="mb-4">
+                                <!-- 聊天回应字卡已移到「字卡权重设置」子页（此处停用） -->
+                                <section v-if="false" class="mb-4">
                                     <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">聊天回应字卡</h3>
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
@@ -3385,28 +3650,19 @@ body { color: var(--color-text); }
                                                 <input type="range" min="0" max="100" :value="(settings.replyCardProb ?? 0.30) * 100"
                                                        @input="e => { settings.replyCardProb = e.target.value / 100; debouncedSave(); }"
                                                        class="w-full" style="accent-color: var(--nav-icon-color);">
-                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">命中：先发一条回应卡（如「嗯」「好的」），再发正常回复（两条气泡）</div>
-                                            </div>
-                                            <div class="p-3.5">
-                                                <div class="flex items-center justify-between mb-1">
-                                                    <span class="text-[14px] text-text">连接词追加概率</span>
-                                                    <span class="text-[12px] text-muted tabular-nums">{{ Math.round((settings.replyLinkProb ?? 0.20) * 100) }}%</span>
+                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">
+                                                    命中后：50% 概率加<b>前缀</b>（接话确认 / 停顿犹豫），50% 概率加<b>后缀</b>（连接词 / 连接短语 / 连接句子 / 收束），拼进正文发成<b>一条</b>气泡。
                                                 </div>
-                                                <input type="range" min="0" max="100" :value="(settings.replyLinkProb ?? 0.20) * 100"
-                                                       @input="e => { settings.replyLinkProb = e.target.value / 100; debouncedSave(); }"
-                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
-                                                <div class="text-[12px] text-muted/60 leading-relaxed mt-1">命中：正常回复末尾追加一个连接词（如「但是」「然后」）</div>
                                             </div>
                                         </template>
                                         <div class="px-3.5 py-2.5 border-t border-border/40 text-[12px] text-muted/60 leading-relaxed">
-                                            字卡在「字卡 → 公共字卡 → 回应字卡（中文 8 组）/ 回应·意 / 回应·日」里编辑；
-                                            TA 的语言在聊天页右上角「更多设置」里选。
+                                            中文 6 组在「字卡 → 公共字卡 → 回应字卡」里编辑；意/日回应卡直接用「意大利语」「日语」书册（外语占比每次 10~30% 随机）；TA 的语言在聊天页右上角「更多设置」里选。
                                         </div>
                                     </div>
                                 </section>
 
-                                <!-- ===== 解译拾取：梦角收集你写的解译 ===== -->
-                                <section class="mb-4">
+                                <!-- 解译拾取已移到「字卡权重设置」子页（此处停用） -->
+                                <section v-if="false" class="mb-4">
                                     <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">解译拾取</h3>
                                     <div class="bg-surface border border-border rounded-xl overflow-hidden">
                                         <div class="flex items-center justify-between p-3.5 border-b border-border">
@@ -8182,7 +8438,8 @@ const runDeduplicate = (mode) => {
     deduplicateMenuOpen.value = false;
     const s = currentSession.value;
     if (!s) { showToast('请先进入一个会话'); return; }
-    const box = s.corpus.boxes[activeBox.value];
+    // 兼容共享书册（公共 / 词典 / 公共梦角自由造句）
+    const box = isSharedBox(activeBox.value) ? sharedBoxes[activeBox.value] : s.corpus.boxes[activeBox.value];
     if (!box) { showToast('当前书册不存在'); return; }
 
     let allGroups = [];
@@ -10068,7 +10325,7 @@ const startMailTimer = () => {
     // 5 个固定箱子；箱内用「卷宗(分组)+留白句(字卡)」结构，与旧 replyGroups 一致
     const corpusBoxList = ['私聊', '群聊', '主动写信', '信封回复', '红包备注'];
     // 6 本专属书册（拍一拍/问号/状态）：固定服务对应功能，不参与书架情境链接，仅书册选择面板可编辑
-const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图', '吐槽', '公共', '词典', '梦角自由造句', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'];
+const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '交流意图', '吐槽', '公共', '词典', '梦角自由造句', '公共梦角自由造句', '意大利语', '日语', '回应字卡'];
     // 书册选择面板显示全部书册（含专属）；书架情境链接只用 corpusBoxList
     const corpusBoxListAll = [...corpusBoxList, ...specialBoxList];
     // 5 个情境；默认每个情境连接与其同名的箱子
@@ -10093,8 +10350,6 @@ const specialBoxList = ['拍一拍', '问号', '状态', '情绪', '心意', '�
 '公共梦角自由造句': '梦角自由造句',
 '意大利语': '意大利语',
 '回应字卡': '回应字卡',
-'回应字卡·意语': '回应·意',
-'回应字卡·日语': '回应·日',
 '日语': '日语',
     };
     // 红包备注箱固定三档隔板：小红包=高概率 / 红包=中概率 / 转账=低概率，不可删
@@ -10361,7 +10616,7 @@ if (boxes['公共梦角自由造句']) {
     };
 
 // ===== 共享书册（所有会话共享一份） =====
-const SHARED_BOXES = ['公共', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'];
+const SHARED_BOXES = ['公共', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡'];
 const sharedBoxes = reactive({
     '公共': { groups: [{ id: genId(), name: '公共', replies: [] }] },
     '词典': { groups: [
@@ -10376,44 +10631,135 @@ const sharedBoxes = reactive({
     ] },
     '公共梦角自由造句': { groups: [{ id: genId(), name: '梦角自由造句', replies: [] }] },
     // ===== 外文字卡（共享书册）：text 永远是键盘能打的字母（意语原文 / 罗马字）
-    '意大利语': { groups: [{ id: genId(), name: '常用词', replies: [] }] },
-    '日语': { groups: [{ id: genId(), name: '常用词', replies: [] }] },
-    // ===== 回应字卡（需求 B）：中文有 8 组；意/日先留空，用户自己补 =====
+    '意大利语': { groups: [{ id: genId(), name: '常用词', replies: [
+        { id: genId(), text: 'amore', translation: '爱', enabled: true, isSystem: true },
+        { id: genId(), text: 'ciao', translation: '你好/再见', enabled: true, isSystem: true },
+        { id: genId(), text: 'pizza', translation: '披萨', enabled: true, isSystem: true },
+        { id: genId(), text: 'pasta', translation: '意面', enabled: true, isSystem: true },
+        { id: genId(), text: 'bella', translation: '美丽', enabled: true, isSystem: true },
+        { id: genId(), text: 'mamma mia', translation: '我的天', enabled: true, isSystem: true },
+        { id: genId(), text: 'andiamo', translation: '走吧', enabled: true, isSystem: true },
+        { id: genId(), text: 'prego', translation: '不客气', enabled: true, isSystem: true },
+        { id: genId(), text: 'grazie', translation: '谢谢', enabled: true, isSystem: true },
+        { id: genId(), text: 'dolce', translation: '甜点/甜', enabled: true, isSystem: true },
+        { id: genId(), text: 'sole', translation: '太阳', enabled: true, isSystem: true },
+        { id: genId(), text: 'luna', translation: '月亮', enabled: true, isSystem: true },
+        { id: genId(), text: 'caffè', translation: '咖啡', enabled: true, isSystem: true },
+        { id: genId(), text: 'vino', translation: '葡萄酒', enabled: true, isSystem: true },
+        { id: genId(), text: 'arte', translation: '艺术', enabled: true, isSystem: true },
+        { id: genId(), text: 'gelato', translation: '冰淇淋', enabled: true, isSystem: true },
+        { id: genId(), text: 'ti amo', translation: '我爱你', enabled: true, isSystem: true },
+        { id: genId(), text: 'tesoro', translation: '宝贝', enabled: true, isSystem: true },
+        { id: genId(), text: 'romantico', translation: '浪漫', enabled: true, isSystem: true },
+        { id: genId(), text: 'famiglia', translation: '家人', enabled: true, isSystem: true },
+    ] }] },
+    '日语': { groups: [{ id: genId(), name: '常用词', replies: [
+        { id: genId(), text: 'kawaii', kana: 'かわいい', translation: '可爱', enabled: true, isSystem: true },
+        { id: genId(), text: 'sugoi', kana: 'すごい', translation: '厉害', enabled: true, isSystem: true },
+        { id: genId(), text: 'sakura', kana: 'さくら', translation: '樱花', enabled: true, isSystem: true },
+        { id: genId(), text: 'sushi', kana: 'すし', translation: '寿司', enabled: true, isSystem: true },
+        { id: genId(), text: 'arigatou', kana: 'ありがとう', translation: '谢谢', enabled: true, isSystem: true },
+        { id: genId(), text: 'konnichiwa', kana: 'こんにちは', translation: '你好', enabled: true, isSystem: true },
+        { id: genId(), text: 'ohayou', kana: 'おはよう', translation: '早安', enabled: true, isSystem: true },
+        { id: genId(), text: 'oyasumi', kana: 'おやすみ', translation: '晚安', enabled: true, isSystem: true },
+        { id: genId(), text: 'itadakimasu', kana: 'いただきます', translation: '我开动了', enabled: true, isSystem: true },
+        { id: genId(), text: 'neko', kana: 'ねこ', translation: '猫', enabled: true, isSystem: true },
+        { id: genId(), text: 'daisuki', kana: 'だいすき', translation: '最喜欢', enabled: true, isSystem: true },
+        { id: genId(), text: 'matsuri', kana: 'まつり', translation: '祭典', enabled: true, isSystem: true },
+        { id: genId(), text: 'anime', kana: 'アニメ', translation: '动画', enabled: true, isSystem: true },
+        { id: genId(), text: 'ramen', kana: 'ラーメン', translation: '拉面', enabled: true, isSystem: true },
+        { id: genId(), text: 'sake', kana: 'さけ', translation: '清酒', enabled: true, isSystem: true },
+        { id: genId(), text: 'fuji', kana: 'ふじ', translation: '富士', enabled: true, isSystem: true },
+        { id: genId(), text: 'yatta', kana: 'やった', translation: '太好了', enabled: true, isSystem: true },
+        { id: genId(), text: 'kirei', kana: 'きれい', translation: '漂亮', enabled: true, isSystem: true },
+        { id: genId(), text: 'tomodachi', kana: 'ともだち', translation: '朋友', enabled: true, isSystem: true },
+        { id: genId(), text: 'shinpai', kana: 'しんぱい', translation: '担心', enabled: true, isSystem: true },
+    ] }] },
+    // ===== 需求 B：回应字卡（6 组，中文内置；意/日直接用「意大利语」「日语」书册）=====
     '回应字卡': { groups: [
-        { id: genId(), name: '接话', replies: [] },
-        { id: genId(), name: '确认', replies: [] },
-        { id: genId(), name: '继续', replies: [] },
-        { id: genId(), name: '轻追问', replies: [] },
-        { id: genId(), name: '连接词', replies: [] },
-        { id: genId(), name: '转折', replies: [] },
-        { id: genId(), name: '停顿', replies: [] },
-        { id: genId(), name: '收束对话', replies: [] },
+        { id: genId(), name: '接话确认', replies: [
+            { id: genId(), text: '嗯', enabled: true }, { id: genId(), text: '哦', enabled: true },
+            { id: genId(), text: '对', enabled: true }, { id: genId(), text: '是啊', enabled: true },
+            { id: genId(), text: '好的', enabled: true }, { id: genId(), text: '行', enabled: true },
+            { id: genId(), text: '可以', enabled: true }, { id: genId(), text: '没错', enabled: true },
+            { id: genId(), text: '确实', enabled: true }, { id: genId(), text: '原来如此', enabled: true },
+            { id: genId(), text: '知道了', enabled: true }, { id: genId(), text: '收到', enabled: true },
+            { id: genId(), text: '没问题', enabled: true }, { id: genId(), text: '是这样的', enabled: true },
+            { id: genId(), text: '嗯嗯', enabled: true },
+        ] },
+        { id: genId(), name: '停顿犹豫', replies: [
+            { id: genId(), text: '呃', enabled: true }, { id: genId(), text: '那个', enabled: true },
+            { id: genId(), text: '唔', enabled: true }, { id: genId(), text: '怎么说呢', enabled: true },
+            { id: genId(), text: '就是', enabled: true }, { id: genId(), text: '我想想', enabled: true },
+            { id: genId(), text: '等一下', enabled: true }, { id: genId(), text: '其实', enabled: true },
+            { id: genId(), text: '这…', enabled: true },
+        ] },
+        { id: genId(), name: '连接词', replies: [
+            { id: genId(), text: '但是', enabled: true }, { id: genId(), text: '可是', enabled: true },
+            { id: genId(), text: '不过', enabled: true }, { id: genId(), text: '然后', enabled: true },
+            { id: genId(), text: '而且', enabled: true }, { id: genId(), text: '所以', enabled: true },
+            { id: genId(), text: '其实', enabled: true }, { id: genId(), text: '总之', enabled: true },
+            { id: genId(), text: '毕竟', enabled: true },
+        ] },
+        { id: genId(), name: '连接短语', replies: [
+            { id: genId(), text: '话说回来', enabled: true }, { id: genId(), text: '其实我想说', enabled: true },
+            { id: genId(), text: '所以说呢', enabled: true }, { id: genId(), text: '换句话说', enabled: true },
+            { id: genId(), text: '另一方面', enabled: true }, { id: genId(), text: '除此之外', enabled: true },
+            { id: genId(), text: '让我意外的是', enabled: true }, { id: genId(), text: '总的来说', enabled: true },
+            { id: genId(), text: '不管怎样', enabled: true },
+        ] },
+        { id: genId(), name: '连接句子', replies: [
+            { id: genId(), text: '不过我觉得这样也挺好的。', enabled: true },
+            { id: genId(), text: '就是不知道你怎么想。', enabled: true },
+            { id: genId(), text: '其实我还有别的想法。', enabled: true },
+            { id: genId(), text: '所以想问问你的意见。', enabled: true },
+            { id: genId(), text: '不过话说回来也没什么大不了的。', enabled: true },
+            { id: genId(), text: '总的来说这次还挺开心的。', enabled: true },
+        ] },
+        { id: genId(), name: '收束', replies: [
+            { id: genId(), text: '那先这样', enabled: true }, { id: genId(), text: '拜拜', enabled: true },
+            { id: genId(), text: '晚安', enabled: true }, { id: genId(), text: '睡了', enabled: true },
+            { id: genId(), text: '回头聊', enabled: true }, { id: genId(), text: '不早了', enabled: true },
+            { id: genId(), text: '先不说了', enabled: true }, { id: genId(), text: '改天聊', enabled: true },
+            { id: genId(), text: '回见', enabled: true },
+        ] },
     ] },
-    '回应字卡·意语': { groups: [{ id: genId(), name: '默认', replies: [] }] },
-    '回应字卡·日语': { groups: [{ id: genId(), name: '默认', replies: [] }] },
 });
 // 老档兼容：缺这两个书册时补上（只补缺失，不动已有数据）
 ['意大利语', '日语'].forEach(k => {
     if (!sharedBoxes[k]) sharedBoxes[k] = { groups: [{ id: genId(), name: '常用词', replies: [] }] };
     else if (!Array.isArray(sharedBoxes[k].groups)) sharedBoxes[k].groups = [{ id: genId(), name: '常用词', replies: [] }];
 });
-// 老档兼容：回应字卡三册
+// 老档兼容：回应字卡（6 组）
+const REPLY_CATS = ['接话确认', '停顿犹豫', '连接词', '连接短语', '连接句子', '收束'];
 if (!sharedBoxes['回应字卡'] || !Array.isArray(sharedBoxes['回应字卡'].groups) || !sharedBoxes['回应字卡'].groups.length) {
-    sharedBoxes['回应字卡'] = { groups: [
-        { id: genId(), name: '接话', replies: [] },
-        { id: genId(), name: '确认', replies: [] },
-        { id: genId(), name: '继续', replies: [] },
-        { id: genId(), name: '轻追问', replies: [] },
-        { id: genId(), name: '连接词', replies: [] },
-        { id: genId(), name: '转折', replies: [] },
-        { id: genId(), name: '停顿', replies: [] },
-        { id: genId(), name: '收束对话', replies: [] },
-    ] };
+    sharedBoxes['回应字卡'] = { groups: REPLY_CATS.map(n => ({ id: genId(), name: n, replies: [] })) };
+} else {
+    // 把旧的 8 组（接话/确认/继续/轻追问/转折/停顿/收束对话）迁移到新的 6 组
+    const old = sharedBoxes['回应字卡'].groups.slice();
+    const hasNew = old.some(g => REPLY_CATS.includes(g.name));
+    if (!hasNew) {
+        const buckets = {};
+        REPLY_CATS.forEach(n => buckets[n] = []);
+        old.forEach(g => {
+            const nm = g.name || '';
+            let target = '接话确认';
+            if (nm.includes('停顿')) target = '停顿犹豫';
+            else if (nm.includes('连接词') || nm.includes('转折')) target = '连接词';
+            else if (nm.includes('收束')) target = '收束';
+            (g.replies || []).forEach(r => { if (r && r.text) buckets[target].push(r); });
+        });
+        sharedBoxes['回应字卡'].groups = REPLY_CATS.map(n => ({ id: genId(), name: n, replies: buckets[n] || [] }));
+    } else {
+        REPLY_CATS.forEach(n => {
+            if (!sharedBoxes['回应字卡'].groups.some(g => g.name === n)) {
+                sharedBoxes['回应字卡'].groups.push({ id: genId(), name: n, replies: [] });
+            }
+        });
+    }
 }
-['回应字卡·意语', '回应字卡·日语'].forEach(k => {
-    if (!sharedBoxes[k]) sharedBoxes[k] = { groups: [{ id: genId(), name: '默认', replies: [] }] };
-    else if (!Array.isArray(sharedBoxes[k].groups)) sharedBoxes[k].groups = [{ id: genId(), name: '默认', replies: [] }];
-});
+// 清掉上一版误加的两个外语回应册（意/日语直接用「意大利语」「日语」）
+['回应字卡·意语', '回应字卡·日语'].forEach(k => { delete sharedBoxes[k]; });
 window.__chattySharedBoxes = sharedBoxes;
 
 const isSharedBox = (name) => SHARED_BOXES.includes(name);
@@ -10725,7 +11071,7 @@ const visibleSessions = computed(() => {
 // ===== 字卡页大分类映射 =====
 const bigCategoryMap = {
     '个人主字卡': ['私聊', '主动写信', '信封回复', '梦角自由造句'],
-    '公共字卡': ['公共', '群聊', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡', '回应字卡·意语', '回应字卡·日语'],
+    '公共字卡': ['公共', '群聊', '词典', '公共梦角自由造句', '意大利语', '日语', '回应字卡'],
     '互动字卡': ['红包备注', '拍一拍'],
     '互动其他字卡': ['问号', '状态', '情绪', '心意', '交流意图', '吐槽'],
 };
@@ -11912,8 +12258,12 @@ const triggerRetractPlay = (session) => {
 // ===== 需求 B：聊天回应字卡 =====
 // 中文「回应字卡」有 8 组：接话 / 确认 / 继续 / 轻追问 / 连接词 / 转折 / 停顿 / 收束对话
 // 意/日书册暂为「默认」组，用户自己补；抽外语时不筛分组
-let _pendingLinkWord = null;    // 路径②：下一次普通回复末尾追加的连接词
-let _skipTypingPlay = false;    // 路径①命中后：本次跳过拼音打字
+let _pendingReplyAffix = null;   // { text, isPrefix }：命中后拼在下一条正文的前/后
+let _skipTypingPlay = false;
+
+// 需求 B 分类（任务书）：前置 = 接话确认 / 停顿犹豫；后置 = 连接词 / 连接短语 / 连接句子 / 收束
+const REPLY_PREFIX_CATS = ['接话确认', '停顿犹豫'];
+const REPLY_SUFFIX_CATS = ['连接词', '连接短语', '连接句子', '收束'];
 
 const _replyCardPool = (boxName, category) => {
     const box = sharedBoxes[boxName];
@@ -11924,16 +12274,16 @@ const _replyCardPool = (boxName, category) => {
         (g.replies || []).forEach(r => {
             if (r.enabled === false) return;
             const t = (r.text || '').trim();
-            if (t) out.push(t);
+            if (t) out.push({ text: t, translation: (r.translation || '').trim(), kana: (r.kana || '').trim() });
         });
     });
     return out;
 };
 
-// 抽一张回应卡：中文池 + 该会话语言的外语池，外语占比每次 10~30% 随机波动
+// 抽一张回应卡：中文池 + 该会话语言的外语池（意/日直接用「意大利语」「日语」书册），外语占比每次 10~30% 随机
 const _drawReplyCard = (s, category) => {
     const lang = s?.replyLang || 'zh';
-    const foreignBox = lang === 'ja' ? '回应字卡·日语' : (lang === 'it' ? '回应字卡·意语' : '');
+    const foreignBox = lang === 'ja' ? '日语' : (lang === 'it' ? '意大利语' : '');
     const zhPool = _replyCardPool('回应字卡', category);
     const fPool = foreignBox ? _replyCardPool(foreignBox, null) : [];
     if (!zhPool.length && !fPool.length) return null;
@@ -11945,32 +12295,39 @@ const _drawReplyCard = (s, category) => {
     return fPool[Math.floor(Math.random() * fPool.length)];
 };
 
-// 连接词（路径②）
-const _drawLinkWord = (s) => _drawReplyCard(s, '连接词');
-
-// 回应卡分支：命中返回 true（本次不再走普通回复/拼音）
+// 需求 B：命中概率 → 随机前置/后置 → 从对应分类池抽一条，暂存等正文拼接（一条气泡，不再整条替换）
 const triggerReplyCardBranch = (s) => {
-    if (!s) return false;
-    if (!settings.replyCardEnabled) return false;
-    const p1 = Number(settings.replyCardProb ?? 0.30);
-    const p2 = Number(settings.replyLinkProb ?? 0.20);
-    const roll = Math.random();
+    if (!s || !settings.replyCardEnabled) return false;
+    if (Math.random() >= Number(settings.replyCardProb ?? 0.30)) return false;
+    const isPrefix = Math.random() < 0.5;
+    const cats = isPrefix ? REPLY_PREFIX_CATS : REPLY_SUFFIX_CATS;
+    const cat = cats[Math.floor(Math.random() * cats.length)];
+    const card = _drawReplyCard(s, cat);
+    if (!card) return false;
+    _pendingReplyAffix = { card, isPrefix };
+    return false;   // 继续走普通回复，正文会把前后缀拼进去
+};
 
-    // 路径①：整条回复 = 回应卡（先发一条），然后继续走普通回复发第二条
-    if (roll < p1) {
-        const card = _drawReplyCard(s, null);
-        if (!card) return false;
-        sendMessage('them', card, { session: s, replyCard: true });
-        _skipTypingPlay = true;   // 本条不打拼音，让普通回复接着发第二条
-        return false;             // 不 return，让普通回复继续
+// 把待拼接的前/后缀贴到正文上（外语卡自动带「（翻译）」，中文卡原样）
+const _applyReplyAffix = (text) => {
+    if (!_pendingReplyAffix) return text;
+    const a = _pendingReplyAffix;
+    _pendingReplyAffix = null;
+    const body = String(text == null ? '' : text);
+    const c = a.card;
+    if (!c || !c.text) return body;
+    // 外语卡带翻译：sì（是）/ ciao（拜拜）
+    let cardText = c.text;
+    if (c.translation) cardText += '（' + c.translation + '）';
+    if (!body.trim()) return cardText;
+    if (a.isPrefix) {
+        // 前缀：卡片末尾已有标点就不再补逗号
+        const cardEnd = /[。！？!?…，,、]$/.test(cardText);
+        return cardText + (cardEnd ? '' : '，') + body;
     }
-    // 路径②：正常回复末尾追加连接词
-    if (roll < p1 + p2) {
-        const w = _drawLinkWord(s);
-        if (w) _pendingLinkWord = w;
-        return false;
-    }
-    return false;
+    // 后缀：正文末尾已有标点就不再补逗号
+    const bodyEnd = /[。！？!?…，,、]$/.test(body);
+    return body + (bodyEnd ? '' : '，') + cardText;
 };
 
 // ===== 主回复「拼音打字」玩法 =====
@@ -14014,8 +14371,8 @@ const opts = { marked, session: cur };
                         }
                     } else {
                         let finalText = selected.map(item => item.text).filter(t => t).join('  ');
-                        // 需求 B 路径②：末尾追加连接词
-                        if (_pendingLinkWord) { finalText = finalText + '  ' + _pendingLinkWord; _pendingLinkWord = null; }
+                        // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
+                        finalText = _applyReplyAffix(finalText);
                         const finalImage = selected.find(item => item.image)?.image || null;
                         if (finalImage) {
                             const imgOpts = { ...opts, image: finalImage };
@@ -14031,9 +14388,8 @@ const opts = { marked, session: cur };
                         const imgOpts = { ...opts, image: pick.image };
                         acts.push(() => sendMessage('them', '', imgOpts));
                     } else {
-                        // 需求 B 路径②：末尾追加连接词
-                        let pickText = pick.text || '……';
-                        if (_pendingLinkWord) { pickText = pickText + '  ' + _pendingLinkWord; _pendingLinkWord = null; }
+                        // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
+                        let pickText = _applyReplyAffix(pick.text || '……');
                         acts.push(() => sendMessage('them', pickText, opts));
                     }
                 }
@@ -14798,15 +15154,15 @@ const _jieyiChunk = (text, perChunk) => {
 // 把一条解译入到该会话的「梦角自由造句」书册（返回新增条数）
 const _jieyiToCardBox = (s, text) => {
     if (!s || !text) return 0;
-    const box = s.corpus?.boxes?.['梦角自由造句'];
-    if (!box) return 0;
-    if (!Array.isArray(box.groups) || !box.groups.length) {
-        box.groups = [{ id: genId(), name: '梦角自由造句', replies: [] }];
-    }
-    const g = box.groups[0];
-    if (!Array.isArray(g.replies)) g.replies = [];
-    let chunks = [text];
+    // 固定写入「个人版」梦角自由造句（用户要求：对方个人字卡库）
+    const targetBox = s.corpus?.boxes?.['梦角自由造句'];
+    if (!targetBox) return 0;
+    if (!Array.isArray(targetBox.groups)) targetBox.groups = [];
+    // 整本书册去重（和「TA 抓取你说的话」一致）
+    const allTexts = new Set();
+    targetBox.groups.forEach(g => (g.replies || []).forEach(r => { if (r.text) allTexts.add(r.text); }));
     // 长文本按概率按标点切分
+    let chunks = [text];
     if (text.length > 30 && Math.random() < Number(settings.jieyiChunkProb ?? 0.5)) {
         chunks = _jieyiChunk(text, settings.jieyiChunkLen ?? 3);
     }
@@ -14814,8 +15170,13 @@ const _jieyiToCardBox = (s, text) => {
     chunks.forEach(c => {
         const t = String(c || '').trim();
         if (!t) return;
-        if (g.replies.some(r => (r.text || '').trim() === t)) return;   // 去重
-        g.replies.push({ id: genId(), text: t, enabled: true });
+        if (allTexts.has(t)) return;
+        // 与「抓取用户消息」同一套卷宗分配逻辑（取最后一个 / 满了新建 / 随机新建）
+        const g = getOrCreateFreeComposeGroup(targetBox, s);
+        if (!g) return;
+        if (!Array.isArray(g.replies)) g.replies = [];
+        g.replies.push({ id: genId(), text: t, enabled: true, isSystem: false, fromUser: true });
+        allTexts.add(t);
         added++;
     });
     return added;
@@ -14840,7 +15201,14 @@ const harvestJieyiForSession = (s) => {
         msg.jieyi.harvested = true;
         msg.jieyi.harvestedAt = Date.now();
         debouncedSave();
-        showToast('📖 梦角拾取了一句解译');
+        try {
+            const _b = s.corpus?.boxes?.['梦角自由造句'];
+            const _gs = _b?.groups || [];
+            const _last = _gs[_gs.length - 1];
+            console.log('[解译拾取] 会话:', s.name, '| 新增:', added, '条 | 分组数:', _gs.length,
+                '| 写入组:', _last?.name, '| 该组字卡数:', _last?.replies?.length);
+        } catch (e) {}
+        showToast(`📖 「${s.name}」拾取 ${added} 条 → 梦角自由造句`);
         return true;
     }
     return false;
@@ -15253,8 +15621,15 @@ const visualAlpha = (id) => (id === 'frosted' ? 0.55 : id === 'glass' ? 0.28 : i
 // 默认：全部展开（保持你熟悉的观感）。点标题收起，状态记在内存里（不落存档）。
 const sectionOpen = reactive({});
 const secKey = (k) => 's_' + String(k).replace(/\s+/g, '');
-const isSectionOpen = (k) => sectionOpen[secKey(k)] !== false;
-const toggleSection = (k) => { sectionOpen[secKey(k)] = !isSectionOpen(k); };
+// defaultOpen=false 用于「回复设置」子页：默认收起省内存（DOM 不渲染），点标题才展开
+const isSectionOpen = (k, defaultOpen = true) => {
+    const v = sectionOpen[secKey(k)];
+    return v === undefined ? !!defaultOpen : v !== false;
+};
+const toggleSection = (k, defaultOpen = true) => {
+    sectionOpen[secKey(k)] = !isSectionOpen(k, defaultOpen);
+    nextTick(() => { try { if (window.lucide) lucide.createIcons(); } catch (e) {} });
+};
 
 // ===== 回复设置（全局） =====
 const settingsTab = ref('外观');
@@ -15269,6 +15644,10 @@ const replySubTab = ref('私聊');
     // 用 v-if 控制，收起时 DOM 里不存在，省内存；切 Tab 时自动回首页
     const replySettingsPage = ref(null);
     watch(settingsTab, () => { replySettingsPage.value = null; });
+    // 进入/退出子页后重绘 lucide 图标（否则新加的 chevron 箭头不显示）
+    watch(replySettingsPage, () => {
+        nextTick(() => { try { if (window.lucide) lucide.createIcons(); } catch (e) {} });
+    });
 
 // 数字调整（- + 按钮用）
 const adjustSetting = (key, delta, min, max) => {
