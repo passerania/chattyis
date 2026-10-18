@@ -1063,7 +1063,7 @@ body { color: var(--color-text); }
                 </div>
 
                 <main id="chat-container" @scroll="onChatScroll" class="flex-1 overflow-y-auto px-4 py-6 pb-24 scroll-smooth">
-                    <div id="capture-area" class="pb-10">
+                    <div id="capture-area" class="pb-10" @click="pickScreenshotFrom" :class="screenshotPicker.active ? 'cursor-pointer' : ''">
                           <template v-for="(msg, index) in visibleMessages" :key="msg.id">
    <!-- 撤回消息（正常消息外观） -->
     <div v-if="msg.retracted" :id="'msg-'+msg.id" class="mb-5 relative group flex" :class="msg.sender === 'me' ? 'justify-end' : 'justify-start'"
@@ -5932,6 +5932,51 @@ body { color: var(--color-text); }
                 <span class="text-white/70 text-[12px] font-mono">{{ formatCallDuration(visibleCallNotification.call.elapsed) }}</span>
                 <button @click.stop="callMinimized = false" @mousedown.stop @touchstart.stop class="ml-1 text-white/70 hover:text-white"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
                 <button @click.stop="hangupCall(visibleCallNotification)" @mousedown.stop @touchstart.stop class="text-red-400 hover:text-red-300"><i data-lucide="phone-off" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <!-- ===== 截图：自选范围底部操作条 ===== -->
+        <div v-if="screenshotPicker.active" class="fixed left-0 right-0 bottom-0 z-[280] px-4 pb-6 pt-3"
+             style="background: color-mix(in srgb, var(--color-surface) 96%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(128,128,128,0.18);">
+            <div class="text-center text-[13px] mb-2" style="color: var(--color-text); opacity: 0.72;">
+                {{ screenshotPickCount > 0 ? ('已选择最近 ' + screenshotPickCount + ' 条 · 点其他消息可调整') : '点一条消息，从它截到最新' }}
+            </div>
+            <div class="flex gap-2">
+                <button @click="cancelScreenshotPick" class="flex-1 py-2.5 rounded-lg border border-border text-[14px] text-text">取消</button>
+                <button @click="confirmScreenshotPick" class="flex-1 py-2.5 rounded-lg text-[14px] text-white"
+                        :class="screenshotPickCount > 0 ? 'opacity-100' : 'opacity-50'"
+                        style="background: var(--color-text);">生成</button>
+            </div>
+        </div>
+
+        <!-- ===== 截图选择弹窗 ===== -->
+        <div v-if="screenshotModal.show" class="redpacket-overlay" style="z-index:285;" @click.self="closeScreenshotModal">
+            <div class="redpacket-card" style="width:320px;">
+                <div class="redpacket-card-top" style="padding-bottom:12px;">
+                    <div class="text-white text-sm font-medium tracking-wider">保存长图</div>
+                </div>
+                <div class="redpacket-card-bottom" style="text-align:left;padding:14px;">
+                    <button @click="screenshotModal.mode = 'all'"
+                            class="w-full py-2.5 mb-2 rounded-lg border text-[14px] transition-colors"
+                            :class="screenshotModal.mode === 'all' ? 'border-text bg-bg text-text' : 'border-border text-muted'">
+                        截全图
+                    </button>
+                    <button @click="startScreenshotPick"
+                            class="w-full py-2.5 mb-2 rounded-lg border border-border text-[14px] text-muted transition-colors">
+                        自选范围（点消息选）
+                    </button>
+
+                    <div class="text-[12px] mb-3" style="color: var(--color-text); opacity: 0.66;">
+                        <template v-if="screenshotModal.status === 'rendering'">正在后台渲染全图…</template>
+                        <template v-else-if="screenshotModal.status === 'ready'">✔ 全图已就绪，选「截全图」几乎秒出</template>
+                        <template v-else-if="screenshotModal.status === 'error'">渲染失败，可试「自选」少截几条</template>
+                    </div>
+
+                    <button @click="confirmScreenshot" class="w-full py-2.5 rounded-lg text-[14px] text-white mb-2 transition-opacity"
+                            :class="screenshotModal.status === 'rendering' ? 'opacity-60' : 'opacity-100'"
+                            style="background: var(--color-text);">生成</button>
+                    <button @click="closeScreenshotModal" class="w-full py-2 rounded-lg text-[14px] border border-border text-text">取消</button>
+                </div>
             </div>
         </div>
 
@@ -14806,19 +14851,171 @@ if (Math.random() < 0.1) {
       return out;
     };
 
-    const captureScreenshot = () => {
-      const el = document.getElementById('capture-area');
-      if (!el) return;
-      html2canvas(el, {
+    // ===== 截图：弹窗选择（全图 / 自选最近 N 条）+ 弹窗期间预渲染 =====
+    const screenshotModal = reactive({
+      show: false,
+      mode: 'all',        // 'all' | 'custom'
+      count: 20,
+      status: '',         // '' | 'rendering' | 'ready' | 'error'
+    });
+    let _shotCache = null;   // 预渲染好的全图 canvas
+
+    const _captureAreaEl = () => document.getElementById('capture-area');
+
+    const _renderCapture = (extra = {}) => {
+      const el = _captureAreaEl();
+      if (!el) return Promise.reject(new Error('no capture area'));
+      return html2canvas(el, Object.assign({
         backgroundColor: settings.darkMode ? '#0d0d0f' : '#f7f7f9',
-        scale: 2,
-      }).then((canvas) => {
-        const a = document.createElement('a');
-        a.href = canvas.toDataURL();
-        a.download = `留白_${Date.now()}.png`;
-        a.click();
+        scale: 1.5,
+        logging: false,
+        imageTimeout: 3000,
+        removeContainer: true,
+      }, extra));
+    };
+
+    // 后台预渲染全图（弹窗打开就开始，用户选「截全图」时直接用）
+    const _preRenderAll = () => {
+      screenshotModal.status = 'rendering';
+      _shotCache = null;
+      _renderCapture().then((canvas) => {
+        _shotCache = canvas;
+        if (screenshotModal.show) screenshotModal.status = 'ready';
+      }).catch((e) => {
+        console.warn('[预渲染失败]', e);
+        if (screenshotModal.show) screenshotModal.status = 'error';
       });
     };
+
+    const openScreenshotModal = () => {
+      screenshotModal.show = true;
+      screenshotModal.mode = 'all';
+      screenshotModal.count = 20;
+      screenshotModal.status = 'rendering';
+      // 等弹窗渲染出来再开始重活
+      nextTick(() => { setTimeout(() => _preRenderAll(), 80); });
+    };
+
+    // 自选 N 条 → 算出容器内的 y / height（html2canvas 支持裁剪）
+    const _shotRange = (n) => {
+      const el = _captureAreaEl();
+      if (!el) return { y: 0, height: 0 };
+      const kids = Array.from(el.children).filter(c => c.nodeType === 1);
+      const total = kids.length;
+      if (!total) return { y: 0, height: el.scrollHeight };
+      const take = Math.min(Math.max(1, n), total);
+      if (take >= total) return { y: 0, height: el.scrollHeight };
+      const startEl = kids[total - take];
+      const box = el.getBoundingClientRect();
+      const r = startEl.getBoundingClientRect();
+      const y = Math.max(0, r.top - box.top) + el.scrollTop;
+      return { y, height: Math.max(1, el.scrollHeight - y) };
+    };
+
+    const _saveCanvas = (canvas) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { showToast('截图失败'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `留白_${Date.now()}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('截图已保存');
+      }, 'image/png');
+    };
+
+    const confirmScreenshot = () => {
+      // 全图：优先用预渲染好的缓存（几乎秒出）
+      if (screenshotModal.mode === 'all') {
+        if (_shotCache) {
+          _saveCanvas(_shotCache);
+          screenshotModal.show = false;
+          screenshotModal.status = '';
+          return;
+        }
+        screenshotModal.status = 'rendering';
+        _renderCapture().then((c) => {
+          _shotCache = c;
+          _saveCanvas(c);
+          screenshotModal.show = false;
+          screenshotModal.status = '';
+        }).catch(() => { showToast('截图失败'); screenshotModal.status = 'error'; });
+        return;
+      }
+      // 自选：只截最近 N 条（渲染量小，很快）
+      const r = _shotRange(screenshotModal.count);
+      if (!r.height) { showToast('没有可截的内容'); return; }
+      screenshotModal.status = 'rendering';
+      _renderCapture({ y: r.y, height: r.height }).then((c) => {
+        _saveCanvas(c);
+        screenshotModal.show = false;
+        screenshotModal.status = '';
+      }).catch(() => { showToast('截图失败'); screenshotModal.status = 'error'; });
+    };
+
+    const closeScreenshotModal = () => {
+      screenshotModal.show = false;
+      screenshotModal.status = '';
+      _shotCache = null;
+    };
+
+    // ===== 自选范围：点一条消息 → 从它截到最新 =====
+    const screenshotPicker = reactive({ active: false, anchorIdx: -1 });
+
+    const _shotKids = () => {
+      const area = document.getElementById('capture-area');
+      return area ? Array.from(area.children).filter(c => c.nodeType === 1) : [];
+    };
+
+    const startScreenshotPick = () => {
+      screenshotModal.show = false;
+      screenshotModal.status = '';
+      _shotCache = null;
+      screenshotPicker.active = true;
+      screenshotPicker.anchorIdx = -1;
+      showToast('点一条消息，从它截到最新');
+    };
+
+    const cancelScreenshotPick = () => {
+      screenshotPicker.active = false;
+      screenshotPicker.anchorIdx = -1;
+    };
+
+    const pickScreenshotFrom = (e) => {
+      if (!screenshotPicker.active) return;
+      const kids = _shotKids();
+      let idx = -1;
+      kids.forEach((k, i) => { if (k.contains(e.target)) idx = i; });
+      if (idx < 0) return;
+      // 从最新往上数：点中的是区间起点
+      screenshotPicker.anchorIdx = idx;
+    };
+
+    const screenshotPickCount = computed(() => {
+      if (!screenshotPicker.active || screenshotPicker.anchorIdx < 0) return 0;
+      const kids = _shotKids();
+      return Math.max(0, kids.length - screenshotPicker.anchorIdx);
+    });
+
+    const confirmScreenshotPick = () => {
+      const area = document.getElementById('capture-area');
+      const kids = _shotKids();
+      const idx = screenshotPicker.anchorIdx;
+      if (!area || idx < 0 || idx >= kids.length) { showToast('请先点选一条消息'); return; }
+      const box = area.getBoundingClientRect();
+      const r = kids[idx].getBoundingClientRect();
+      const y = Math.max(0, r.top - box.top) + area.scrollTop;
+      const height = Math.max(1, area.scrollHeight - y);
+      screenshotPicker.active = false;
+      screenshotPicker.anchorIdx = -1;
+      showToast('正在生成…');
+      _renderCapture({ y, height }).then((c) => { _saveCanvas(c); })
+        .catch(() => showToast('截图失败'));
+    };
+
+    // 兼容旧调用名
+    const captureScreenshot = openScreenshotModal;
 
     // 语料库核心修复: 拖拽组同步、回复拖拽跨组稳固
     const initSortable = () => {
@@ -17667,22 +17864,38 @@ const removeGroupMember = (mid) => {
 
    // ===== 版本更新公告 =====
 // 想再弹一次公告：改这个版本号即可（日期格式最直观）
-const APP_VERSION = '2026.10.11.3';
+const APP_VERSION = '2026.10.18.1';
 const UPDATE_NOTES =
-    '📣 chatty 玩法上线，修复了发热bug\n\n' +
-    '▎怎么用\n' +
-    '主屏软件页 → 点 chatty → 输入两位暗号（如 42）邀请安装 → 装好后点 chatty → 进入 TA 的屏幕\n\n' +
-    '▎chatty 能看啥\n' +
-    '· TA 头像、背景、聊天记录（TA 视角左右反转）\n' +
-    '· 左上角 ☰ 切换不同装了 chatty 的人\n' +
-    '· 右上角 ⛶ 切换贴合手机框 / 铺满屏幕\n\n' +
-    '▎梦角在 chatty\n' +
-    '逐字母拼音拼字，用拼音选字卡，概率发到主聊天。\n' +
-    '拼音拼字已上线：可调概率，字卡外的字标红；后台触发在 回复设置 → 通用 里开，间隔建议 1h 以上。\n\n' +
-    '▎小提示\n' +
-    '常用字从「字卡 → 词典」抽，多加单字（我、你、爱、喜……）组合更顺。\n\n' +
-    '▎其他更新\n' +
-    '占卜上线（照明之秘可手动补录）、水墨主题、css 气泡、mj 可发塔罗卡片。';
+    '📣 这次更新：解译、回应字卡、设置页重整、来电与截图优化\n\n' +
+    '▎解译（原「解述」改名）\n' +
+    '· 每条消息（含红包/占卜/派活/图片）都能写一段解译，显示在气泡下方\n' +
+    '· 点解译条可改、可删；长按菜单和悬停工具栏都有入口\n\n' +
+    '▎聊天回应字卡（新玩法）\n' +
+    '· TA 回复时会随机加「前缀」（嗯、呃……）或「后缀」（但是、话说回来、晚安）\n' +
+    '· 拼成一条气泡，不再单独发一条\n' +
+    '· 概率在 回复设置 → 字卡权重 → 聊天回应字卡 里调\n' +
+    '· 外语：私聊右上角「更多设置」可选 TA 的语言（意/日），会混着发（带翻译）\n\n' +
+    '▎解译拾取\n' +
+    '· 梦角会不定期把你写的解译收进「梦角自由造句」字卡\n' +
+    '· 长句按标点自动切段；概率与切分在 回复设置 → 字卡权重 → 解译拾取 里调\n\n' +
+    '▎设置页重整\n' +
+    '· 回复设置所有子页改成卡片式，默认收起（更省内存）\n' +
+    '· 梦角派活 / 回应字卡 / 解译拾取 移到「字卡权重」子页\n\n' +
+    '▎来电\n' +
+    '· 来电频率可调了（间隔 + 概率），在 回复设置 → 回复频率 → 来电\n' +
+    '· 点接听后自动缩成悬浮小条，不再挡屏幕，可以正常去别的会话\n\n' +
+    '▎小通知\n' +
+    '· 有新消息时顶部弹一条横幅（像 iPhone 通知），几秒消失，点一下直接进会话\n\n' +
+    '▎截图更快了\n' +
+    '· 点相机会问「截全图」还是「自选范围」\n' +
+    '· 自选：点一条消息，从它截到最新（像微信多选）\n' +
+    '· 弹窗期间会提前渲染全图，选全图几乎秒出\n\n' +
+    '▎顺手修的\n' +
+    '· 拼音打字后一直"输入中"、卡住不回消息 → 修好\n' +
+    '· 消息旁圆形按钮显示不全（电脑版）→ 修好\n' +
+    '· 解译条被挤成窄条换行 → 修好\n' +
+    '· 弹窗文字对比度太低 → 调高\n' +
+    '· 全局字号 +1、工具栏图标放大、主屏顶部留白收紧';
 
     const updateNotice = reactive({ show: false });
     const checkUpdateNotice = () => {
@@ -23247,6 +23460,8 @@ CHATTY_KEYBOARD_ROWS, chattyKeyActive, CHATTY_PINYIN_BY_INITIAL,CHATTY_PUNCT_ROW
       executeSearch,
       jumpSearch,
       captureScreenshot,
+      screenshotModal, openScreenshotModal, confirmScreenshot, closeScreenshotModal,
+      screenshotPicker, startScreenshotPick, cancelScreenshotPick, pickScreenshotFrom, screenshotPickCount, confirmScreenshotPick,
       toggleDarkMode,
       toggleSound,
       fmtDelay,
