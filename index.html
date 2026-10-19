@@ -184,6 +184,41 @@ body { color: var(--color-text); }
         }
         .custom-css-jieyi { }
 
+        /* 截图专用：渲染前临时关掉昂贵样式，html2canvas 解析量大幅下降 */
+        .shot-simplify *,
+        .shot-simplify *::before,
+        .shot-simplify *::after {
+            box-shadow: none !important;
+            text-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            filter: none !important;
+            animation: none !important;
+            transition: none !important;
+        }
+
+        /* 截图自选：未选中消息变淡，选中的打勾 */
+        .shot-pick-off { opacity: 0.25; }
+        .shot-pick-on { position: relative; }
+        .shot-pick-on::after {
+            content: '✓';
+            position: absolute;
+            left: -4px;
+            top: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--nav-icon-color, #555);
+            color: #fff;
+            font-size: 13px;
+            line-height: 20px;
+            text-align: center;
+            font-weight: 600;
+            z-index: 6;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            pointer-events: none;
+        }
+
         /* ===== 温馨空间：字号保护（B.2）——全局字号 +1 后，这一层压回原值 ===== */
         .no-scale .text-\[10px\] { font-size: 9px !important; }
         .no-scale .text-\[11px\] { font-size: 10px !important; }
@@ -5848,17 +5883,12 @@ body { color: var(--color-text); }
 
             <!-- 通话窗口 -->
             <div v-if="!callMinimized" class="call-window absolute" :style="callWindowStyle" @mousedown.stop="startCallWindowDrag" @touchstart.stop="startCallWindowDrag">
-                <!-- 背景层 -->
+                <!-- 背景层（简化：纯色 + 可选图片，去掉渐变光球动画，省电省内存） -->
                 <div class="call-bg absolute inset-0">
-                    <!-- 默认渐变星空底 -->
-                    <div class="absolute inset-0" style="background:linear-gradient(135deg,#1a1a3e,#0d1b3e 35%,#162447 65%,#0f0c29);"></div>
-                    <!-- 会话背景图（随机抽一张） -->
+                    <div class="absolute inset-0" style="background:#161625;"></div>
+                    <!-- 会话背景图（如果有） -->
                     <div v-if="callBgImage" class="absolute inset-0 bg-cover bg-center" :style="{ backgroundImage: 'url(' + callBgImage + ')' }"></div>
-                    <div class="absolute inset-0" style="background:linear-gradient(135deg,#1a1a3e,#0d1b3e 35%,#162447 65%,#0f0c29);opacity:0.55;"></div>
-                    <!-- 漂浮光球 -->
-                    <div class="call-orb" style="background:#4a90d9;width:70px;height:70px;left:12%;top:18%;"></div>
-                    <div class="call-orb" style="background:#7b68ee;width:80px;height:80px;left:68%;top:30%;animation-delay:2.6s;"></div>
-                    <div class="call-orb" style="background:#48c9b0;width:55px;height:55px;left:40%;top:68%;animation-delay:5.1s;"></div>
+                    <div class="absolute inset-0" style="background:rgba(8,8,18,0.42);"></div>
                 </div>
 
                 <!-- 内容区 -->
@@ -5967,9 +5997,9 @@ body { color: var(--color-text); }
                     </button>
 
                     <div class="text-[12px] mb-3" style="color: var(--color-text); opacity: 0.66;">
-                        <template v-if="screenshotModal.status === 'rendering'">正在后台渲染全图…</template>
-                        <template v-else-if="screenshotModal.status === 'ready'">✔ 全图已就绪，选「截全图」几乎秒出</template>
-                        <template v-else-if="screenshotModal.status === 'error'">渲染失败，可试「自选」少截几条</template>
+                        <template v-if="screenshotModal.status === 'rendering'">正在生成…（大图需要几秒，请稍候）</template>
+                        <template v-else-if="screenshotModal.status === 'error'">生成失败，可试「自选范围」少截几条</template>
+                        <template v-else>「截全图」会保存整段对话；「自选范围」点消息选起点</template>
                     </div>
 
                     <button @click="confirmScreenshot" class="w-full py-2.5 rounded-lg text-[14px] text-white mb-2 transition-opacity"
@@ -12442,9 +12472,13 @@ const _applyReplyAffix = (text) => {
     const body = String(text == null ? '' : text);
     const c = a.card;
     if (!c || !c.text) return body;
-    // 外语卡带翻译：sì（是）/ ciao（拜拜）
+    // 外语卡：原文（罗马音）在前，括号里带假名/翻译
+    // 日语 → kawaii（かわいい·可爱）；意语 → sì（是）
     let cardText = c.text;
-    if (c.translation) cardText += '（' + c.translation + '）';
+    const _sub = [];
+    if (c.kana) _sub.push(c.kana);
+    if (c.translation) _sub.push(c.translation);
+    if (_sub.length) cardText += '（' + _sub.join('·') + '）';
     if (!body.trim()) return cardText;
     if (a.isPrefix) {
         // 前缀：卡片末尾已有标点就不再补逗号
@@ -14865,13 +14899,26 @@ if (Math.random() < 0.1) {
     const _renderCapture = (extra = {}) => {
       const el = _captureAreaEl();
       if (!el) return Promise.reject(new Error('no capture area'));
-      return html2canvas(el, Object.assign({
-        backgroundColor: settings.darkMode ? '#0d0d0f' : '#f7f7f9',
-        scale: 1.5,
-        logging: false,
-        imageTimeout: 3000,
-        removeContainer: true,
-      }, extra));
+      // 临时关掉阴影/模糊/动画：html2canvas 不用再算这些，速度明显变快
+      document.body.classList.add('shot-simplify');
+      return new Promise((resolve, reject) => {
+        // 让浏览器先把简化样式应用上，再开始渲染
+        requestAnimationFrame(() => {
+          html2canvas(el, Object.assign({
+            backgroundColor: settings.darkMode ? '#0d0d0f' : '#f7f7f9',
+            scale: 1.2,          // 1.5 → 1.2：像素量再降 36%，长图也够清晰
+            logging: false,
+            imageTimeout: 3000,
+            removeContainer: true,
+          }, extra)).then((canvas) => {
+            document.body.classList.remove('shot-simplify');
+            resolve(canvas);
+          }).catch((err) => {
+            document.body.classList.remove('shot-simplify');
+            reject(err);
+          });
+        });
+      });
     };
 
     // 后台预渲染全图（弹窗打开就开始，用户选「截全图」时直接用）
@@ -14891,9 +14938,10 @@ if (Math.random() < 0.1) {
       screenshotModal.show = true;
       screenshotModal.mode = 'all';
       screenshotModal.count = 20;
-      screenshotModal.status = 'rendering';
-      // 等弹窗渲染出来再开始重活
-      nextTick(() => { setTimeout(() => _preRenderAll(), 80); });
+      screenshotModal.status = '';
+      _shotCache = null;
+      // 注意：不再在弹窗打开时自动渲染（html2canvas 会阻塞主线程，导致弹窗卡住不能操作）
+      // 「截全图」在用户点「生成」时才渲染；「自选范围」完全不渲染
     };
 
     // 自选 N 条 → 算出容器内的 y / height（html2canvas 支持裁剪）
@@ -14912,6 +14960,36 @@ if (Math.random() < 0.1) {
       return { y, height: Math.max(1, el.scrollHeight - y) };
     };
 
+    // 长内容分块渲染：每块算完让出主线程，界面不会整段卡死
+    const _renderAllProgressive = async () => {
+      const el = _captureAreaEl();
+      if (!el) throw new Error('no capture area');
+      const totalH = el.scrollHeight;
+      const totalW = el.offsetWidth;
+      // 内容不高：一次渲染就够快
+      if (totalH <= 1600) return await _renderCapture();
+      const SCALE = 1.2;
+      const CHUNK = 900;                                  // 每块约 900px（6~10 条消息）
+      const strips = [];
+      for (let y = 0; y < totalH; y += CHUNK) {
+        const h = Math.min(CHUNK, totalH - y);
+        const c = await _renderCapture({ y, height: h, scale: SCALE });
+        strips.push({ canvas: c, y, h });
+        await new Promise(r => setTimeout(r, 16));        // 喘一口气，UI 可响应
+      }
+      // 拼成一张长图
+      const out = document.createElement('canvas');
+      out.width = Math.round(totalW * SCALE);
+      out.height = Math.round(totalH * SCALE);
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = settings.darkMode ? '#0d0d0f' : '#f7f7f9';
+      ctx.fillRect(0, 0, out.width, out.height);
+      strips.forEach(s => {
+        ctx.drawImage(s.canvas, 0, Math.round(s.y * SCALE));
+      });
+      return out;
+    };
+
     const _saveCanvas = (canvas) => {
       canvas.toBlob((blob) => {
         if (!blob) { showToast('截图失败'); return; }
@@ -14926,16 +15004,10 @@ if (Math.random() < 0.1) {
     };
 
     const confirmScreenshot = () => {
-      // 全图：优先用预渲染好的缓存（几乎秒出）
+      // 全图：长内容自动分块渲染（每块让出主线程，界面不会整段卡死）
       if (screenshotModal.mode === 'all') {
-        if (_shotCache) {
-          _saveCanvas(_shotCache);
-          screenshotModal.show = false;
-          screenshotModal.status = '';
-          return;
-        }
         screenshotModal.status = 'rendering';
-        _renderCapture().then((c) => {
+        _renderAllProgressive().then((c) => {
           _shotCache = c;
           _saveCanvas(c);
           screenshotModal.show = false;
@@ -14974,12 +15046,27 @@ if (Math.random() < 0.1) {
       _shotCache = null;
       screenshotPicker.active = true;
       screenshotPicker.anchorIdx = -1;
+      _clearPickHighlight();
       showToast('点一条消息，从它截到最新');
     };
 
     const cancelScreenshotPick = () => {
       screenshotPicker.active = false;
       screenshotPicker.anchorIdx = -1;
+      _clearPickHighlight();
+    };
+
+    const _clearPickHighlight = () => {
+      _shotKids().forEach(k => k.classList.remove('shot-pick-on', 'shot-pick-off'));
+    };
+
+    const _applyPickHighlight = () => {
+      const kids = _shotKids();
+      const idx = screenshotPicker.anchorIdx;
+      kids.forEach((k, i) => {
+        k.classList.toggle('shot-pick-on', idx >= 0 && i >= idx);
+        k.classList.toggle('shot-pick-off', idx >= 0 && i < idx);
+      });
     };
 
     const pickScreenshotFrom = (e) => {
@@ -14990,6 +15077,7 @@ if (Math.random() < 0.1) {
       if (idx < 0) return;
       // 从最新往上数：点中的是区间起点
       screenshotPicker.anchorIdx = idx;
+      _applyPickHighlight();
     };
 
     const screenshotPickCount = computed(() => {
@@ -15009,6 +15097,7 @@ if (Math.random() < 0.1) {
       const height = Math.max(1, area.scrollHeight - y);
       screenshotPicker.active = false;
       screenshotPicker.anchorIdx = -1;
+      _clearPickHighlight();
       showToast('正在生成…');
       _renderCapture({ y, height }).then((c) => { _saveCanvas(c); })
         .catch(() => showToast('截图失败'));
