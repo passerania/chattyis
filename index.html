@@ -1516,7 +1516,7 @@ body { color: var(--color-text); }
                
                 <!-- 图片消息 -->
                 <div v-if="msg.image" class="relative">
-                    <img :src="msg.image" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
+                    <img :src="msg.image" @load="scrollToBottom" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
                     <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
                 </div>
 
@@ -3973,98 +3973,7 @@ body { color: var(--color-text); }
 
             
             <!--（洞察板块已移除）-->
-            <!-- ===== TD-1：专注 App（番茄钟 / 山林）===== -->
-            <div v-else-if="currentView === 'focus'" key="focus" class="absolute inset-0 flex flex-col z-20 bg-transparent">
-                <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
-                    <button @click="switchView('home')" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
-                    <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[14px] font-medium tracking-widest serif-text">专注</span>
-                    <span class="w-9"></span>
-                </header>
-                <div class="shrink-0 bg-surface border-b border-border/40 px-3 py-2 flex gap-1.5">
-                    <button @click="focusTab = 'pomodoro'"
-                            class="flex-1 py-1.5 rounded-full text-[13px] tracking-widest transition-colors"
-                            :class="focusTab === 'pomodoro' ? 'bg-text text-white' : 'bg-bg text-muted'">番茄钟</button>
-                    <button @click="focusTab = 'forest'"
-                            class="flex-1 py-1.5 rounded-full text-[13px] tracking-widest transition-colors"
-                            :class="focusTab === 'forest' ? 'bg-text text-white' : 'bg-bg text-muted'">山林</button>
-                </div>
-                <main class="flex-1 overflow-y-auto p-4 pb-20">
-                    <!-- TD-2：番茄钟 -->
-                    <div v-if="focusTab === 'pomodoro'" class="space-y-4">
-                        <div v-if="!focus.running" class="bg-surface border border-border rounded-xl p-4">
-                            <div class="text-[12px] text-muted tracking-widest mb-2">选择时长</div>
-                            <div class="flex gap-2">
-                                <button v-for="m in FOCUS_DURATIONS" :key="m"
-                                        @click="focus.durationMin = m; focus.remainingSec = m * 60;"
-                                        class="flex-1 py-2 rounded-lg text-[14px] tracking-widest transition-colors"
-                                        :class="focus.durationMin === m ? 'bg-text text-white' : 'bg-bg text-muted'">{{ m }}分</button>
-                            </div>
-                        </div>
-                        <div v-if="!focus.running" class="bg-surface border border-border rounded-xl p-4">
-                            <div class="text-[12px] text-muted tracking-widest mb-2">选择任务（可选）</div>
-                            <select v-model="focus.taskId" class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[14px] text-text">
-                                <option :value="null">自由专注</option>
-                                <option v-for="t in todo.tasks.filter(x => !x.done)" :key="t.id" :value="t.id">{{ t.title }}</option>
-                            </select>
-                        </div>
-                        <div class="bg-surface border border-border rounded-xl p-6 text-center">
-                            <div class="text-[56px] font-light tabular-nums tracking-wider" style="font-family:'Noto Serif SC',serif;">{{ formatFocusTime(focus.remainingSec) }}</div>
-                            <div class="text-[12px] text-muted mt-2">
-                                <span v-if="focus.running">专注中…</span>
-                                <span v-else>准备开始</span>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button v-if="!focus.running" @click="startFocusTimer"
-                                    class="flex-1 py-3 rounded-xl text-white text-[15px] tracking-widest"
-                                    style="background:var(--nav-icon-color);">开始专注</button>
-                            <button v-else @click="cancelFocusTimer"
-                                    class="flex-1 py-3 rounded-xl border border-red-400/50 text-red-500 text-[15px] tracking-widest">放弃</button>
-                        </div>
-                    </div>
-                    <!-- TD-3：山林 -->
-                    <div v-else-if="focusTab === 'forest'" class="space-y-4">
-                        <div class="bg-surface border border-border rounded-xl overflow-hidden">
-                            <div class="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                                <span class="text-[13px] text-text tracking-widest">当前树林 · {{ forest.current.plants.length }} 棵</span>
-                                <button @click="confirmArchiveForest"
-                                        class="text-[12px] text-muted hover:text-text tracking-widest">归入山林</button>
-                            </div>
-                            <div class="relative" style="height:220px; background: linear-gradient(180deg, rgba(200,220,240,0.2), rgba(180,220,180,0.15));">
-                                <div v-if="!forest.current.plants.length" class="absolute inset-0 flex items-center justify-center text-[13px] text-muted/60">树林是空的，去种一棵吧</div>
-                                <div v-for="p in forest.current.plants" :key="p.id"
-                                     class="absolute transition-all"
-                                     :style="{ left: p.x + '%', top: p.y + '%', fontSize: plantSize(p) + 'px', transform: 'translate(-50%, -50%)' }"
-                                     :title="p.variant + (p.taskTitle ? ' · ' + p.taskTitle : '')">
-                                    {{ plantEmoji(p) }}
-                                </div>
-                            </div>
-                            <div class="px-4 py-2 text-[11px] text-muted/60 border-t border-border flex justify-between">
-                                <span>占用 {{ Math.round((forest.current.sizeBytes || 0) / 1024) }} KB / {{ (settings.forestArchiveSizeMB || 5) * 1024 }} KB</span>
-                                <span v-if="forest.current.createdAt">始于 {{ formatDiviTime(forest.current.createdAt).slice(0,10) }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-[12px] text-muted tracking-widest mb-2 px-1">历史山林 · {{ forest.history.length }} 片</div>
-                            <div v-if="!forest.history.length" class="text-center text-[13px] text-muted/60 py-8">还没有归入山林的记忆</div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div v-for="ph in forest.history.slice().reverse()" :key="ph.id"
-                                     @click="openForestPhoto(ph.id)"
-                                     class="bg-surface border border-border rounded-xl overflow-hidden cursor-pointer hover:border-text transition-colors">
-                                    <div class="relative" style="height:100px; background: linear-gradient(180deg, rgba(200,220,240,0.2), rgba(180,220,180,0.15));">
-                                        <div v-for="(p, pi) in ph.snapshot.slice(0, 12)" :key="pi"
-                                             class="absolute"
-                                             :style="{ left: p.x + '%', top: p.y + '%', fontSize: '10px', transform: 'translate(-50%, -50%)' }">
-                                            {{ plantEmoji(p) }}
-                                        </div>
-                                    </div>
-                                    <div class="px-2 py-1.5 text-[11px] text-muted text-center">{{ ph.plantCount }} 棵 · {{ formatDiviTime(ph.archivedAt).slice(0,10) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
+            <!--（专注 App：番茄钟 / 山林 已整体移除 —— iOS 杀后台无法维持计时）-->
             <!-- 占卜 -->
             <div v-else-if="currentView === 'divination'" key="divination" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
@@ -4964,6 +4873,7 @@ body { color: var(--color-text); }
                     <option value="read">已读</option>
                 </select>
                 <button @click="markAllMailRead" class="text-[11px] px-2 py-1 rounded-md border border-border text-muted hover:text-text transition-colors ml-auto">全部已读</button>
+                <button @click="clearAllMails" class="text-[11px] px-2 py-1 rounded-md border border-red-300/60 text-red-500 hover:bg-red-500/10 transition-colors">清空信件</button>
             </div>
         </div>
         <main class="flex-1 overflow-y-auto px-4 py-4 pb-20 space-y-3">
@@ -6013,8 +5923,9 @@ body { color: var(--color-text); }
         <!-- 应用内顶部横幅通知（类似 iPhone 通知） -->
         <transition name="toastfade">
             <div v-if="appBanner.show" @click="openAppBanner"
-                 class="fixed left-1/2 -translate-x-1/2 z-[270] cursor-pointer"
-                 style="top: calc(env(safe-area-inset-top, 0px) + 10px); width: min(92%, 360px);">
+                 @touchstart="onBannerTouchStart" @touchmove.prevent="onBannerTouchMove" @touchend="onBannerTouchEnd"
+                 class="fixed z-[270] cursor-pointer"
+                 :style="{ left: '50%', top: 'calc(env(safe-area-inset-top, 0px) + 10px)', width: 'min(92%, 360px)', transform: 'translate(-50%, ' + appBannerTouch.dy + 'px)', opacity: appBannerTouch.dy < -10 ? 0.7 : 1, transition: appBannerTouch.dragging ? 'none' : 'transform 0.22s ease, opacity 0.22s ease' }">
                 <div class="flex items-center gap-3 px-3 py-2.5 rounded-2xl shadow-xl"
                      style="background: color-mix(in srgb, var(--color-surface) 94%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(128,128,128,0.18);">
                     <div class="w-9 h-9 rounded-[10px] overflow-hidden shrink-0 flex items-center justify-center" style="background: rgba(128,128,128,0.16);">
@@ -6907,6 +6818,15 @@ body { color: var(--color-text); }
             <div v-if="diviRecordDetailItem.userReading" class="pt-3 border-t border-border/40 mt-3">
                 <div class="text-[11px] text-muted/60 tracking-widest mb-1">总解读</div>
                 <div class="text-[13px] text-text/90 leading-relaxed whitespace-pre-wrap">{{ diviRecordDetailItem.userReading }}</div>
+            </div>
+            <!-- 复盘：追加新解读 -->
+            <div class="pt-3 border-t border-border/40 mt-3">
+                <div class="text-[11px] text-muted/60 tracking-widest mb-1">追加复盘解读</div>
+                <textarea v-model="diviRecordDetail.newReading" rows="3"
+                          class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-2"
+                          placeholder="这次回看，想到了什么…"></textarea>
+                <button @click="appendDiviReading" class="w-full py-2 rounded-lg text-white text-[13px] tracking-widest"
+                        style="background:var(--nav-icon-color);">追加到总解读</button>
             </div>
         </div>
     </div>
@@ -8605,30 +8525,34 @@ const runDeduplicate = (mode) => {
     if (!allGroups.length) { showToast('当前书册没有字卡'); return; }
 
     let removedCount = 0;
+    // ⚠️ seen 提到循环外：整本书册共享一个 Set → 跨分组也能去重（原来在每个分组内新建，跨分组抓不到）
+    const seen = new Set();
     allGroups.forEach(g => {
         if (!g.replies || !g.replies.length) return;
-        const seen = new Set();
         const unique = [];
         g.replies.forEach(r => {
-            if (r.text === undefined || r.text === null) {
-                unique.push(r);
-                return;
-            }
+            const raw = (r.text === undefined || r.text === null) ? '' : String(r.text);
+            const imgKey = r.image ? ('__img__' + r.image) : '';
             let key;
             if (mode === 'exact') {
-                key = r.text.trim();
+                key = raw.trim();
             } else {
-                key = r.text.trim().replace(/[^\w\u4e00-\u9fa5]/g, '');
+                // 模糊：全角→半角 + 转小写 + 去掉标点/空格
+                key = raw.trim()
+                    .replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+                    .replace(/\u3000/g, ' ')
+                    .toLowerCase()
+                    .replace(/[^\w\u4e00-\u9fa5]/g, '');
             }
-            if (key === '') {
-                unique.push(r);
-                return;
-            }
-            if (!seen.has(key)) {
+            // 图片卡：按图片内容去重
+            if (!key && imgKey) key = imgKey;
+            // 空文本且没图 → 保留（可能是待填的空卡）
+            if (!key) { unique.push(r); return; }
+            if (seen.has(key)) {
+                removedCount++;
+            } else {
                 seen.add(key);
                 unique.push(r);
-            } else {
-                removedCount++;
             }
         });
         g.replies = unique;
@@ -12855,13 +12779,14 @@ const letterDraft = reactive({
 const _joinCardsForDisplay = (cards) => {
     if (!Array.isArray(cards) || !cards.length) return '';
     if (!settings.letterRandomPunctuation) return cards.join('  ');
-    const pool = ['，', '。', '！', '？', '，', '。', '  '];
+    // ⚠️ 这里绝对不能用 Math.random()：本函数会在 computed(allMailItems) 里被调用，
+    //    随机结果会让 computed 每次重算都"变化"，触发无限重渲染 → 信件多时直接黑屏。
+    //    改用按索引轮转的确定性标点，视觉上仍然自然。
+    const pool = ['，', '。', '！', '？', '，', '。'];
     let out = '';
     cards.forEach((c, i) => {
         out += c;
-        if (i < cards.length - 1) {
-            out += pool[Math.floor(Math.random() * pool.length)];
-        }
+        if (i < cards.length - 1) out += pool[i % pool.length];
     });
     return out;
 };
@@ -12956,6 +12881,23 @@ const markAllMailRead = () => {
         }
     });
     showToast('全部已读');
+};
+// 一键清空所有信件（不可恢复）
+const clearAllMails = async () => {
+    const ok = await appConfirm('清空所有信件？\n\n包括所有会话的来信、回信、收藏，此操作不可恢复。');
+    if (!ok) return;
+    let n = 0;
+    sessions.value.forEach(s => {
+        if (!s || s.type === 'group') return;
+        if (Array.isArray(s.envelopes) && s.envelopes.length) { n += s.envelopes.length; s.envelopes = []; }
+    });
+    // 清掉已读记录
+    try {
+        Object.keys(mailReadStatus).forEach(k => { delete mailReadStatus[k]; });
+    } catch (e) {}
+    closeMailDetail();
+    debouncedSave();
+    showToast(`已清空 ${n} 封信`);
 };
 // ===== 4-3：信件详情弹层 =====
 const mailDetail = reactive({ show: false, item: null });
@@ -14367,10 +14309,21 @@ const getCombinedReply = (pool) => {
         else count = 3;
         let selected = [];
         let copy = [...textPool];
+        const _seenT2 = new Set();
         for (let i = 0; i < count && copy.length > 0; i++) {
-            const idx = Math.floor(Math.random() * copy.length);
-            selected.push(copy[idx]);
-            copy.splice(idx, 1);
+            let pickIdx = -1;
+            for (let k = 0; k < copy.length; k++) {
+                const tx = String(copy[k].text || '').trim();
+                if (tx && _seenT2.has(tx)) continue;
+                pickIdx = k;
+                break;
+            }
+            if (pickIdx < 0) break;
+            const it = copy[pickIdx];
+            const tx = String(it.text || '').trim();
+            if (tx) _seenT2.add(tx);
+            selected.push(it);
+            copy.splice(pickIdx, 1);
         }
         const combinedText = selected.map(item => item.text).filter(t => t).join('    ');
         return { text: combinedText, image: null };
@@ -14520,12 +14473,24 @@ const opts = { marked, session: cur };
                     const count = Math.min(concatSettings.concatCount, pool.length);
                     let selected = [];
                     let copy = [...pool];
+                    // 按「文本」去重：字卡库里可能有同文本但不同 id 的卡，避免一句话出现两遍
+                    const _seenT = new Set();
                     for (let i = 0; i < count && copy.length > 0; i++) {
-                        const idx = Math.floor(Math.random() * copy.length);
-                        const item = copy[idx];
-                        if (!concatSettings.concatEmoji && item.image) continue;
+                        let pickIdx = -1;
+                        for (let k = 0; k < copy.length; k++) {
+                            const it = copy[k];
+                            if (!concatSettings.concatEmoji && it.image) continue;
+                            const tx = String(it.text || '').trim();
+                            if (tx && _seenT.has(tx)) continue;
+                            pickIdx = k;
+                            break;
+                        }
+                        if (pickIdx < 0) break;
+                        const item = copy[pickIdx];
+                        const tx = String(item.text || '').trim();
+                        if (tx) _seenT.add(tx);
                         selected.push(item);
-                        copy.splice(idx, 1);
+                        copy.splice(pickIdx, 1);
                     }
                     if (selected.length === 0) {
                         // 兜底
@@ -15677,7 +15642,7 @@ const msgMenuDelete = () => {
 // ===== T2：软件页面 =====
 const AVAILABLE_APPS = [
     // 方案 B：字卡 / 留言板 / 设置 已进底部 tab；意趣功能已移除
-    { view: 'focus',       label: '专注',   icon: 'timer' },
+    // 专注（番茄钟/山林）已移除：iOS 会杀后台，计时无法维持，省内存
     { view: 'divination',  label: '占卜',   icon: 'sparkles' },
     { view: 'money',       label: '荷包',   icon: 'wallet' },
     { view: 'board',       label: '字笺',   icon: 'notebook-pen' },
@@ -17606,17 +17571,14 @@ const hideSession = (sessionId) => {
         debouncedSave();
     };
 
-    // TD-6：跳转到专注 App 的山林 tab
+    // 专注 App 已整体移除，这两个入口只保留空实现避免旧调用报错
     const goToForest = () => {
-        switchView('focus');
-        focusTab.value = 'forest';
+        showToast('山林功能已移除');
     };
 
     const jumpToTodoFocus = (taskId) => {
-        todo.focusedTaskId = taskId;
-        focus.taskId = taskId;
-        switchView('focus');
-        focusTab.value = 'pomodoro';
+        if (taskId) todo.focusedTaskId = taskId;
+        showToast('专注计时已移除（iOS 杀后台无法维持）');
     };
 
     const plantEmoji = (plant) => {
@@ -18434,12 +18396,48 @@ const globalDeduplicate = async () => {
         });
     }
 
+    // 3. 其余所有书册：内部跨卷宗去重（含图片）
+    //    原来只处理「公共」和「私聊」，词典/意大利语/日语/回应字卡/梦角自由造句等都没覆盖
+    let otherRemoved = 0;
+    const handled = new Set(['公共', '私聊']);
+    const _flattenGroups = (box) => {
+        const out = [];
+        (box.groups || []).forEach(p => {
+            if (Array.isArray(p.groups)) out.push(...p.groups);   // 群聊/红包备注的隔板
+            else out.push(p);
+        });
+        return out;
+    };
+    const allBoxNames = new Set([
+        ...Object.keys(sharedBoxes || {}),
+        ...Object.keys((sess.corpus && sess.corpus.boxes) || {}),
+    ]);
+    allBoxNames.forEach(name => {
+        if (handled.has(name)) return;
+        const box = isSharedBox(name) ? sharedBoxes[name] : (sess.corpus && sess.corpus.boxes ? sess.corpus.boxes[name] : null);
+        if (!box || !Array.isArray(box.groups)) return;
+        const seen = new Set();
+        _flattenGroups(box).forEach(g => {
+            if (!Array.isArray(g.replies)) return;
+            const unique = [];
+            g.replies.forEach(r => {
+                const t = String(r.text || '').trim();
+                const imgKey = r.image ? ('__img__' + r.image) : '';
+                const key = t || imgKey;
+                if (!key) { unique.push(r); return; }
+                if (seen.has(key)) { otherRemoved++; }
+                else { seen.add(key); unique.push(r); }
+            });
+            g.replies = unique;
+        });
+    });
+
     debouncedSave();
     nextTick(() => {
         if (window.lucide) lucide.createIcons();
         initSortable();
     });
-    showToast(`去重完成 · 公共删除 ${publicRemoved} 条 · 私聊删除 ${privateRemoved} 条`);
+    showToast(`去重完成 · 公共 ${publicRemoved} · 私聊 ${privateRemoved} · 其他书册 ${otherRemoved}`);
 };
 // ===== 自动切分超过 200 条的卷宗 =====
 const splitLargeGroups = async () => {
@@ -19167,6 +19165,24 @@ const availableExportBoxes = computed(() => {
       appBanner.show = false;
       if (_appBannerTimer) { clearTimeout(_appBannerTimer); _appBannerTimer = null; }
     };
+    // 横幅：上滑关闭
+    const appBannerTouch = reactive({ sy: 0, dy: 0, dragging: false });
+    const onBannerTouchStart = (e) => {
+      appBannerTouch.sy = e.touches[0].clientY;
+      appBannerTouch.dy = 0;
+      appBannerTouch.dragging = true;
+    };
+    const onBannerTouchMove = (e) => {
+      if (!appBannerTouch.dragging) return;
+      const d = e.touches[0].clientY - appBannerTouch.sy;
+      appBannerTouch.dy = Math.min(0, d);   // 只允许往上拖
+    };
+    const onBannerTouchEnd = () => {
+      if (!appBannerTouch.dragging) return;
+      appBannerTouch.dragging = false;
+      if (appBannerTouch.dy < -28) closeAppBanner();   // 上滑超过 28px 就关掉
+      appBannerTouch.dy = 0;
+    };
     const openAppBanner = () => {
       const id = appBanner.sessionId;
       closeAppBanner();
@@ -19857,11 +19873,23 @@ const saveDivinationDraw = () => {
 };
 
 // ===== W-7c：案例详情弹层 + 手动录入案例 =====
-const diviRecordDetail = reactive({ show: false, recordId: '' });
+const diviRecordDetail = reactive({ show: false, recordId: '', newReading: '' });
 const openDiviRecordDetail = (id) => {
     diviRecordDetail.recordId = id;
+    diviRecordDetail.newReading = '';
     diviRecordDetail.show = true;
     nextTick(() => { if (window.lucide) lucide.createIcons(); });
+};
+// 案例复盘：把新写的一段追加到「总解读」
+const appendDiviReading = () => {
+    const r = diviRecordDetailItem.value;
+    if (!r) return;
+    const t = String(diviRecordDetail.newReading || '').trim();
+    if (!t) { showToast('先写点什么'); return; }
+    r.userReading = r.userReading ? (r.userReading + '\n\n' + t) : t;
+    diviRecordDetail.newReading = '';
+    debouncedSave();
+    showToast('已追加复盘');
 };
 const diviRecordDetailItem = computed(() =>
     (divination.records || []).find(r => r.id === diviRecordDetail.recordId) || null
@@ -22394,9 +22422,8 @@ const compressImage = (file, maxSize = 256, quality = 0.85) => {
       const isGroup = s && s.type === 'group';
       // 「我」的头像仍全局保留；「对方/敞轩标识」头像跟随当前会话
       const targetIsMe = role === 'me';
-      if (!(await appConfirm(isGroup ? '设定该群聊的标识？取消则移除' : '设定新像？取消则移除'))) {
-        if (targetIsMe) profiles.me.avatar = '';
-        else if (s) s.avatar = '';
+      // 取消 = 什么都不做（保留原头像，避免误触丢头像）
+      if (!(await appConfirm(isGroup ? '设定该群聊的新标识？' : '设定新头像？'))) {
         return;
       }
             const input = document.createElement('input');
@@ -23017,6 +23044,8 @@ if (stored) {
     }
     if (stored.settings && Array.isArray(stored.settings.apps)) {
         stored.settings.apps = stored.settings.apps.filter(x => x && typeof x === 'object' && x.id);
+        // 专注（番茄钟/山林）已移除：清掉旧存档里的入口
+        stored.settings.apps = stored.settings.apps.filter(x => x.view !== 'focus');
     }
 }
             if (stored) {
@@ -23459,6 +23488,7 @@ removeGroupMember,
       manageActiveTimer,
       toggleActiveMessage,
       messages,
+      scrollToBottom,
       currentSession,
 currentSession,
       draftText,
@@ -23604,7 +23634,7 @@ CHATTY_KEYBOARD_ROWS, chattyKeyActive, CHATTY_PINYIN_BY_INITIAL,CHATTY_PUNCT_ROW
       acceptCall,
       rejectCall,
       callMinimized,
-      appBanner, openAppBanner, closeAppBanner,
+      appBanner, openAppBanner, closeAppBanner, appBannerTouch, onBannerTouchStart, onBannerTouchMove, onBannerTouchEnd,
       callSize,
       callSizes,
       callWindowStyle,
@@ -23833,7 +23863,7 @@ runDeduplicate,
       togglePickCard,
       confirmDivinationBatch, startDiviSupplement, currentBatchCards, assignCardToSlot, unassignCard, isCardAssigned, spreadPickCard,
       cardActionModal, openCardAction, toggleCardReversed, moveCardTo, deleteCard, addNewBatch, deleteBatch,
-      diviRecordDetail, openDiviRecordDetail, diviRecordDetailItem, diviRecordDetailCards,
+      diviRecordDetail, openDiviRecordDetail, diviRecordDetailItem, diviRecordDetailCards, appendDiviReading,
       manualRecordModal, openManualRecord, toggleManualRecordPick, confirmManualRecord,
       spreadEditModal, openSpreadEdit, addSpread, deleteSpread, addSpreadSlot, removeSpreadSlot, saveSpreadEdit,
       pickedCards,
@@ -23904,6 +23934,7 @@ mailDetail, openMailDetail, closeMailDetail,
     filteredMailList,     // ← 必须有
     totalUnreadMail,      // ← 必须有
     markAllMailRead,      // ← 必须有
+    clearAllMails,
     formatMailTime,       // ← 必须有
     checkMailArrival,     // ← 必须有
 startMailTimer,
