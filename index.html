@@ -1869,7 +1869,7 @@ body { color: var(--color-text); }
                         <button @click="getFreeComposeSettings(currentSession.id).method = Math.max(0, getFreeComposeSettings(currentSession.id).method - 1); debouncedSave();"
                                 class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">−</button>
                         <span class="w-8 text-center text-text font-medium">{{ getFreeComposeSettings(currentSession.id).method }}</span>
-                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(3, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
+                        <button @click="getFreeComposeSettings(currentSession.id).method = Math.min(4, getFreeComposeSettings(currentSession.id).method + 1); debouncedSave();"
                                 class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm">+</button>
                     </div>
                 </div>
@@ -1877,9 +1877,48 @@ body { color: var(--color-text); }
                     <div>0 = 语气词式：截词补语气词 / 句尾加语气词 / 加逗号 / 删句尾 / 换标点</div>
                     <div>1 = 换词式：截掉一个词，从字卡里抽一个词补上</div>
                     <div>2 = 换句式：截掉一部分句子，从字卡里抽句子/词补上</div>
-                    <div>3 = 混用：以上三种随机</div>
+                    <div>3 = 混用：0 / 1 / 2 / 4 随机</div>
+                    <div>4 = 字词联想：抽字 → 找相关词A → 随机词B → 拼凑</div>
                     <div class="text-muted/50 pt-0.5">（原「撤回式」已移到「撤回玩法 → 撤回手法」，此处不再重复）</div>
+                    <div class="text-muted/50">（语法拼字造句已独立成单独玩法，见下方）</div>
                 </div>
+                <!-- 每玩法开关（为之后「只用一种方法」准备） -->
+                <div class="mt-2 pt-2 border-t border-border/30">
+                    <div class="text-[11px] text-muted mb-1.5">玩法开关（关掉的不会被抽到）</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button v-for="m in [0,1,2,4]" :key="'t'+m"
+                                @click="toggleComposeMethod(m)"
+                                class="px-2 py-0.5 rounded text-[11px] border transition-colors"
+                                :class="((getFreeComposeSettings(currentSession.id).methodToggles || {})[m] === false) ? 'border-border text-muted/40 line-through' : 'border-text text-text'">
+                                方法{{ m }}
+                        </button>
+                        <button @click="toggleMainReply()"
+                                class="px-2 py-0.5 rounded text-[11px] border transition-colors"
+                                :class="getFreeComposeSettings(currentSession.id).mainReplyEnabled === false ? 'border-border text-muted/40 line-through' : 'border-text text-text'">
+                                主回复
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- 存公用库概率 -->
+            <div class="pt-1 border-t border-border/30">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[12px] text-muted">语法拼字造句（独立玩法）</span>
+                    <button @click="toggleSyntaxCompose()" class="w-10 h-5 rounded-full relative transition-colors"
+                            :class="getFreeComposeSettings(currentSession.id).syntaxEnabled ? 'bg-text' : 'bg-border'">
+                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                             :class="getFreeComposeSettings(currentSession.id).syntaxEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                    </button>
+                </div>
+                <div class="text-[11px] text-muted/60 leading-relaxed px-1 mb-2">不用源句，直接抽字 → 找词 → 套主谓宾句型。依赖字卡的「词性」标记。</div>
+                <div v-if="getFreeComposeSettings(currentSession.id).syntaxEnabled" class="flex items-center justify-between px-1">
+                    <span class="text-[12px] text-text">触发概率</span>
+                    <span class="text-[11px] text-muted tabular-nums">{{ Math.round((getFreeComposeSettings(currentSession.id).syntaxProb ?? 0.3) * 100) }}%</span>
+                </div>
+                <input v-if="getFreeComposeSettings(currentSession.id).syntaxEnabled" type="range" min="0" max="100"
+                       :value="(getFreeComposeSettings(currentSession.id).syntaxProb ?? 0.3) * 100"
+                       @input="e => { getFreeComposeSettings(currentSession.id).syntaxProb = e.target.value / 100; debouncedSave(); }"
+                       class="w-full" style="accent-color: var(--nav-icon-color);">
             </div>
             <!-- 存公用库概率 -->
             <div class="pt-1 border-t border-border/30">
@@ -2457,6 +2496,13 @@ body { color: var(--color-text); }
                                :class="{'text-muted line-through decoration-muted/40': !reply.enabled}" placeholder="翻译">
                     </template>
                     <span v-if="activeBox === '词典' && reply.isSystem" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded border" style="background:rgba(34,197,94,0.1);color:#16a34a;border-color:rgba(34,197,94,0.3);">系统</span>
+                    <!-- 字卡详情：看全文 + 改内容 + 标词性（供手法 5 语法生成使用） -->
+                    <button v-if="reply.pos" @click.stop="openPosPicker(reply)"
+                            class="shrink-0 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted hover:text-text"
+                            :title="'词性：' + reply.pos">{{ CARD_POS_SHORT[reply.pos] || reply.pos }}</button>
+                    <button @click.stop="openPosPicker(reply)"
+                            class="shrink-0 text-[10px] px-1 rounded border border-dashed border-border/60 text-muted/40 hover:text-muted"
+                            title="点开看全文 / 改内容 / 标词性">详情</button>
                 </template>
                 <button @click="toggleReplyEnable(reply)" class="w-8 h-4 rounded-full relative transition-colors duration-200 shrink-0" :class="reply.enabled ? 'bg-text' : 'bg-border'">
                     <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-surface rounded-full transition-transform duration-200" :class="reply.enabled ? 'translate-x-4' : 'translate-x-0'"></div>
@@ -3974,6 +4020,36 @@ body { color: var(--color-text); }
             
             <!--（洞察板块已移除）-->
             <!--（专注 App：番茄钟 / 山林 已整体移除 —— iOS 杀后台无法维持计时）-->
+            <!-- ===== 熟练度比拼 ===== -->
+            <div v-else-if="currentView === 'skill'" key="skill" class="absolute inset-0 flex flex-col z-20 bg-transparent">
+                <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
+                    <button @click="switchView('home')" class="p-2 -ml-2 text-text hover:opacity-60"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
+                    <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[14px] font-medium tracking-widest serif-text">熟练度比拼</span>
+                    <span class="w-9"></span>
+                </header>
+                <main class="flex-1 overflow-y-auto p-4 pb-20 space-y-3">
+                    <div v-if="!currentSession" class="mt-16 text-center text-[13px] text-muted/60">先进入一个会话</div>
+                    <template v-else>
+                        <div class="bg-surface border border-border rounded-xl p-4">
+                            <div class="text-[12px] text-muted tracking-widest mb-1">{{ currentSession.name }} 的梦角</div>
+                            <div class="text-[11px] text-muted/60 leading-relaxed mb-3">每种造句手法用一次 +1（上限 100）。目前只记录，不参与手法选择。</div>
+                            <div v-for="m in [0,1,2,4,5]" :key="'sk'+m" class="mb-3 last:mb-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[13px] text-text">{{ SKILL_NAMES[m] }}</span>
+                                    <span class="text-[12px] text-muted tabular-nums">{{ (getFreeComposeSettings(currentSession.id).skill || {})[m] || 0 }} / 100</span>
+                                </div>
+                                <div class="w-full h-2 rounded-full overflow-hidden" style="background: rgba(128,128,128,0.18);">
+                                    <div class="h-full rounded-full transition-all"
+                                         :style="{ width: Math.min(100, (getFreeComposeSettings(currentSession.id).skill || {})[m] || 0) + '%', background: 'var(--nav-icon-color)' }"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-muted/50 leading-relaxed px-1">
+                            之后会加入「你的评级」——对方熟练不代表你能看懂，所以熟练度最终要结合你的理解度一起算。
+                        </div>
+                    </template>
+                </main>
+            </div>
             <!-- 占卜 -->
             <div v-else-if="currentView === 'divination'" key="divination" class="absolute inset-0 flex flex-col z-20 bg-transparent">
                 <header class="h-14 flex items-center justify-between px-4 border-b border-border shrink-0 bg-surface relative">
@@ -5886,6 +5962,36 @@ body { color: var(--color-text); }
                 <button @click="confirmScreenshotPick" class="flex-1 py-2.5 rounded-lg text-[14px] text-white"
                         :class="screenshotPickCount > 0 ? 'opacity-100' : 'opacity-50'"
                         style="background: var(--color-text);">生成</button>
+            </div>
+        </div>
+
+        <!-- ===== 字卡词性选择弹窗 ===== -->
+        <div v-if="posPicker.show" class="redpacket-overlay" style="z-index:288;" @click.self="closePosPicker">
+            <div class="redpacket-card" style="width:340px;max-width:92vw;">
+                <div class="redpacket-card-top" style="padding-bottom:12px;">
+                    <div class="text-white text-sm font-medium tracking-wider">词性标记</div>
+                </div>
+                <div class="redpacket-card-bottom" style="text-align:left;padding:14px;">
+                    <!-- 完整内容：长卡也能看全、也能直接改 -->
+                    <div v-if="posPicker.reply && posPicker.reply.image" class="mb-3 text-center">
+                        <img :src="posPicker.reply.image" class="max-h-40 rounded-lg mx-auto border border-border/50">
+                    </div>
+                    <textarea v-else-if="posPicker.reply" v-model="posPicker.reply.text" @blur="debouncedSave"
+                              rows="4"
+                              class="w-full bg-bg border border-border rounded-lg px-3 py-2 text-[13px] resize-none mb-3"
+                              placeholder="字卡内容"></textarea>
+                    <div class="text-[11px] text-muted mb-1.5 px-0.5">词性标记（决定它在语法生成里当什么用）</div>
+                    <div class="flex flex-wrap gap-1.5 mb-3">
+                        <button v-for="p in CARD_POS_LIST" :key="p || 'none'"
+                                @click="posPicker.draft = p"
+                                class="px-2.5 py-1 rounded-full text-[12px] border transition-colors"
+                                :class="posPicker.draft === p ? 'bg-text text-white border-text' : 'border-border text-muted hover:text-text'">{{ p || '未分类' }}</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="closePosPicker" class="flex-1 py-2 rounded-lg text-[14px] border border-border text-text">取消</button>
+                        <button @click="savePosPicker" class="flex-1 py-2 rounded-lg text-[14px] text-white" style="background: var(--color-text);">保存</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -11585,7 +11691,23 @@ const getFreeComposeSettings = (sessionId) => {
         else if (m == null) fs2.method = 0;
         fs2.methodSchema = 2;               // 标记：以后按新编号解释
     }
-    if (fs2.method == null || fs2.method > 3 || fs2.method < 0) fs2.method = 0;  // 越界兜底
+    if (fs2.method == null || fs2.method > 5 || fs2.method < 0) fs2.method = 0;  // 越界兜底
+    // 每玩法开关（为之后「某会话只用一种方法 / 完全不触发主回复」预留）
+    if (!fs2.methodToggles || typeof fs2.methodToggles !== 'object') {
+        fs2.methodToggles = { 0: true, 1: true, 2: true, 4: true, 5: true };
+    }
+    if (fs2.mainReplyEnabled === undefined) fs2.mainReplyEnabled = true;   // 主回复开关
+    // 语法拼字造句（独立玩法，不依赖源句）
+    if (fs2.syntaxEnabled === undefined) fs2.syntaxEnabled = false;
+    if (fs2.syntaxProb === undefined) fs2.syntaxProb = 0.3;
+    // 熟练度：每个玩法一个分值（0~100），用一次 +1；暂只记录不参与决策
+    if (!fs2.skill || typeof fs2.skill !== 'object') {
+        fs2.skill = { 0: 0, 1: 0, 2: 0, 4: 0, syntax: 0 };
+    }
+    ['0','1','2','4'].forEach(k => {
+        if (typeof fs2.skill[k] !== 'number') fs2.skill[k] = 0;
+    });
+    if (typeof fs2.skill.syntax !== 'number') fs2.skill.syntax = 0;
     return fs2;
 };
 
@@ -12007,26 +12129,362 @@ const composeMethod2b = (src, session) => {
 };
 
 // ===== 统一入口 =====
+// ===== 字卡词性打标（供手法 5 使用）=====
+// 用户可选的词性（主语/宾语已合并进「名词」，避免同一张卡被打多个标签）
+const CARD_POS_LIST = ['', '代词','时间','肯定词','否定词','副词','连词','叹词','动词','名词','形容词','指示代词','量词','程度词','语气词'];
+const CARD_POS_SHORT = { '':'', 主语:'主', 代词:'代', 时间:'时', 肯定词:'肯', 否定词:'否', 副词:'副', 连词:'连', 叹词:'叹', 动词:'动', 名词:'名', 形容词:'形', 指示代词:'指', 量词:'量', 程度词:'程', 语气词:'语' };
+const posPicker = reactive({ show: false, reply: null, draft: '' });
+const openPosPicker = (reply) => {
+    if (!reply) return;
+    posPicker.reply = reply;
+    posPicker.draft = reply.pos || '';
+    posPicker.show = true;
+};
+const closePosPicker = () => { posPicker.show = false; posPicker.reply = null; posPicker.draft = ''; };
+const savePosPicker = () => {
+    if (posPicker.reply) {
+        posPicker.reply.pos = posPicker.draft || '';
+        debouncedSave();
+        showToast(posPicker.draft ? ('已标记为「' + posPicker.draft + '」') : '已清除词性');
+    }
+    closePosPicker();
+};
+
+// ===== 词性词库（任务书三批 + 日常补充），首次启动自动塞进「词典 → 词性池」=====
+const POS_SEED = {
+    名词: ['苹果','月亮','雨','星星','冰淇淋','小狗','猫咪','抱枕','风景','阳光','晚风','手机','电影',
+           '奶茶','火锅','蛋糕','耳机','被窝','晚霞','小猫','海浪','作业','睡衣','毛毯','热可可','彩虹','乌云','马路','路灯',
+           '我','你','我们','他','大家','你们','某人','有人','别人','这家伙','人家','本宝宝',
+           '窗外的风','树上的叶子','这天气','我家猫','某个人'],
+    代词: ['你','我','宝贝','乖乖','宝','老婆','老公','崽崽','笨蛋','傻瓜','亲爱的','大笨蛋','小坏蛋','某位小朋友','某位先生','某位女士','小朋友','那位','这个笨蛋'],
+    时间: ['今天','明天','昨晚','刚才','现在','等下','马上','昨天','周末','晚上','上个月','过几天','以后','大清早','半夜','下辈子'],
+    肯定词: ['对','是的','确实','没错','好的','必须的','当然啦','确实如此','狠狠赞同','支持','笑死','确实是这样','中','安排','包在我身上','太对了吧','这绝对是','必须的呀','我就知道','好主意'],
+    否定词: ['不','没','别','不想','不要','才不','绝不','没有啦','别了吧','不行','拒绝','漏','没门','别闹','绝无可能','别瞎说','想得美','没可能','不至于吧','我才不信'],
+    副词: ['一起','都','也','就','还','马上','悄悄','突然','刚好','一直','偷偷','稍微','特意','竟然','果断','偏偏','故意','差点','干脆','索性'],
+    连词: ['因为','所以','但是','而且','然后','不过','可是','哪怕','要不然','结果','虽然','于是','也就是说','要是','只要','不然','就算'],
+    叹词: ['啊这','哇','绝了','天呐','好家伙','哎呀','哦莫','呜呜','哈哈哈','救命','哎哟','好耶','离谱','无语','乐死我了','哈？','咦','咦惹','妈耶','我服了','晕'],
+    动词: ['吃','看','想','喜欢','玩','睡觉','发呆','抱抱','亲亲','想念','陪','找','等','气','骂',
+           '贴贴','摸摸','哄','生气','发疯','打工','摸鱼','听歌','散步',
+           '晒太阳','吹晚风','熬夜','吃醋','撒娇','闹脾气','哼唧','黏人','下雨','降温'],
+    形容词: ['开心','难过','累','漂亮','好玩','困','饿','委屈','想哭','黏人','可爱','坏',
+             '无聊','离谱','浪漫','温柔','暴躁','心酸','乖巧','清澈',
+             '黏糊糊','软乎乎','亮晶晶','冷冰冰','沉甸甸','闹腾','安静','踏实','悬着'],
+    指示代词: ['这个','那个','这只','那只','这种','这儿','那儿','这么','那么','那些','那边','这里','这些','某种','那种'],
+    量词: ['个','只','场','片','首','句','趟','次','颗','杯','双','对','张','条','根','件','顿','块','页','阵','口','点'],
+    程度词: ['太','很','非常','特别','真','超级','无敌','有点','稍微','过于','极其','极度','有一点点','格外','贼','简直','过分','无比','死'],
+    语气词: ['啊','呢','吧','吗','嘛','哟','咯','哈','嘞','诶','哇','哦豁','咧','耶','呗','呐','罢'],
+};
+
+// 跨词性重复的词：只保留最典型的那一个词性（避免同一个词生成两张卡）
+const POS_DEDUP_KEEP = {
+    '我': '代词', '你': '代词', '马上': '副词', '对': '肯定词',
+    '稍微': '程度词', '哇': '叹词', '离谱': '形容词', '黏人': '形容词',
+};
+
+let _posSeedDone = false;
+const seedPosWords = () => {
+    if (_posSeedDone) return;
+    _posSeedDone = true;
+    try {
+        const dict = sharedBoxes['词典'];
+        if (!dict || !Array.isArray(dict.groups)) return;
+        // 找/建「词性池」卷宗
+        let g = dict.groups.find(x => x.name === '词性池');
+        if (!g) { g = { id: genId(), name: '词性池', replies: [] }; dict.groups.push(g); }
+        if (!Array.isArray(g.replies)) g.replies = [];
+
+        // ① 先清理旧数据：同一文本有多个词性的，只保留 POS_DEDUP_KEEP 指定的那个
+        const byText = new Map();
+        g.replies.forEach(r => {
+            const t = String(r.text || '').trim();
+            if (!t) return;
+            if (!byText.has(t)) byText.set(t, []);
+            byText.get(t).push(r);
+        });
+        let cleaned = 0;
+        byText.forEach((arr, t) => {
+            if (arr.length <= 1) return;
+            const want = POS_DEDUP_KEEP[t] || arr[0].pos;
+            let kept = false;
+            arr.forEach(r => {
+                if (!kept && r.pos === want) { kept = true; return; }
+                if (!kept && arr.length === 1) { kept = true; return; }
+                r._drop = true;
+                cleaned++;
+            });
+            if (!kept) { arr[0]._drop = false; cleaned--; }
+        });
+        if (cleaned > 0) g.replies = g.replies.filter(r => !r._drop);
+
+        // ② 再补种：整卷按 文本+pos 去重，且跨词性重复只留指定词性
+        const seen = new Set();
+        g.replies.forEach(r => { if (r.text) seen.add(String(r.text).trim() + '|' + (r.pos || '')); });
+        let added = 0;
+        Object.keys(POS_SEED).forEach(pos => {
+            POS_SEED[pos].forEach(t => {
+                const txt = String(t || '').trim();
+                if (!txt) return;
+                // 该词已被指定保留到别的词性 → 跳过
+                if (POS_DEDUP_KEEP[txt] && POS_DEDUP_KEEP[txt] !== pos) return;
+                // 该文本已在卷里（任意词性）→ 跳过
+                if (byText.has(txt)) return;
+                const k = txt + '|' + pos;
+                if (seen.has(k)) return;
+                seen.add(k);
+                g.replies.push({ id: genId(), text: txt, pos: pos, enabled: true, isSystem: true });
+                added++;
+            });
+        });
+        if (added > 0 || cleaned > 0) {
+            debouncedSave();
+            console.log('[词性池] 初始化新增', added, '条，清理重复', cleaned, '条');
+        }
+    } catch (e) { console.warn('[词性池初始化失败]', e); }
+};
+
+// 熟练度比拼：手法名称
+const SKILL_NAMES = { 0: '语气词式', 1: '换词式', 2: '换句式', 4: '字词联想', 5: '语法生成' };
+
+// 每玩法开关（供 UI 调用）
+const toggleComposeMethod = (m) => {    if (!currentSession.value) return;
+    const g = getFreeComposeSettings(currentSession.value.id);
+    if (!g.methodToggles) g.methodToggles = { 0: true, 1: true, 2: true, 4: true, 5: true };
+    g.methodToggles[m] = (g.methodToggles[m] === false);
+    debouncedSave();
+};
+const toggleMainReply = () => {
+    if (!currentSession.value) return;
+    const g = getFreeComposeSettings(currentSession.value.id);
+    g.mainReplyEnabled = (g.mainReplyEnabled === false);
+    debouncedSave();
+};
+const toggleSyntaxCompose = () => {
+    if (!currentSession.value) return;
+    const g = getFreeComposeSettings(currentSession.value.id);
+    g.syntaxEnabled = !g.syntaxEnabled;
+    if (g.syntaxEnabled && !g.syntaxProb) g.syntaxProb = 0.3;
+    debouncedSave();
+};
+
 const composeSentence = (src, session) => {
     if (!src || !session) return null;
     const settings = getFreeComposeSettings(session.id);
     let method = settings.method;
 
-    // 混用模式（3）：随机选 0 / 1 / 2 中的一种
-    // 注：原「撤回式」已移出造句手法（改由撤回玩法统一负责），故不再参与混用
+    // 混用模式（3）：只从「已开启」的玩法里随机（语法拼字已独立，不再参与）
     if (method === 3) {
-        method = [0, 1, 2][Math.floor(Math.random() * 3)];
+        const enabled = [0, 1, 2, 4].filter(m => {
+            const tg = settings.methodToggles || {};
+            return tg[m] !== false;
+        });
+        method = enabled.length ? enabled[Math.floor(Math.random() * enabled.length)] : 0;
     }
-    if (method > 2 || method < 0) method = 0;   // 越界兜底
+    if (method > 4 || method < 0) method = 0;
+    // 单玩法模式：若该玩法被关掉，临时回落到任意一个已开启的
+    if ((settings.methodToggles || {})[method] === false) {
+        const enabled = [0, 1, 2, 4].filter(m => (settings.methodToggles || {})[m] !== false);
+        if (!enabled.length) return null;
+        method = enabled[Math.floor(Math.random() * enabled.length)];
+    }
 
     let result = null;
     for (let i = 0; i < 3 && !result; i++) {
         if (method === 0) result = composeMethod0(src);
         else if (method === 1) result = composeMethod2a(src, session);   // 换词式
         else if (method === 2) result = composeMethod2b(src, session);   // 换句式
+        else if (method === 4) result = composeMethod4(src, session);    // 字词联想
     }
     if (!result || result === src) return null;
+    // 熟练度 +1（该玩法实际被用了一次）
+    try {
+        const fs3 = getFreeComposeSettings(session.id);
+        if (fs3.skill && method in fs3.skill) {
+            fs3.skill[method] = Math.min(100, (Number(fs3.skill[method]) || 0) + 1);
+        }
+    } catch (e) {}
     return result;
+};
+
+// ===== 手法 4：字词联想（抽字 → 找相关词A → 随机词B → 拼接）=====
+const _allCardTexts = (session) => {
+    const out = [];
+    const collect = (box) => {
+        if (!box || !Array.isArray(box.groups)) return;
+        box.groups.forEach(g => (g.replies || []).forEach(r => {
+            if (r.enabled === false) return;
+            const t = String(r.text || '').trim();
+            if (t) out.push(t);
+        }));
+    };
+    const boxes = session?.corpus?.boxes || {};
+    Object.keys(boxes).forEach(k => collect(boxes[k]));
+    Object.keys(sharedBoxes || {}).forEach(k => collect(sharedBoxes[k]));
+    return out;
+};
+
+const composeMethod4 = (src, session) => {
+    const chars = String(src || '').match(/[\u4e00-\u9fa5]/g) || [];
+    if (!chars.length) return null;
+    const targetChar = chars[Math.floor(Math.random() * chars.length)];
+    const pool = _allCardTexts(session);
+    if (!pool.length) return null;
+    const related = pool.filter(t => t.includes(targetChar));
+    const cardA = related.length ? related[Math.floor(Math.random() * related.length)] : String(src).trim();
+    // 找词B：最多重试 5 次，避免死循环
+    let cardB = null;
+    for (let i = 0; i < 5; i++) {
+        const c = pool[Math.floor(Math.random() * pool.length)];
+        if (c && c.trim() && c !== cardA) { cardB = c; break; }
+    }
+    if (!cardB) return cardA;   // 只发词A
+    const joiner = ['，', '、', '。', ' '][Math.floor(Math.random() * 4)];
+    return cardA + joiner + cardB;
+};
+
+// ===== 手法 5：纯槽位语法生成 =====
+const POS_TYPES = ['主语','代词','时间','肯定词','否定词','副词','连词','叹词','动词','名词','形容词','指示代词','量词','程度词','语气词'];
+
+// 兜底词（词性池为空时用，保证绝不报错）
+const POS_FALLBACK = {
+    主语: ['我','你'], 代词: ['你','我'], 时间: ['今天','现在'],
+    肯定词: ['对','嗯'], 否定词: ['不','没'], 副词: ['都','也'],
+    连词: ['但是','所以'], 叹词: ['啊','哎'], 动词: ['看','想'],
+    名词: ['东西','事'], 形容词: ['好','开心'], 指示代词: ['这个','那个'],
+    量词: ['个','次'], 程度词: ['很','太'], 语气词: ['啊','呢'],
+};
+
+// 按词性取池：遍历当前会话所有书册 + 共享书册，过滤 reply.pos === type 且 enabled
+const _posPool = (type, session) => {
+    const out = [];
+    const collect = (box) => {
+        if (!box || !Array.isArray(box.groups)) return;
+        box.groups.forEach(g => (g.replies || []).forEach(r => {
+            if (r.enabled === false) return;
+            if (r.pos !== type) return;
+            const t = String(r.text || '').trim();
+            if (t) out.push(t);
+        }));
+    };
+    const boxes = session?.corpus?.boxes || {};
+    Object.keys(boxes).forEach(k => collect(boxes[k]));
+    Object.keys(sharedBoxes || {}).forEach(k => collect(sharedBoxes[k]));
+    return out;
+};
+
+// 主语/宾语本质上都是名词性成分 → 统一回落到「名词」池，避免同一张卡被打多个词性标签
+// 注意：主语也要能从「代词」池取（我/你/他 才是最常见的口语主语）
+const POS_ALIAS = {
+    主语: ['主语', '名词', '代词'],
+    宾语: ['宾语', '名词', '主语', '代词'],
+    代词: ['代词'],
+};
+
+const getWordByType = (type, session) => {
+    // 把别名链上的所有池「合并」后一起随机，而不是找到一个就停
+    // （否则 [主语] 只会从名词池取，"我/你"这些代词永远进不了主语位）
+    const chain = POS_ALIAS[type] || [type];
+    const merged = [];
+    for (const t of chain) {
+        const pool = _posPool(t, session);
+        for (const w of pool) merged.push(w);
+    }
+    // 去重，避免名词里有、代词里也有时权重翻倍
+    const uniq = [...new Set(merged)];
+    if (uniq.length) return uniq[Math.floor(Math.random() * uniq.length)];
+    const fb = POS_FALLBACK[type] || [''];
+    return fb[Math.floor(Math.random() * fb.length)] || '';
+};
+
+// 语法模板库（模块 1 动作 / 模块 2 事物 / 模块 3 情绪）
+const GRAMMAR_TPL = {
+    动词: [
+        '[主语][时间][副词][动词][名词][语气词]',
+        '[主语][否定词][动词][指示代词][量词][名词]',
+        '[叹词]，[主语][程度词][动词][代词][语气词]',
+        '[动词][名词][语气词]',
+    ],
+    名词: [
+        '[指示代词][量词][名词][程度词][形容词][语气词]',
+        '[时间]的[名词][副词][形容词]',
+        '[名词][好像][动词][语气词]',
+        '[代词]觉得[指示代词][量词][名词][副词][形容词]',
+    ],
+    形容词: [
+        '[肯定词]，[主语]也[觉得][代词][形容词]',
+        '[叹词]，[代词][副词][动词][名词][语气词]',
+        '[肯定词][肯定词]，[主语][副词][动词]',
+        '[程度词][形容词][语气词]，[代词][否定词][动词]',
+        '[主语][连词][形容词]，[副词][动词][语气词]',
+    ],
+};
+
+// ===== 语法拼字造句（独立玩法，不依赖源句）=====
+const syntaxCompose = (session) => {
+    // 1. 骰字：从所有启用字卡里抽一个汉字
+    const allTexts = _allCardTexts(session);
+    const allChars = (allTexts.join('').match(/[\u4e00-\u9fa5]/g) || []);
+    if (!allChars.length) return null;
+    const targetChar = allChars[Math.floor(Math.random() * allChars.length)];
+
+    // 2. 找词定调：找包含该字、且有 pos 标记的卡
+    let coreWord = '';
+    let corePos = '';
+    const boxes = session?.corpus?.boxes || {};
+    const scanBoxes = [...Object.keys(boxes), ...Object.keys(sharedBoxes || {})];
+    const hit = [];
+    scanBoxes.forEach(name => {
+        const box = sharedBoxes[name] || (boxes ? boxes[name] : null);
+        if (!box || !Array.isArray(box.groups)) return;
+        box.groups.forEach(g => (g.replies || []).forEach(r => {
+            if (r.enabled === false) return;
+            if (!r.pos || !POS_TYPES.includes(r.pos)) return;
+            const t = String(r.text || '').trim();
+            if (t && t.includes(targetChar)) hit.push({ t, pos: r.pos });
+        }));
+    });
+    if (hit.length) {
+        const pick = hit[Math.floor(Math.random() * hit.length)];
+        coreWord = pick.t;
+        corePos = pick.pos;
+    }
+    // 3. 没找到 → 随机指定词性（动词/名词/形容词）
+    if (!corePos) {
+        corePos = ['动词', '名词', '形容词'][Math.floor(Math.random() * 3)];
+        coreWord = getWordByType(corePos, session);
+    }
+
+    // 4. 抽模板
+    const tpls = GRAMMAR_TPL[corePos] || GRAMMAR_TPL['动词'];
+    const tpl = tpls[Math.floor(Math.random() * tpls.length)];
+
+    // 5. 填槽（带省略机制）
+    let usedCore = false;
+    let sentence = tpl.replace(/\[([^\]]+)\]/g, (m, type) => {
+        const t = String(type).trim();
+        // 核心词优先填到对应词性槽位
+        if (!usedCore && t === corePos && coreWord) { usedCore = true; return coreWord; }
+        if (!POS_TYPES.includes(t)) {
+            // 非词性槽位（如 [好像]/[觉得]）→ 当固定词用
+            return t;
+        }
+        // 省略机制：主语/代词 40% 空；语气词/副词 20% 空
+        if (t === '主语' || t === '代词') { if (Math.random() < 0.4) return ''; }
+        if (t === '语气词' || t === '副词') { if (Math.random() < 0.2) return ''; }
+        return getWordByType(t, session);
+    });
+
+    // 核心词没用上就补在句尾
+    if (!usedCore && coreWord) sentence += coreWord;
+
+    // 6. 加标点（随机 或无）
+    const punct = ['。', '！', '~', '？', ''][Math.floor(Math.random() * 5)];
+    sentence = sentence.replace(/^[，、\s]+/, '').trim() + punct;
+    // 熟练度 +1
+    try {
+        const fs4 = getFreeComposeSettings(session.id);
+        fs4.skill.syntax = Math.min(100, (Number(fs4.skill.syntax) || 0) + 1);
+    } catch (e) {}
+    return sentence.trim() || null;
 };
 
 // ===== P2-a：群聊梦角自由造句 =====
@@ -12442,6 +12900,23 @@ const triggerTypingPlay = (session, opts) => {
 const triggerFreeCompose = (session) => {
     if (!session) return false;
     const settings = getFreeComposeSettings(session.id);
+
+    // ===== 语法拼字造句（独立玩法，不依赖源句，独立开关/概率）=====
+    if (settings.syntaxEnabled && settings.syntaxEnabled !== false) {
+        const sp = Number(settings.syntaxProb ?? 0.3);
+        if (sp > 0 && Math.random() < sp) {
+            const sTxt = syntaxCompose(session);
+            if (sTxt) {
+                const lastS = session.messages[session.messages.length - 1];
+                if (!(lastS && lastS.content === sTxt)) {
+                    sendMessage('them', sTxt, { session, freeCompose: true });
+                    saveFreeComposedSentence(sTxt, session);
+                    return true;
+                }
+            }
+        }
+    }
+
     if (!settings.enabled) return false;
     if (settings.prob <= 0) return false;
     if (Math.random() >= settings.prob) return false;
@@ -15643,6 +16118,7 @@ const msgMenuDelete = () => {
 const AVAILABLE_APPS = [
     // 方案 B：字卡 / 留言板 / 设置 已进底部 tab；意趣功能已移除
     // 专注（番茄钟/山林）已移除：iOS 会杀后台，计时无法维持，省内存
+    { view: 'skill',       label: '熟练度', icon: 'trophy' },
     { view: 'divination',  label: '占卜',   icon: 'sparkles' },
     { view: 'money',       label: '荷包',   icon: 'wallet' },
     { view: 'board',       label: '字笺',   icon: 'notebook-pen' },
@@ -23326,6 +23802,7 @@ if (stored.money.installment) {
             try { startEnvelopeTimer(); } catch (e) {}
 try { startMailTimer(); } catch (e) {}
                 try { startTodoTimer(); } catch (e) {}
+                try { seedPosWords(); } catch (e) {}
                 try { startJieyiHarvestTimer(); } catch (e) {}
             try { startStatusTimer(); } catch (e) {}
 try { startChattyWatcher(); } catch (e) {}
@@ -23855,6 +24332,8 @@ getQuestionOptions,
 toggleMemberExpand,
 deduplicateMenuOpen,
 runDeduplicate,
+CARD_POS_LIST, CARD_POS_SHORT, posPicker, openPosPicker, closePosPicker, savePosPicker,
+toggleComposeMethod, toggleMainReply, SKILL_NAMES, toggleSyntaxCompose,
       divination,
       divinationTab,
       divinationDraw,
