@@ -1919,6 +1919,8 @@ body { color: var(--color-text); }
                        :value="(getFreeComposeSettings(currentSession.id).syntaxProb ?? 0.3) * 100"
                        @input="e => { getFreeComposeSettings(currentSession.id).syntaxProb = e.target.value / 100; debouncedSave(); }"
                        class="w-full" style="accent-color: var(--nav-icon-color);">
+                <button @click="openGrammarTplEditor()"
+                        class="mt-1.5 text-[11px] text-text underline underline-offset-2">编辑语法模板库 ›</button>
             </div>
             <!-- 存公用库概率 -->
             <div class="pt-1 border-t border-border/30">
@@ -2867,6 +2869,23 @@ body { color: var(--color-text); }
                                     </div>
                                 </section>
 
+                                <section class="mb-4">
+                                    <h3 class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2">语法拼字造句</h3>
+                                    <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div @click="replySettingsPage = '语法模板库'"
+                                             class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-bg/40 transition-colors">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <i data-lucide="braces" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <div class="text-[14px] text-text">语法模板库</div>
+                                                    <div class="text-[11px] text-muted mt-0.5 truncate">动作 / 事物 / 情绪 三个模块的句型，可自定义增删改</div>
+                                                </div>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-4 h-4 text-muted stroke-[1.5] shrink-0"></i>
+                                        </div>
+                                    </div>
+                                </section>
+
                             </template>
 
 
@@ -2896,6 +2915,21 @@ body { color: var(--color-text); }
                                                     <button @click="settings.chattyTypeSpeed = 'fast'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[12px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'fast' ? 'bg-text text-white' : 'bg-bg text-muted'">快</button>
                                                 </div>
                                                 <div class="text-[11px] text-muted/60 leading-relaxed mt-2">TA 在自己页面里逐字打字的快慢（越慢越像在慢慢敲）。</div>
+                                            </div>
+                                            <!-- 普通私聊的拼音自由组合：打字耗时 -->
+                                            <div class="p-3.5 border-t border-border">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-[14px] text-text">自由拼音打字速度</span>
+                                                    <span class="text-[11px] text-muted tabular-nums">{{ settings.freeComposeCharDelay || 220 }} ms/字</span>
+                                                </div>
+                                                <input type="range" min="60" max="800" step="20"
+                                                       :value="settings.freeComposeCharDelay || 220"
+                                                       @input="e => { settings.freeComposeCharDelay = Number(e.target.value) || 220; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[11px] text-muted/60 leading-relaxed mt-1">
+                                                    普通私聊里发「拼音自由组合」消息前的打字耗时（越大越慢）。<br>
+                                                    实际延迟 =（字数 + 退格次数×1.5）× 这个值，范围 0.5~12 秒。
+                                                </div>
                                             </div>
                                         </div>
                                     </section>
@@ -3837,6 +3871,110 @@ body { color: var(--color-text); }
                                         </template>
                                     </div>
                                 </section>
+                                </template>
+
+                                <!-- ===== 子页 5：语法模板库（动作 / 事物 / 情绪 3 Tab + 增删改） ===== -->
+                                <template v-if="replySettingsPage === '语法模板库'">
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <!-- 说明 -->
+                                        <div class="p-3.5 border-b border-border">
+                                            <div class="text-[14px] text-text">语法拼字造句 · 模板库</div>
+                                            <div class="text-[12px] text-muted/70 leading-relaxed mt-1">
+                                                模板 = 槽位 <span class="text-text">[词性]</span> + 固定词。造句时先按核心词的词性选模块，再随机抽一条模板填空。<br>
+                                                <span class="text-text">全局共用</span>（所有会话共享同一套），改完下一次造句立即生效。
+                                            </div>
+                                        </div>
+
+                                        <!-- Tab：3 个模块 -->
+                                        <div class="flex gap-1 p-2 border-b border-border/60">
+                                            <button v-for="tb in GRAMMAR_TPL_TABS" :key="'gtab-' + tb.key"
+                                                    @click="grammarTplSwitchTab(tb.key)"
+                                                    class="flex-1 py-1.5 rounded-full text-[12px] tracking-widest transition-colors"
+                                                    :class="grammarTplTab === tb.key ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">
+                                                {{ tb.label }}<span class="ml-1 text-[10px] opacity-70">{{ grammarTplCount(tb.key) }}</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- 模板列表 -->
+                                        <div class="p-2 space-y-1.5">
+                                            <div v-if="!grammarTplArr.length" class="text-[12px] text-muted/70 px-2 py-4 text-center leading-relaxed">
+                                                本模块还没有模板。<br>下面加一条，或点「恢复默认」。
+                                                <br><span class="text-[11px] text-muted/50">（空着也能用，会走兜底模板 [主语][动词][名词][语气词]）</span>
+                                            </div>
+
+                                            <div v-for="(tpl, i) in grammarTplArr" :key="'gtpl-' + grammarTplTab + '-' + i"
+                                                 class="rounded-lg border border-border/60 bg-bg/40 p-2">
+                                                <!-- 编辑态 -->
+                                                <template v-if="grammarTplEditIdx === i">
+                                                    <input :value="grammarTplEditVal"
+                                                           @input="e => grammarTplEditVal = e.target.value"
+                                                           @keydown.enter.prevent="grammarTplSaveEdit()"
+                                                           @keydown.esc.prevent="grammarTplCancelEdit()"
+                                                           class="w-full bg-surface border border-text rounded px-2 py-1.5 text-[13px] text-text"
+                                                           style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
+                                                    <div class="flex gap-1.5 mt-1.5">
+                                                        <button @click="grammarTplSaveEdit()" class="flex-1 py-1 rounded bg-text text-white text-[12px]">保存</button>
+                                                        <button @click="grammarTplCancelEdit()" class="px-3 py-1 rounded border border-border text-[12px] text-muted">取消</button>
+                                                    </div>
+                                                </template>
+                                                <!-- 展示态 -->
+                                                <template v-else>
+                                                    <div class="text-[13px] text-text leading-relaxed break-all"
+                                                         style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ tpl }}</div>
+                                                    <div v-if="grammarTplSlotList(tpl).length" class="flex flex-wrap items-center gap-1 mt-1.5">
+                                                        <span v-for="(sl, si) in grammarTplSlotList(tpl)" :key="'gsl-' + i + '-' + si"
+                                                              class="px-1.5 py-0.5 rounded text-[10px]"
+                                                              :class="sl.isPos ? 'bg-text/10 text-text' : 'bg-border/40 text-muted'">{{ sl.isPos ? sl.name : sl.raw }}</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-end gap-1 mt-1.5">
+                                                        <button @click="grammarTplTry(i)"
+                                                                class="px-2 py-1 rounded text-[11px] border border-border text-muted hover:text-text">{{ grammarTplPreview.idx === i ? '收起' : '试造' }}</button>
+                                                        <button v-if="i > 0" @click="grammarTplMove(i, -1)"
+                                                                class="px-2 py-1 rounded text-[11px] border border-border text-muted hover:text-text">↑</button>
+                                                        <button v-if="i < grammarTplArr.length - 1" @click="grammarTplMove(i, 1)"
+                                                                class="px-2 py-1 rounded text-[11px] border border-border text-muted hover:text-text">↓</button>
+                                                        <button @click="grammarTplStartEdit(i)"
+                                                                class="px-2 py-1 rounded text-[11px] border border-border text-muted hover:text-text">改</button>
+                                                        <button @click="grammarTplDelete(i)"
+                                                                class="px-2 py-1 rounded text-[11px] border"
+                                                                :class="grammarTplDelIdx === i ? 'border-red-400/60 text-red-500' : 'border-border text-muted hover:text-text'">{{ grammarTplDelIdx === i ? '再点确认删除' : '删' }}</button>
+                                                    </div>
+                                                    <div v-if="grammarTplPreview.idx === i"
+                                                         class="mt-1.5 px-2 py-1 rounded bg-surface border border-border/60 text-[12px] text-text leading-relaxed">
+                                                        试造：{{ grammarTplPreview.text }}
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <!-- 新增 + 词性快捷按钮 + 恢复默认 -->
+                                        <div class="p-2 border-t border-border/60">
+                                            <div class="text-[11px] text-muted mb-1.5">新增模板 → {{ grammarTplTabLabel }}</div>
+                                            <input v-model="grammarTplDraft"
+                                                   @keydown.enter.prevent="grammarTplAdd()"
+                                                   placeholder="例：[主语][动词][名词][语气词]"
+                                                   class="w-full bg-bg border border-border rounded px-2 py-1.5 text-[13px] text-text placeholder:text-muted/40"
+                                                   style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
+                                            <div class="text-[11px] text-muted/70 mt-2 mb-1">点一下插入槽位（{{ grammarTplEditIdx >= 0 ? '插到正在编辑的那条' : '插到上面的输入框' }}）</div>
+                                            <div class="flex flex-wrap gap-1">
+                                                <button v-for="pt in POS_TYPES" :key="'gpos-' + pt" @click="grammarTplAppendSlot(pt)"
+                                                        class="px-1.5 py-0.5 rounded text-[10px] border border-border text-muted hover:text-text hover:border-text/50">[{{ pt }}]</button>
+                                            </div>
+                                            <div class="flex gap-1.5 mt-2">
+                                                <button @click="grammarTplAdd()"
+                                                        class="flex-1 py-1.5 rounded bg-text text-white text-[12px] tracking-widest">添加到{{ grammarTplTabLabel }}</button>
+                                                <button @click="grammarTplRestoreTab()"
+                                                        class="px-3 py-1.5 rounded border text-[12px]"
+                                                        :class="grammarTplRestoreAsk ? 'border-red-400/60 text-red-500' : 'border-border text-muted'">{{ grammarTplRestoreAsk ? '确认恢复?' : '恢复默认' }}</button>
+                                            </div>
+                                            <div v-if="grammarTplMsg" class="text-[11px] text-red-500 mt-1.5">{{ grammarTplMsg }}</div>
+                                            <div class="text-[11px] text-muted/60 leading-relaxed mt-2">
+                                                规则：<span class="text-text">[词性]</span> 会被替换成该词性的字词；
+                                                不在词性表里的（如 <span class="text-text">[好像]</span>）当固定词原样输出；
+                                                模板里至少要有一个词性槽位。改完记得点保存。
+                                            </div>
+                                        </div>
+                                    </section>
                                 </template>
 
                             </template>
@@ -7162,6 +7300,8 @@ body { color: var(--color-text); }
      :style="{ left: msgMenu.x + 'px', top: msgMenu.y + 'px' }"
      @click.stop>
     <button @click.stop="msgMenuJieyi" class="px-3 py-1.5 text-[13px] text-white hover:bg-white/10 rounded text-left whitespace-nowrap">解译</button>
+    <button v-if="msgMenu.msg && msgMenu.msg.grammarTrace" @click.stop="showGrammarTrace()"
+            class="px-3 py-1.5 text-[13px] text-white/90 hover:bg-white/10 rounded text-left whitespace-nowrap">看语法溯源</button>
    <button @click.stop="msgMenuQuote" class="px-3 py-1.5 text-[13px] text-white hover:bg-white/10 rounded text-left whitespace-nowrap">引用</button>
     <button @click.stop="msgMenuDelete" class="px-3 py-1.5 text-[13px] text-red-400 hover:bg-white/10 rounded text-left whitespace-nowrap">删除</button>
 </div>
@@ -11481,6 +11621,25 @@ const exportSelectedBoxes = ref([]);
     const typingSessions = reactive({}); // 各会话独立的「正在输入中」状态：{ 会话id: true }
     let activeTimer = null;
     const profiles = reactive({ me: { name: '我', avatar: '' } });
+    // ===== 语法模板库·出厂默认（「恢复默认」用，别和 GRAMMAR_TPL 混）=====
+    const GRAMMAR_TPL_DEFAULT = {
+      action: [
+        '[主语][时间][副词][动词][名词][语气词]',
+        '[主语][情态动词][动词][名词][语气词]',
+        '[主语][介词][宾语][动词][名词]',
+        '[动词][名词][语气词]',
+      ],
+      object: [
+        '[指示代词][量词][名词][程度词][形容词][语气词]',
+        '[时间]的[名词][副词][形容词]',
+        '[名词][助词][程度词][形容词]',
+      ],
+      emotion: [
+        '[肯定词]，[主语]也[觉得][宾语][形容词]',
+        '[叹词]，[宾语][疑问词][动词][语气词]',
+      ],
+    };
+    const _cloneGrammarTplDefault = (k) => (GRAMMAR_TPL_DEFAULT[k] || []).slice();
     const settings = reactive({
       darkMode: false,
       visualStyle: '',        // 视觉方案：''=默认 / frosted=磨砂玻璃 / glass=毛玻璃 / clear=透明 / wechat=仿微信
@@ -11573,6 +11732,14 @@ themeId: 'day',
       callIntervalMin: 10,            // 检查间隔下限（分钟）
       callIntervalMax: 45,            // 检查间隔上限（分钟）
       callProb: 5,                    // 每次检查的来电概率（%）
+      // ===== 拼音自由组合：打字速度（毫秒/字），普通私聊也按它延迟 =====
+      freeComposeCharDelay: 220,
+      // ===== 语法拼字造句：模板库（设置 → 回复设置 → 语法模板库 里增删改）=====
+      grammarTemplates: {
+        action: _cloneGrammarTplDefault('action'),
+        object: _cloneGrammarTplDefault('object'),
+        emotion: _cloneGrammarTplDefault('emotion'),
+      },
  replyLetterMaxPerDay: 5,
       // ===== 主动留言结束 =====
       replyWeightMap: {
@@ -12131,8 +12298,8 @@ const composeMethod2b = (src, session) => {
 // ===== 统一入口 =====
 // ===== 字卡词性打标（供手法 5 使用）=====
 // 用户可选的词性（主语/宾语已合并进「名词」，避免同一张卡被打多个标签）
-const CARD_POS_LIST = ['', '代词','时间','肯定词','否定词','副词','连词','叹词','动词','名词','形容词','指示代词','量词','程度词','语气词'];
-const CARD_POS_SHORT = { '':'', 主语:'主', 代词:'代', 时间:'时', 肯定词:'肯', 否定词:'否', 副词:'副', 连词:'连', 叹词:'叹', 动词:'动', 名词:'名', 形容词:'形', 指示代词:'指', 量词:'量', 程度词:'程', 语气词:'语' };
+const CARD_POS_LIST = ['', '人称代词','物主代词','时间','肯定词','否定词','副词','连词','叹词','动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
+const CARD_POS_SHORT = { '':'', 人称代词:'人称', 物主代词:'物主', 时间:'时', 肯定词:'肯', 否定词:'否', 副词:'副', 连词:'连', 叹词:'叹', 动词:'动', 情态动词:'情态', 介词:'介', 助词:'助', 疑问词:'疑', 名词:'名', 形容词:'形', 指示代词:'指', 量词:'量', 程度词:'程', 语气词:'语' };
 const posPicker = reactive({ show: false, reply: null, draft: '' });
 const openPosPicker = (reply) => {
     if (!reply) return;
@@ -12156,7 +12323,12 @@ const POS_SEED = {
            '奶茶','火锅','蛋糕','耳机','被窝','晚霞','小猫','海浪','作业','睡衣','毛毯','热可可','彩虹','乌云','马路','路灯',
            '我','你','我们','他','大家','你们','某人','有人','别人','这家伙','人家','本宝宝',
            '窗外的风','树上的叶子','这天气','我家猫','某个人'],
-    代词: ['你','我','宝贝','乖乖','宝','老婆','老公','崽崽','笨蛋','傻瓜','亲爱的','大笨蛋','小坏蛋','某位小朋友','某位先生','某位女士','小朋友','那位','这个笨蛋'],
+    人称代词: ['我','你','他','她','我们','你们','他们','大家','人家','宝贝','乖乖','宝','老婆','老公','崽崽','亲爱的','某人','有人','别人','那位','小朋友','这个笨蛋'],
+    物主代词: ['我的','你的','他的','她的','我们的','你们的','人家的'],
+    情态动词: ['想','要','能','会','可以','必须','敢','应该','愿意','得'],
+    介词: ['给','跟','对','向','和','替','帮','从','把','被','让'],
+    助词: ['的','地','得','了','着','过'],
+    疑问词: ['怎么','为什么','谁','哪里','干嘛','啥','什么','几点','多久'],
     时间: ['今天','明天','昨晚','刚才','现在','等下','马上','昨天','周末','晚上','上个月','过几天','以后','大清早','半夜','下辈子'],
     肯定词: ['对','是的','确实','没错','好的','必须的','当然啦','确实如此','狠狠赞同','支持','笑死','确实是这样','中','安排','包在我身上','太对了吧','这绝对是','必须的呀','我就知道','好主意'],
     否定词: ['不','没','别','不想','不要','才不','绝不','没有啦','别了吧','不行','拒绝','漏','没门','别闹','绝无可能','别瞎说','想得美','没可能','不至于吧','我才不信'],
@@ -12342,14 +12514,21 @@ const composeMethod4 = (src, session) => {
 };
 
 // ===== 手法 5：纯槽位语法生成 =====
-const POS_TYPES = ['主语','代词','时间','肯定词','否定词','副词','连词','叹词','动词','名词','形容词','指示代词','量词','程度词','语气词'];
+// 槽位类型（模板里 [xxx] 的合法名）。注意这些不是"用户打标词性"，用户打标的见 CARD_POS_LIST
+const POS_TYPES = ['主语','宾语','定语','人称代词','物主代词','代词','时间','肯定词','否定词','副词','连词','叹词','动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
 
-// 兜底词（词性池为空时用，保证绝不报错）
+// 可省略词性：抽不到就直接填空字符串（宁可不填，也不出错）
+const POS_OPTIONAL = ['情态动词','介词','助词','副词','语气词','连词','疑问词'];
+
+// 兜底词（词性池为空时用）
 const POS_FALLBACK = {
-    主语: ['我','你'], 代词: ['你','我'], 时间: ['今天','现在'],
-    肯定词: ['对','嗯'], 否定词: ['不','没'], 副词: ['都','也'],
-    连词: ['但是','所以'], 叹词: ['啊','哎'], 动词: ['看','想'],
-    名词: ['东西','事'], 形容词: ['好','开心'], 指示代词: ['这个','那个'],
+    主语: ['我','你'], 宾语: ['你','我'], 定语: ['我的','你的'],
+    人称代词: ['我','你','他'], 物主代词: ['我的','你的','他的'], 代词: ['你','我'],
+    时间: ['今天','现在'], 肯定词: ['对','好'], 否定词: ['不','没'],
+    副词: ['也','都'], 连词: ['然后','但是'], 叹词: ['哎','啊'],
+    动词: ['看','想'], 情态动词: ['想','要','能'], 介词: ['给','对'],
+    助词: ['的','得'], 疑问词: ['怎么','为什么'],
+    名词: ['风','事'], 形容词: ['开心','好'], 指示代词: ['那个','这个'],
     量词: ['个','次'], 程度词: ['很','太'], 语气词: ['啊','呢'],
 };
 
@@ -12371,26 +12550,29 @@ const _posPool = (type, session) => {
     return out;
 };
 
-// 主语/宾语本质上都是名词性成分 → 统一回落到「名词」池，避免同一张卡被打多个词性标签
-// 注意：主语也要能从「代词」池取（我/你/他 才是最常见的口语主语）
+// 主语/宾语/定语 的自动聚合规则（任务书 3.0）
 const POS_ALIAS = {
-    主语: ['主语', '名词', '代词'],
-    宾语: ['宾语', '名词', '主语', '代词'],
-    代词: ['代词'],
+    主语: ['名词', '人称代词', '代词'],
+    宾语: ['名词', '人称代词', '代词'],
+    定语: ['物主代词'],
+    人称代词: ['人称代词', '代词'],
 };
 
 const getWordByType = (type, session) => {
-    // 把别名链上的所有池「合并」后一起随机，而不是找到一个就停
-    // （否则 [主语] 只会从名词池取，"我/你"这些代词永远进不了主语位）
+    // 1. 聚合：把别名链上所有池合并后一起随机
     const chain = POS_ALIAS[type] || [type];
     const merged = [];
     for (const t of chain) {
         const pool = _posPool(t, session);
         for (const w of pool) merged.push(w);
     }
-    // 去重，避免名词里有、代词里也有时权重翻倍
     const uniq = [...new Set(merged)];
     if (uniq.length) return uniq[Math.floor(Math.random() * uniq.length)];
+
+    // 2. 可省略词性：抽不到就填空字符串（宁可不填，也不出错）
+    if (POS_OPTIONAL.includes(type)) return '';
+
+    // 3. 兜底词
     const fb = POS_FALLBACK[type] || [''];
     return fb[Math.floor(Math.random() * fb.length)] || '';
 };
@@ -12419,6 +12601,205 @@ const GRAMMAR_TPL = {
 };
 
 // ===== 语法拼字造句（独立玩法，不依赖源句）=====
+let _lastGrammarTrace = '';
+// 从 settings.grammarTemplates 读取模板（用户可自定义）
+const _grammarTplFor = (pos) => {
+    const key = pos === '名词' ? 'object' : (pos === '形容词' ? 'emotion' : 'action');
+    const src = (settings.grammarTemplates && settings.grammarTemplates[key]) || [];
+    const arr = Array.isArray(src) ? src.filter(t => typeof t === 'string' && t.trim()) : [];
+    if (arr.length) return { tpl: arr[Math.floor(Math.random() * arr.length)], key };
+    // 极端兜底
+    return { tpl: '[主语][动词][名词][语气词]', key: 'action' };
+};
+
+// ===== 语法模板库编辑器（设置 → 回复设置 → 语法模板库）=====
+// 3 个 Tab 对应 _grammarTplFor 的三个 key：动作(action) / 事物(object) / 情绪(emotion)
+const GRAMMAR_TPL_TABS = [
+    { key: 'action',  label: '动作模块', pos: '动词' },
+    { key: 'object',  label: '事物模块', pos: '名词' },
+    { key: 'emotion', label: '情绪模块', pos: '形容词' },
+];
+const grammarTplTab = ref('action');
+const grammarTplDraft = ref('');
+const grammarTplEditIdx = ref(-1);
+const grammarTplEditVal = ref('');
+const grammarTplDelIdx = ref(-1);
+const grammarTplRestoreAsk = ref(false);
+const grammarTplMsg = ref('');
+const grammarTplPreview = ref({ idx: -1, text: '' });
+
+// 取（必要时创建）某模块的模板数组 —— 只在事件里调，别在 render/computed 里调
+const _gtlArr = (key) => {
+    const k = key || grammarTplTab.value;
+    if (!settings.grammarTemplates || typeof settings.grammarTemplates !== 'object') {
+        settings.grammarTemplates = { action: [], object: [], emotion: [] };
+    }
+    if (!Array.isArray(settings.grammarTemplates[k])) settings.grammarTemplates[k] = [];
+    return settings.grammarTemplates[k];
+};
+
+const grammarTplArr = computed(() => {
+    const src = settings.grammarTemplates && settings.grammarTemplates[grammarTplTab.value];
+    return Array.isArray(src) ? src : [];
+});
+const grammarTplCount = (key) => {
+    const src = settings.grammarTemplates && settings.grammarTemplates[key];
+    return Array.isArray(src) ? src.length : 0;
+};
+const grammarTplTabLabel = computed(() => {
+    const t = GRAMMAR_TPL_TABS.find(x => x.key === grammarTplTab.value);
+    return t ? t.label : '';
+});
+
+// 拆槽位：词性槽（会被替换）/ 固定词（原样输出）
+const grammarTplSlotList = (tpl) => {
+    const out = [];
+    String(tpl || '').replace(/\[([^\]]*)\]/g, (m, inner) => {
+        const name = String(inner).trim();
+        out.push({ raw: m, name: name, isPos: POS_TYPES.includes(name) });
+        return m;
+    });
+    return out;
+};
+const _gtlEmptySlot = (tpl) => /\[\s*\]/.test(String(tpl || ''));
+const _gtlHasPosSlot = (tpl) => grammarTplSlotList(tpl).some(s => s.isPos);
+const _gtlValidate = (tpl) => {
+    const t = String(tpl || '').trim();
+    if (!t) return '模板不能为空';
+    if (t.length > 120) return '模板太长（最多 120 字）';
+    if (_gtlEmptySlot(t)) return '有空槽位 []，请填词性';
+    if (!_gtlHasPosSlot(t)) return '至少要有一个词性槽位，如 [动词]';
+    return '';
+};
+
+const grammarTplSwitchTab = (key) => {
+    grammarTplTab.value = key;
+    grammarTplEditIdx.value = -1;
+    grammarTplEditVal.value = '';
+    grammarTplDelIdx.value = -1;
+    grammarTplRestoreAsk.value = false;
+    grammarTplMsg.value = '';
+    grammarTplPreview.value = { idx: -1, text: '' };
+};
+
+// 点词性小按钮 → 往正在编辑的输入框（没有在编辑就往日新增框）追加槽位
+const grammarTplAppendSlot = (name) => {
+    const token = '[' + name + ']';
+    if (grammarTplEditIdx.value >= 0) grammarTplEditVal.value = String(grammarTplEditVal.value || '') + token;
+    else grammarTplDraft.value = String(grammarTplDraft.value || '') + token;
+};
+
+const grammarTplAdd = () => {
+    const t = String(grammarTplDraft.value || '').trim();
+    const err = _gtlValidate(t);
+    if (err) { grammarTplMsg.value = err; return; }
+    const arr = _gtlArr();
+    if (arr.includes(t)) { grammarTplMsg.value = '已存在相同模板'; return; }
+    if (arr.length >= 40) { grammarTplMsg.value = '本模块最多 40 条'; return; }
+    arr.push(t);
+    grammarTplDraft.value = '';
+    grammarTplMsg.value = '';
+    debouncedSave();
+    showToast('已添加模板');
+};
+
+const grammarTplStartEdit = (i) => {
+    grammarTplEditIdx.value = i;
+    grammarTplEditVal.value = grammarTplArr.value[i] || '';
+    grammarTplDelIdx.value = -1;
+    grammarTplRestoreAsk.value = false;
+    grammarTplMsg.value = '';
+};
+const grammarTplCancelEdit = () => {
+    grammarTplEditIdx.value = -1;
+    grammarTplEditVal.value = '';
+    grammarTplMsg.value = '';
+};
+const grammarTplSaveEdit = () => {
+    const i = grammarTplEditIdx.value;
+    if (i < 0) return;
+    const t = String(grammarTplEditVal.value || '').trim();
+    const err = _gtlValidate(t);
+    if (err) { grammarTplMsg.value = err; return; }
+    const arr = _gtlArr();
+    if (arr.some((x, j) => j !== i && x === t)) { grammarTplMsg.value = '已存在相同模板'; return; }
+    arr[i] = t;
+    grammarTplEditIdx.value = -1;
+    grammarTplEditVal.value = '';
+    grammarTplMsg.value = '';
+    debouncedSave();
+    showToast('已保存模板');
+};
+
+// 删除：点一次变「再点确认」，防手滑（不做弹窗，跟全站风格一致）
+const grammarTplDelete = (i) => {
+    if (grammarTplDelIdx.value !== i) {
+        grammarTplDelIdx.value = i;
+        if (grammarTplEditIdx.value === i) grammarTplCancelEdit();
+        return;
+    }
+    const arr = _gtlArr();
+    if (i < 0 || i >= arr.length) { grammarTplDelIdx.value = -1; return; }
+    arr.splice(i, 1);
+    grammarTplDelIdx.value = -1;
+    if (grammarTplPreview.value.idx === i) grammarTplPreview.value = { idx: -1, text: '' };
+    debouncedSave();
+    showToast('已删除模板');
+};
+
+// 上下移：调整抽到的先后（不影响概率，只是让常用模板排前面好找）
+const grammarTplMove = (i, d) => {
+    const arr = _gtlArr();
+    const j = i + d;
+    if (i < 0 || i >= arr.length || j < 0 || j >= arr.length) return;
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    grammarTplDelIdx.value = -1;
+    debouncedSave();
+};
+
+const grammarTplRestoreTab = () => {
+    if (!grammarTplRestoreAsk.value) { grammarTplRestoreAsk.value = true; return; }
+    const key = grammarTplTab.value;
+    const arr = _gtlArr(key);
+    arr.length = 0;
+    _cloneGrammarTplDefault(key).forEach(x => arr.push(x));
+    grammarTplRestoreAsk.value = false;
+    grammarTplEditIdx.value = -1;
+    grammarTplMsg.value = '';
+    grammarTplPreview.value = { idx: -1, text: '' };
+    debouncedSave();
+    const tb = GRAMMAR_TPL_TABS.find(t => t.key === key);
+    showToast('已恢复「' + (tb ? tb.label : key) + '」默认模板');
+};
+
+// 试造一句：只填空不入库，用当前会话的字卡池（抽不到走兜底词）
+const _gtlFill = (tpl) => {
+    const s = currentSession.value || null;
+    const out = String(tpl || '').replace(/\[([^\]]*)\]/g, (m, inner) => {
+        const t = String(inner).trim();
+        if (!POS_TYPES.includes(t)) return t;                       // 非词性 → 固定词原样输出
+        if (t === '主语' || t === '人称代词' || t === '代词') { if (Math.random() < 0.4) return ''; }
+        if (t === '语气词' || t === '副词') { if (Math.random() < 0.2) return ''; }
+        return getWordByType(t, s) || '';
+    });
+    return out.replace(/^[，、\s]+/, '').trim();
+};
+const grammarTplTry = (i) => {
+    const tpl = grammarTplArr.value[i];
+    if (!tpl) return;
+    if (grammarTplPreview.value.idx === i) { grammarTplPreview.value = { idx: -1, text: '' }; return; }
+    const text = _gtlFill(tpl);
+    grammarTplPreview.value = { idx: i, text: text || '（空：词性池里没有可用的词）' };
+};
+
+// 侧拉面板「编辑模板库」入口 → 跳设置页对应子页（等 watch(settingsTab) 把子页清空后再设）
+const openGrammarTplEditor = () => {
+    settingsPanelOpen.value = false;
+    settingsTab.value = '回复设置';
+    try { switchView('preferences'); } catch (e) { }
+    nextTick(() => { replySettingsPage.value = '语法模板库'; });
+};
+
 const syntaxCompose = (session) => {
     // 1. 骰字：从所有启用字卡里抽一个汉字
     const allTexts = _allCardTexts(session);
@@ -12453,9 +12834,9 @@ const syntaxCompose = (session) => {
         coreWord = getWordByType(corePos, session);
     }
 
-    // 4. 抽模板
-    const tpls = GRAMMAR_TPL[corePos] || GRAMMAR_TPL['动词'];
-    const tpl = tpls[Math.floor(Math.random() * tpls.length)];
+    // 4. 抽模板（读 settings.grammarTemplates，用户可自定义）
+    const _g = _grammarTplFor(corePos);
+    const tpl = _g.tpl;
 
     // 5. 填槽（带省略机制）
     let usedCore = false;
@@ -12467,8 +12848,8 @@ const syntaxCompose = (session) => {
             // 非词性槽位（如 [好像]/[觉得]）→ 当固定词用
             return t;
         }
-        // 省略机制：主语/代词 40% 空；语气词/副词 20% 空
-        if (t === '主语' || t === '代词') { if (Math.random() < 0.4) return ''; }
+        // 省略机制：主语/人称代词 40% 空；语气词/副词 20% 空
+        if (t === '主语' || t === '人称代词' || t === '代词') { if (Math.random() < 0.4) return ''; }
         if (t === '语气词' || t === '副词') { if (Math.random() < 0.2) return ''; }
         return getWordByType(t, session);
     });
@@ -12479,6 +12860,9 @@ const syntaxCompose = (session) => {
     // 6. 加标点（随机 或无）
     const punct = ['。', '！', '~', '？', ''][Math.floor(Math.random() * 5)];
     sentence = sentence.replace(/^[，、\s]+/, '').trim() + punct;
+    // 溯源：记下用了哪个模块 + 哪条模板
+    const _modName = _g.key === 'object' ? '事物模块' : (_g.key === 'emotion' ? '情绪模块' : '动作模块');
+    _lastGrammarTrace = _modName + '｜模板：' + tpl + '｜核心词：' + (coreWord || '无') + '（' + corePos + '）';
     // 熟练度 +1
     try {
         const fs4 = getFreeComposeSettings(session.id);
@@ -12909,7 +13293,7 @@ const triggerFreeCompose = (session) => {
             if (sTxt) {
                 const lastS = session.messages[session.messages.length - 1];
                 if (!(lastS && lastS.content === sTxt)) {
-                    sendMessage('them', sTxt, { session, freeCompose: true });
+                    sendMessage('them', sTxt, { session, freeCompose: true, grammarTrace: _lastGrammarTrace || '' });
                     saveFreeComposedSentence(sTxt, session);
                     return true;
                 }
@@ -14841,8 +15225,9 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
         // ===== 主回复「拼音打字」玩法：第三优先 =====
         if (!_skipTypingPlay && cur.type !== 'group' && triggerTypingPlay(cur)) {
             _skipTypingPlay = false;
-            delete typingSessions[cur.id];   // 必须清掉，否则一直"输入中"且阻塞后续回复
-            return;   // 已由 _pushFreeComposeToChat 推送（含注音/标红/角标）
+            // 注意：不要在这里 delete typingSessions
+            // （_pushFreeComposeToChat 现在会延迟发送，由它自己发完再清）
+            return;
         }
         _skipTypingPlay = false;
         const acts = [];
@@ -15944,6 +16329,13 @@ const saveJieyi = () => {
 const deleteJieyi = () => { jieyiEditor.text = ''; saveJieyi(); };
 
 const msgMenuJieyi = () => { const m = msgMenu.msg; if (!m) return; closeMsgMenu(); openJieyiEditor(m); };
+// 语法溯源：拼接后长按菜单里查看
+const showGrammarTrace = () => {
+    const m = msgMenu.msg;
+    if (!m) return;
+    closeMsgMenu();
+    showToast(m.grammarTrace || '这条不是语法生成出来的');
+};
 
 // ===== 解译拾取：梦角不定期收集用户写的解译 → 入该会话「梦角自由造句」字卡 =====
 // 按中英文标点切分（保留标点）
@@ -17372,10 +17764,12 @@ const _collectForeignCards = (s) => {
     return out;
 };
 
+let _freeComposeBackspaces = 0;   // 最近一次生成里"退格重选"的次数
 const _makeFreeComposeText = (s) => {
     const MAX_SEGS = 5;
     const SEG_MIN = 2, SEG_MAX = 5;
     const PUNCT_PROB = 0.4;   // 段长≥3 时加标点的概率
+    _freeComposeBackspaces = 0;   // 本次生成的退格次数（影响打字耗时）
 
     // ===== ⭐ 外文分支（优先）：按概率抽外文常用词，带中文翻译 =====
     // text 永远是键盘能打的字母（意语原文 / 日语罗马字），display 是可选的假名/原字
@@ -17408,7 +17802,14 @@ const _makeFreeComposeText = (s) => {
         const len = SEG_MIN + Math.floor(Math.random() * (SEG_MAX - SEG_MIN + 1));
         const units = [];
         for (let i = 0; i < len; i++) {
-            const u = _rollOneUnit();
+            let u = _rollOneUnit();
+            // 退格模拟：先骰一个 0~100 的阈值，再骰一次看是否落入
+            // 落入 → 退格、重新选这个字（同时让发送前的打字耗时变长）
+            const th = Math.random() * 100;
+            if (Math.random() * 100 < th) {
+                u = _rollOneUnit();
+                _freeComposeBackspaces++;
+            }
             if (u) units.push(u);
         }
         if (!units.length) break;
@@ -17469,6 +17870,7 @@ const _pushFreeComposeToChat = (s, free) => {
         seg.units.map(u => u.ch).join('') + (seg.punct || '')
     ).join('');
 
+    const _pushNow = () => {
     s.messages.push({
         id: genId(),
         sender: 'them',
@@ -17491,6 +17893,18 @@ const _pushFreeComposeToChat = (s, free) => {
     _chattySaveThrottled();
     if (currentSessionId.value === s.id && currentView.value === 'chat') _chattyScrollThrottled();
     updateUnread();
+    delete typingSessions[s.id];
+    };
+
+    // 模拟打字耗时：以前普通私聊是"秒出"，现在按「字数 + 退格次数」延迟
+    // 速度可在 回复设置 → 对方页面设置 → 打字速度 里调（freeComposeCharDelay，毫秒/字）
+    const _charDelay = Math.max(40, Number(settings.freeComposeCharDelay) || 220);
+    const _units2 = flatUnits.length || 1;
+    const _bs = Number(_freeComposeBackspaces) || 0;
+    const _totalMs = (_units2 + _bs * 1.5) * _charDelay;
+    const _delayMs = Math.min(12000, Math.max(500, Math.round(_totalMs)));
+    typingSessions[s.id] = true;
+    setTimeout(_pushNow, _delayMs);
 };
 
 // 自由组合的打字流程：打拼音 → 弹候选 → 选中 → 发送
@@ -24437,7 +24851,7 @@ isMuted,
       msgMenu, pendingQuote, openMsgMenu, closeMsgMenu,
       onMsgPressStart, onMsgPressEnd,
       msgMenuCopy, msgMenuQuote, msgMenuRetract, msgMenuDelete,
-      jieyiEditor, openJieyiEditor, saveJieyi, deleteJieyi, msgMenuJieyi,
+      jieyiEditor, openJieyiEditor, saveJieyi, deleteJieyi, msgMenuJieyi, showGrammarTrace,
       runJieyiHarvest, harvestJieyiForSession, startJieyiHarvestTimer,
 // T2 软件页面
       AVAILABLE_APPS, appsPickerOpen, openAppsPicker, closeAppsPicker,
@@ -24451,6 +24865,12 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tr
       getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,showRetractModeHelp, showRetractMethodHelp,
 // 回复设置（全局）
   settingsTab, replySubTab, replySettingsPage, boxHasCards,adjustSetting, commitNumInput, numKey, selectAllText, VISUAL_STYLES, visualAlpha, isSectionOpen, toggleSection,
+// 语法模板库（动作/事物/情绪 3 Tab 编辑器）
+  GRAMMAR_TPL_TABS, POS_TYPES, grammarTplTab, grammarTplDraft, grammarTplEditIdx, grammarTplEditVal,
+  grammarTplDelIdx, grammarTplRestoreAsk, grammarTplMsg, grammarTplPreview,
+  grammarTplArr, grammarTplCount, grammarTplTabLabel, grammarTplSlotList,
+  grammarTplSwitchTab, grammarTplAppendSlot, grammarTplAdd, grammarTplStartEdit, grammarTplCancelEdit,
+  grammarTplSaveEdit, grammarTplDelete, grammarTplMove, grammarTplRestoreTab, grammarTplTry, openGrammarTplEditor,
       replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,groupSessions, toggleGroupChatFor, adjustGroupChatInterval, adjustReplyDelay,
 countBoxCards, countCategoryCards, countGroupCards,
 _clearPoolCache,
