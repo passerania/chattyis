@@ -1717,9 +1717,9 @@ body { color: var(--color-text); }
                                                 <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentConcatSettings.concatEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
                                             </button>
                                         </div>
-                                        <!-- 拼接条数 -->
+                                        <!-- 拼接条数（上限） -->
                                         <div class="flex items-center justify-between">
-                                            <span class="text-[14px] text-text">拼接条数</span>
+                                            <span class="text-[14px] text-text">最多几条</span>
                                             <div class="flex items-center gap-2">
                                                 <button @click="adjustConcatCount(-1)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg transition-colors flex items-center justify-center text-sm" :disabled="!currentConcatSettings.concatEnabled">−</button>
                                                 <span class="w-8 text-center text-text font-medium">{{ currentConcatSettings.concatCount }}</span>
@@ -1734,7 +1734,7 @@ body { color: var(--color-text); }
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="text-[11px] text-muted/60 mt-1.5 px-1">关闭后只发单条字卡；条数控制每次拼接的数量（含表情包）</div>
+                                    <div class="text-[11px] text-muted/60 mt-1.5 px-1">关闭后只发单条字卡；开启时每次至少拼 2 条，最多到「最多几条」为止（权重会轻微影响还继不继续挑）</div>
                                 </div>
 
   
@@ -2907,7 +2907,7 @@ body { color: var(--color-text); }
                                             <div class="p-3.5">
                                                 <div class="flex items-center justify-between mb-2">
                                                     <span class="text-[14px] text-text">打字速度</span>
-                                                    <span class="text-[11px] text-muted">{{ settings.chattyTypeSpeed === 'slower' ? '更慢' : (settings.chattyTypeSpeed === 'fast' ? '快' : '标准') }}</span>
+                                                    <span class="text-[11px] text-muted">{{ settings.chattyTypeSpeed === 'slower' ? '更慢' : (settings.chattyTypeSpeed === 'slow' ? '慢' : (settings.chattyTypeSpeed === 'fast' ? '快' : '标准')) }}</span>
                                                 </div>
                                                 <div class="flex gap-1">
                                                     <button @click="settings.chattyTypeSpeed = 'slow'; debouncedSave();" class="flex-1 py-1.5 rounded-lg text-[12px] tracking-widest transition-colors" :class="settings.chattyTypeSpeed === 'slow' ? 'bg-text text-white' : 'bg-bg text-muted'">慢</button>
@@ -2920,15 +2920,16 @@ body { color: var(--color-text); }
                                             <div class="p-3.5 border-t border-border">
                                                 <div class="flex items-center justify-between mb-1">
                                                     <span class="text-[14px] text-text">自由拼音打字速度</span>
-                                                    <span class="text-[11px] text-muted tabular-nums">{{ settings.freeComposeCharDelay || 220 }} ms/字</span>
+                                                    <span class="text-[11px] text-muted tabular-nums">{{ settings.freeComposeCharDelay || 150 }} ms/字母</span>
                                                 </div>
-                                                <input type="range" min="60" max="800" step="20"
-                                                       :value="settings.freeComposeCharDelay || 220"
-                                                       @input="e => { settings.freeComposeCharDelay = Number(e.target.value) || 220; debouncedSave(); }"
+                                                <input type="range" min="60" max="400" step="10"
+                                                       :value="settings.freeComposeCharDelay || 150"
+                                                       @input="e => { settings.freeComposeCharDelay = Number(e.target.value) || 150; debouncedSave(); }"
                                                        class="w-full" style="accent-color: var(--nav-icon-color);">
                                                 <div class="text-[11px] text-muted/60 leading-relaxed mt-1">
                                                     普通私聊里发「拼音自由组合」消息前的打字耗时（越大越慢）。<br>
-                                                    实际延迟 =（字数 + 退格次数×1.5）× 这个值，范围 0.5~12 秒。
+                                                    实际延迟 =（<span class="text-text">拼音字母数</span> + 退格次数×2）× 这个值，范围 0.6~30 秒。<br>
+                                                    <span class="text-muted/50">（和上面「打字速度」同一套口径：一个字约 3~6 个字母，所以 150ms/字母 ≈ 一个字 0.6~0.9 秒）</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -3046,20 +3047,20 @@ body { color: var(--color-text); }
                                     <div class="flex items-center justify-between">
                                         <span class="text-[14px] text-text">最短回复时间</span>
                                         <div class="flex items-center gap-2">
-                                            <button @click="adjustReplyDelay('min', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 0, 600)" @keydown="numKey($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 0, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[14px]">{{ fmtDelay(settings.replyDelayMin) }}</span>
-                                            <button @click="adjustReplyDelay('min', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            <button @click="adjustReplyDelay('min', -1)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                            <span :key="'delay-min-' + (settings.replyDelayMin ?? 2)" contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 1, 600)" @keydown="numKey($event, () => settings.replyDelayMin, v => { settings.replyDelayMin = v; adjustReplyDelay('min', 0); }, 1, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[14px]">{{ fmtDelay(settings.replyDelayMin) }}</span>
+                                            <button @click="adjustReplyDelay('min', 1)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                         </div>
                                     </div>
                                     <div class="flex items-center justify-between">
                                         <span class="text-[14px] text-text">最长回复时间</span>
                                         <div class="flex items-center gap-2">
-                                            <button @click="adjustReplyDelay('max', -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 0, 600)" @keydown="numKey($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 0, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[14px]">{{ fmtDelay(settings.replyDelayMax) }}</span>
-                                            <button @click="adjustReplyDelay('max', 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
+                                            <button @click="adjustReplyDelay('max', -1)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
+                                            <span :key="'delay-max-' + (settings.replyDelayMax ?? 5)" contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 1, 600)" @keydown="numKey($event, () => settings.replyDelayMax, v => { settings.replyDelayMax = v; adjustReplyDelay('max', 0); }, 1, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[14px]">{{ fmtDelay(settings.replyDelayMax) }}</span>
+                                            <button @click="adjustReplyDelay('max', 1)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
                                         </div>
                                     </div>
-                                    <div class="text-[11px] text-muted leading-relaxed">徐徐道来开启时，每条消息在最短~最长之间随机延迟（最长自动不小于最短）</div>
+                                    <div class="text-[11px] text-muted leading-relaxed">徐徐道来开启时，每条消息在最短~最长之间随机延迟（最长自动不小于最短）。<span class="text-muted/60">按 1 秒一步调，手输 1~600 也行。</span></div>
                                 </div>
                                 <div class="flex items-center justify-between p-3.5 border-b border-border">
                                     <span>语料随缘抛出</span>
@@ -8231,6 +8232,9 @@ const _reviewFreeComposeUnits = (units) => {
     const result = units.map(u => ({ ...u, corrected: false }));
 
     // ① 词级：从长到短扫（4→3→2）
+    //    ⚠ 必须逐音节核对：只把拼音拼长串去查词会误伤。
+    //    反例（老板踩过）：打的是 ren + ao，拼成 "renao" 命中「热闹」(re+nao)，
+    //    于是「人」被改成「热」——拼接能对上 ≠ 每个音节都对得上。
     for (let len = Math.min(result.length, 4); len >= 2; len--) {
         for (let start = 0; start + len <= result.length; start++) {
             const seg = result.slice(start, start + len);
@@ -8240,6 +8244,14 @@ const _reviewFreeComposeUnits = (units) => {
             if (Math.random() >= wordProb) continue;
             const wChars = [...word];
             if (wChars.length !== len) continue;
+            // 逐位核对：候选词每个字的拼音，必须和这一位打出来的拼音完全一致
+            let pinyinOk = true;
+            for (let i = 0; i < len; i++) {
+                const want = String(seg[i].py || '').toLowerCase();
+                const got = String(CHATTY_PINYIN[wChars[i]] || '').toLowerCase();
+                if (!got || got !== want) { pinyinOk = false; break; }
+            }
+            if (!pinyinOk) continue;
             for (let i = 0; i < len; i++) {
                 if (result[start + i].ch !== wChars[i]) {
                     result[start + i].ch = wChars[i];
@@ -11732,8 +11744,9 @@ themeId: 'day',
       callIntervalMin: 10,            // 检查间隔下限（分钟）
       callIntervalMax: 45,            // 检查间隔上限（分钟）
       callProb: 5,                    // 每次检查的来电概率（%）
-      // ===== 拼音自由组合：打字速度（毫秒/字），普通私聊也按它延迟 =====
-      freeComposeCharDelay: 220,
+      // ===== 拼音自由组合：打字速度（毫秒/字母，B77 起按字母算），普通私聊也按它延迟 =====
+      freeComposeCharDelay: 150,
+      freeComposeCharDelayUnit: 'letter',   // 老档迁移标记：'letter' = 已按字母口径换算过
       // ===== 语法拼字造句：模板库（设置 → 回复设置 → 语法模板库 里增删改）=====
       grammarTemplates: {
         action: _cloneGrammarTplDefault('action'),
@@ -13582,7 +13595,8 @@ const adjustConcatCount = (delta) => {
     if (!s) return;
     const settings = getSessionSettings(s.id);
     const newVal = settings.concatCount + delta;
-    if (newVal >= 1 && newVal <= 5) {
+    // 拼接模式下「最多 N 条」：最少 2 条（主回复默认 1 条，拼接才凑 2 条起），最多 5 条
+    if (newVal >= 2 && newVal <= 5) {
         settings.concatCount = newVal;
         debouncedSave();
     }
@@ -15194,6 +15208,139 @@ const getCombinedReply = (pool) => {
     return null;
 };
 
+// ===== 真实耗时引擎（RTH）=====
+// 原则：延迟不再"随机抽一个数"，而是按「翻了几页 / 挑了几张 / 打了几个字」累加。
+// 全部纯函数、无副作用（随机数可注入，方便单测：tools/test-realtime-timing.js）
+const RTH = {
+    // ---- 可调常量（先写死；老板要旋钮时再开成设置项）----
+    MAX_REGRET: 2,             // 一次回复里最多"反悔重选"几次
+    MAX_RETRY: 2,              // 最多"全删重来"几次
+    REGRET_PROB: 0.12,         // 反悔概率
+    SEND_BACK_PROB: 0.05,      // 发送前觉得没表达好、全删重来
+    SWITCH_METHOD_PROB: 0.10,  // 某玩法没产出 → 沮丧换手法
+    AWAY_ENABLED: false,       // TODO(走开一下)：老板还没拍板，开关先留空不启用
+
+    // 前置延迟：保留 [最短,最长]，区间内两段分布（70% 偏快 / 30% 拖到后段），不越界
+    preDelayMs(minS, maxS, r1, r2) {
+        const lo = Math.max(1, Number(minS) || 2);
+        const hi = Math.max(lo, Number(maxS) || 5);
+        const span = hi - lo;
+        const a = (r1 == null ? Math.random() : r1);
+        const b = (r2 == null ? Math.random() : r2);
+        const ratio = a < 0.7 ? b * 0.4 : 0.4 + b * 0.6;
+        return Math.round((lo + span * ratio) * 1000);
+    },
+    browseMs(r) { return Math.round(200 + (r == null ? Math.random() : r) * 250); },      // 翻一页
+    browsePages(r) { return 1 + Math.floor((r == null ? Math.random() : r) * 3); },       // 翻几页
+    pickMs(r) { return Math.round(260 + (r == null ? Math.random() : r) * 300); },        // 挑一张
+    hesitateMs(r) { return Math.round(400 + (r == null ? Math.random() : r) * 700); },    // 犹豫/退格
+    perCharMs(r) { return Math.round(130 + (r == null ? Math.random() : r) * 90); },      // 每字
+    typingMs(text, r) {
+        const n = [...String(text == null ? '' : text)].filter(c => c !== ' ' && c !== '\u3000').length || 1;
+        return Math.min(20000, Math.max(600, Math.round(n * RTH.perCharMs(r))));
+    },
+    imageMs(r) { return Math.round(900 + (r == null ? Math.random() : r) * 900); },       // 看一张图
+    patMs(r) { return Math.round(500 + (r == null ? Math.random() : r) * 500); },         // 拍一拍
+    drawMs(r) { return Math.round(1500 + (r == null ? Math.random() : r) * 2500); },      // 涂鸦
+    // 继续骰：卡片权重轻微影响（0.35~0.85，不做成绝对）
+    continueProb(weight) {
+        const w = Math.max(0, Math.min(100, Number(weight) || 0));
+        return Math.max(0.35, Math.min(0.85, 0.45 + (w / 100) * 0.35));
+    },
+};
+
+// ===== 骰子状态机：模拟「翻卡 → 挑卡 → 反悔 → 继续挑 → 发送确认」=====
+// 返回 { items, costMs, regrets, retries }；纯函数，不碰 DOM/存储
+const _rollCardSelection = (pool, cfg) => {
+    const arr = Array.isArray(pool) ? pool.slice() : [];
+    const enabled = !cfg || cfg.concatEnabled !== false;
+    const rawCap = Number(cfg && cfg.concatCount);
+    const cap = Math.max(1, Math.min(35, isNaN(rawCap) ? 2 : rawCap));
+    // 老板拍板：拼接模式下至少 2 条；不拼接就 1 条
+    const minCount = enabled ? Math.min(2, cap) : 1;
+    const maxCount = enabled ? cap : 1;
+
+    // 一轮"从头挑一遍"
+    const pickOnce = () => {
+        const copy = arr.slice();
+        const seen = new Set();
+        const items = [];
+        let cost = RTH.browsePages() * RTH.browseMs();   // 先翻几页
+        let regret = 0;
+
+        while (items.length < maxCount && copy.length) {
+            // 按权重抽一张（没有权重就等权）
+            let total = 0;
+            const ws = copy.map(it => { const w = Number(it && it.weight); return isFinite(w) && w > 0 ? w : 1; });
+            for (let i = 0; i < ws.length; i++) total += ws[i];
+            let r = Math.random() * total;
+            let idx = copy.length - 1;
+            for (let i = 0; i < copy.length; i++) { r -= ws[i]; if (r <= 0) { idx = i; break; } }
+            const it = copy[idx];
+            const tx = String((it && it.text) || '').trim();
+
+            if (cfg && cfg.concatEmoji === false && it && it.image) { copy.splice(idx, 1); continue; }
+            if (tx && seen.has(tx)) { copy.splice(idx, 1); continue; }
+
+            // 骰子2：反悔（只在还没定稿时有意义）
+            if (items.length === 0 && regret < RTH.MAX_REGRET && Math.random() < RTH.REGRET_PROB) {
+                regret++;
+                cost += RTH.hesitateMs();
+                copy.splice(idx, 1);
+                continue;
+            }
+
+            items.push(it);
+            if (tx) seen.add(tx);
+            copy.splice(idx, 1);
+
+            if (items.length < minCount) { cost += RTH.pickMs(); continue; }
+            if (items.length >= maxCount) break;
+
+            // 骰子3：还继续挑吗（权重轻微影响）
+            if (Math.random() > RTH.continueProb(it && it.weight)) break;
+            cost += RTH.pickMs();
+        }
+        return { items, cost, regret };
+    };
+
+    let cost = 0, retries = 0, res = null;
+    for (let attempt = 0; attempt <= RTH.MAX_RETRY; attempt++) {
+        res = pickOnce();
+        cost += res.cost;
+        if (!res.items.length) break;
+        // 骰子4：发送前觉得"没表达好" → 全删重来（限次，防死循环）
+        if (attempt < RTH.MAX_RETRY && Math.random() < RTH.SEND_BACK_PROB) {
+            cost += RTH.hesitateMs();
+            retries++;
+            continue;
+        }
+        break;
+    }
+    return { items: (res && res.items) || [], costMs: cost, regrets: (res && res.regret) || 0, retries };
+};
+
+// ===== 按「动作计划」逐步发送 =====
+// 全程保持"输入中"，每一步都检查会话还在不在；任何分支结束都会收尾（不会卡死输入中）
+const _runReplyPlan = (cur, plan, preDelayMs) => {
+    const alive = () => Array.isArray(sessions.value) && sessions.value.some(s => s && s.id === cur.id);
+    const done = () => { try { delete typingSessions[cur.id]; } catch (e) {} };
+    const items = (Array.isArray(plan) ? plan : []).filter(x => x && typeof x.fn === 'function');
+    if (!items.length) { done(); return; }
+    const step = (i) => {
+        if (i >= items.length || !alive()) { done(); return; }
+        const it = items[i];
+        setTimeout(() => {
+            if (!alive()) { done(); return; }
+            try { it.fn(); } catch (e) { try { console.warn('[reply] act failed', e); } catch (e2) {} }
+            step(i + 1);
+        }, Math.max(0, Math.round(it.delay || 0)));
+    };
+    setTimeout(() => {
+        try { step(0); } catch (e) { done(); }
+    }, Math.max(0, Math.round(preDelayMs || 0)));
+};
+
 //private conversation logic
   const triggerReply = (delay, sessArg) => {
     const sess = sessArg || currentSession.value;
@@ -15201,8 +15348,10 @@ const getCombinedReply = (pool) => {
     typingSessions[sess.id] = true;
     const minS = Math.max(1, settings.replyDelayMin || 2);
     const maxS = Math.max(minS, settings.replyDelayMax || 5);
-     // 首条延迟统一用 min~max 秒（不管徐徐道来开不开、不论什么玩法）
-    const d = randomMs(minS * 1000, maxS * 1000);
+     // 前置延迟：保留 [最短, 最长]，区间内两段分布（70% 偏快 / 30% 拖到后段），不越界
+    // TODO(走开一下·长尾)：老板还没拍板，先留空。将来开启时在下面按 RTH.AWAY_ENABLED
+    //   以 3% 概率把 d 乘 1.3~2（封顶 10 分钟）。
+    const d = RTH.preDelayMs(minS, maxS);
     setTimeout(() => {
         const cur = sess;
 // ===== 词典拼字：优先判断 =====
@@ -15230,16 +15379,18 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
             return;
         }
         _skipTypingPlay = false;
-        const acts = [];
-        let totalChars = 0;
+        // 回复素材：拍一拍 / 问号，先攒成"动作计划"，时间统一由 RTH 算
+        const plan = [];
+        let _preDelay = 0;
+        const _pushAct = (fn, delay) => plan.push({ fn, delay: Math.max(0, Math.round(delay || 0)) });
         if (cur.type !== 'group') {
             if (Math.random() < 0.02) {
                 const pat = drawFromSpecialBox(cur, '拍一拍');
-                if (pat) { acts.push(() => pushPat(cur, pat)); totalChars += (pat || '').length; }
+                if (pat) _pushAct(() => pushPat(cur, pat), RTH.patMs());
             }
             if (Math.random() < 0.1) {
                 const q = drawFromSpecialBox(cur, '问号');
-                if (q) { acts.push(() => sendMessage('them', q, { session: cur })); totalChars += (q || '').length; }
+                if (q) _pushAct(() => sendMessage('them', q, { session: cur }), RTH.typingMs(q));
             }
         }
 
@@ -15247,8 +15398,8 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
         if (cur.type !== 'group' && Math.random() < 0.06) {
             const modes = ['letters', 'shapes', 'freehand'];
             const mode = modes[Math.floor(Math.random() * modes.length)];
-            sendSystemDrawing(cur, mode);
-            delete typingSessions[cur.id];
+            _pushAct(() => sendSystemDrawing(cur, mode), RTH.drawMs());
+            _runReplyPlan(cur, plan, 0);
             return;
         }
 
@@ -15269,8 +15420,8 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
         }
         if (teasePool.length) {
             const picked = teasePool[Math.floor(Math.random() * teasePool.length)];
-            acts.length = 0;
-            acts.push(() => {
+            plan.length = 0;   // 吐槽独占这一轮
+            _pushAct(() => {
                 sendMessage('them', '', {
                     type: 'tease',
                     teaseContent: picked.text,
@@ -15280,7 +15431,7 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
                     systemReply: '',
                     session: cur
                 });
-            });
+            }, RTH.typingMs(picked.text));
             // 自动弹窗
             if (Math.random() < ts.popupProb) {
                 setTimeout(() => {
@@ -15290,10 +15441,7 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
                     }
                 }, 800);
             }
-            // 直接执行发送（因为后面还有延迟逻辑，直接 return 让卡片单独发送）
-            let t = 0;
-            acts.forEach((fn) => { t += randomMs(600, 1200); setTimeout(fn, t); });
-            delete typingSessions[cur.id];
+            _runReplyPlan(cur, plan, 0);
             return;
         }
     }
@@ -15301,7 +15449,7 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
 
         // ---- 普通回复 ----
         if (settings.blankReplyEnabled && Math.random() < 0.1) {
-            acts.push(() => sendMessage('them', ' ', { blank: true, session: cur }));
+            _pushAct(() => sendMessage('them', ' ', { blank: true, session: cur }), RTH.typingMs(' '));
         } else {
                                                                     // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
             const _concatCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
@@ -15328,62 +15476,26 @@ if (Math.random() < 0.3) {
 const opts = { marked, session: cur };
                 if (quote) opts.quote = quote;
                 if (tag) opts.tag = tag;
-                if (concatSettings.concatEnabled) {
-                    // 拼接模式
-                    const count = Math.min(concatSettings.concatCount, pool.length);
-                    let selected = [];
-                    let copy = [...pool];
-                    // 按「文本」去重：字卡库里可能有同文本但不同 id 的卡，避免一句话出现两遍
-                    const _seenT = new Set();
-                    for (let i = 0; i < count && copy.length > 0; i++) {
-                        let pickIdx = -1;
-                        for (let k = 0; k < copy.length; k++) {
-                            const it = copy[k];
-                            if (!concatSettings.concatEmoji && it.image) continue;
-                            const tx = String(it.text || '').trim();
-                            if (tx && _seenT.has(tx)) continue;
-                            pickIdx = k;
-                            break;
-                        }
-                        if (pickIdx < 0) break;
-                        const item = copy[pickIdx];
-                        const tx = String(item.text || '').trim();
-                        if (tx) _seenT.add(tx);
-                        selected.push(item);
-                        copy.splice(pickIdx, 1);
-                    }
-                    if (selected.length === 0) {
-                        // 兜底
-                        const fallback = pool[Math.floor(Math.random() * pool.length)];
-                        if (fallback.image) {
-                            const imgOpts = { ...opts, image: fallback.image };
-                            acts.push(() => sendMessage('them', '', imgOpts));
-                        } else {
-                            acts.push(() => sendMessage('them', fallback.text || '……', opts));
-                        }
+                // ===== 骰子状态机：选卡 → 反悔 → 继续挑 → 发送确认 =====
+                const dice = _rollCardSelection(pool, concatSettings);
+                // 换手法：能走到这里说明前面几个玩法都没产出 → 沮丧、退格重来（只加时间）
+                // TODO(换手法·外部变体)：将来可再加低概率「发完再补一条不同玩法」
+                let _frustration = 0;
+                if (Math.random() < RTH.SWITCH_METHOD_PROB) _frustration = RTH.hesitateMs() * 2;
+                _preDelay = dice.costMs + _frustration;
+
+                if (dice.items.length) {
+                    const finalImage = dice.items.find(it => it && it.image);
+                    if (finalImage) {
+                        _pushAct(() => sendMessage('them', '', { ...opts, image: finalImage.image }), RTH.imageMs());
                     } else {
-                        let finalText = selected.map(item => item.text).filter(t => t).join('  ');
+                        let finalText = dice.items.map(it => (it && it.text) || '').filter(t => t).join('  ');
                         // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
                         finalText = _applyReplyAffix(finalText);
-                        const finalImage = selected.find(item => item.image)?.image || null;
-                        if (finalImage) {
-                            const imgOpts = { ...opts, image: finalImage };
-                            acts.push(() => sendMessage('them', '', imgOpts));
-                        } else {
-                            acts.push(() => sendMessage('them', finalText || '', opts));
-                        }
+                        _pushAct(() => sendMessage('them', finalText || '', opts), RTH.typingMs(finalText));
                     }
                 } else {
-                    // 非拼接：单条
-                    const pick = pool[Math.floor(Math.random() * pool.length)];
-                    if (pick.image) {
-                        const imgOpts = { ...opts, image: pick.image };
-                        acts.push(() => sendMessage('them', '', imgOpts));
-                    } else {
-                        // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
-                        let pickText = _applyReplyAffix(pick.text || '……');
-                        acts.push(() => sendMessage('them', pickText, opts));
-                    }
+                    _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
                 }
 
                 // ===== 额外多条消息（独立于主回复） =====
@@ -15401,33 +15513,31 @@ const opts = { marked, session: cur };
                         }
                         if (extraCombined.image) {
                             extraOpts.image = extraCombined.image;
-                            acts.push(() => sendMessage('them', '', extraOpts));
+                            _pushAct(() => sendMessage('them', '', extraOpts), RTH.imageMs() + 300);
                         } else if (extraCombined.text) {
-                            acts.push(() => sendMessage('them', extraCombined.text, extraOpts));
+                            _pushAct(() => sendMessage('them', extraCombined.text, extraOpts), RTH.typingMs(extraCombined.text) + 300);
                         }
                     }
                 }
             } else {
-                acts.push(() => sendMessage('them', '……', { session: cur }));
-                totalChars += 2;
+                // 池子空：发个省略号，也按打字耗时算
+                _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
             }
         }
 
-        // 随机打乱执行顺序
-        for (let i = acts.length - 1; i > 0; i--) {
+        // 顺序随机（保持原来的观感：拍一拍 / 问号 / 主回复 / 补充会被打散）
+        for (let i = plan.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [acts[i], acts[j]] = [acts[j], acts[i]];
+            const tmp = plan[i]; plan[i] = plan[j]; plan[j] = tmp;
         }
-        let t = 0;
-        acts.forEach((fn) => {
-            t += settings.typewriter ? randomMs(minS * 1000, maxS * 1000) : randomMs(600, 1200);
-            setTimeout(fn, t);
-        });
-        if (settings.typewriter && currentView.value === 'chat' && acts.length) {
-            setTimeout(() => { delete typingSessions[cur.id]; }, t + 800);
-        } else {
-            delete typingSessions[cur.id];
+        // 徐徐道来关闭 → 整体加快（选卡+打字都按 0.4 倍），但节奏仍由内容算出来
+        // （前置延迟 d 不受影响：那是"看到消息到开始回"，冷暖自知，不该被这个开关改）
+        const _paceFactor = settings.typewriter ? 1 : 0.4;
+        if (_paceFactor !== 1) {
+            plan.forEach(it => { it.delay = Math.round(it.delay * _paceFactor); });
+            _preDelay = Math.round(_preDelay * _paceFactor);
         }
+        _runReplyPlan(cur, plan, _preDelay);
     }, d);
 };
 
@@ -16767,11 +16877,11 @@ const adjustGroupChatInterval = (g, delta) => {
     debouncedSave();
 };
 
-// 徐徐道来：调整最短/最长回复时间（5 秒为单位），自动保持 max >= min
+// 徐徐道来：调整最短/最长回复时间（1 秒为单位），自动保持 max >= min
 const adjustReplyDelay = (which, delta) => {
-    const cur = which === 'min' ? (settings.replyDelayMin || 5) : (settings.replyDelayMax || 5);
+    const cur = which === 'min' ? (settings.replyDelayMin ?? 2) : (settings.replyDelayMax ?? 5);
     let next = cur + delta;
-    if (next < 5) next = 5;
+    if (next < 1) next = 1;
     if (next > 600) next = 600;
     if (which === 'min') {
         settings.replyDelayMin = next;
@@ -17344,6 +17454,7 @@ const _rollChattySendCount = () => {
 // 逐字母打拼音
 const _getTypeSpeedBase = () => {
     const mode = settings.chattyTypeSpeed || 'normal';
+    if (mode === 'slow')   return { online: [300, 600], busy: [700, 1300] };
     if (mode === 'slower') return { online: [400, 800], busy: [1000, 1800] };
     if (mode === 'fast')   return { online: [120, 240], busy: [300, 520] };
     return { online: [200, 400], busy: [500, 900] };
@@ -17826,7 +17937,7 @@ const _makeFreeComposeText = (s) => {
     return { segments };
 };
 
-const _pushFreeComposeToChat = (s, free) => {
+const _pushFreeComposeToChat = (s, free, opts) => {
     if (!s || !free || !free.segments) return;
 
     // ① 展平所有 units，走一遍审核
@@ -17896,13 +18007,18 @@ const _pushFreeComposeToChat = (s, free) => {
     delete typingSessions[s.id];
     };
 
-    // 模拟打字耗时：以前普通私聊是"秒出"，现在按「字数 + 退格次数」延迟
-    // 速度可在 回复设置 → 对方页面设置 → 打字速度 里调（freeComposeCharDelay，毫秒/字）
-    const _charDelay = Math.max(40, Number(settings.freeComposeCharDelay) || 220);
-    const _units2 = flatUnits.length || 1;
+    // 模拟打字耗时：方案 A —— 按「拼音字母数」算，和 chatty 屏幕逐字母打字的口径一致
+    // 速度在 回复设置 → 对方页面设置 → 自由拼音打字速度 里调（freeComposeCharDelay，毫秒/字母）
+    const _charDelay = Math.max(20, Number(settings.freeComposeCharDelay) || 150);
+    const _letters = flatUnits.reduce((n, u) => n + String(u.py || '').length, 0) || 1;
     const _bs = Number(_freeComposeBackspaces) || 0;
-    const _totalMs = (_units2 + _bs * 1.5) * _charDelay;
-    const _delayMs = Math.min(12000, Math.max(500, Math.round(_totalMs)));
+    // 退格一次 ≈ 删掉 + 重打 2 个字母
+    const _totalMs = (_letters + _bs * 2) * _charDelay;
+    // chatty 屏幕已经逐字母打完了 → 只留一个"抬手发送"的停顿，别重复等一遍
+    const _alreadyTyped = !!(opts && opts.typed);
+    const _delayMs = _alreadyTyped
+        ? randomMs(400, 900)
+        : Math.min(30000, Math.max(600, Math.round(_totalMs)));
     typingSessions[s.id] = true;
     setTimeout(_pushNow, _delayMs);
 };
@@ -17926,10 +18042,10 @@ const _runFreeComposeFlow = (s, free, onDone) => {
     const typeNext = () => {
         if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
         if (segIdx >= segs.length) {
-            // 全部打完 → 发送
+            // 全部打完 → 发送（屏幕上已逐字母打完，只留一个抬手停顿）
             chattyKeyActive.value = '';
             chattyTypingText.value = '';
-            _pushFreeComposeToChat(s, free);
+            _pushFreeComposeToChat(s, free, { typed: true });
             if (onDone) onDone();
             return;
         }
@@ -24063,6 +24179,25 @@ if (s._nextAutoLetterAt === undefined) s._nextAutoLetterAt = 0;
                 if (settings.visualStyle === undefined) settings.visualStyle = '';
                 // 老档兼容：主回复拼音打字玩法概率（缺省 20%）
                 if (settings.mainTypingProb === undefined) settings.mainTypingProb = 0.2;
+                // 老档兼容：自由拼音打字速度从「毫秒/字」改成「毫秒/字母」（B77）
+                // 注意：要判「存档里有没有标记」，不能判合并后的 settings（默认值本身就带 'letter'）
+                {
+                    const _savedSet = (stored && stored.settings) || {};
+                    if (_savedSet.freeComposeCharDelayUnit !== 'letter') {
+                        const _oldDelay = Number(_savedSet.freeComposeCharDelay);
+                        settings.freeComposeCharDelay = isNaN(_oldDelay) || _oldDelay <= 0
+                            ? 150
+                            : Math.min(400, Math.max(60, Math.round(_oldDelay / 4 / 10) * 10));
+                        settings.freeComposeCharDelayUnit = 'letter';
+                    }
+                }
+                if (!Number(settings.freeComposeCharDelay) || Number(settings.freeComposeCharDelay) < 20) {
+                    settings.freeComposeCharDelay = 150;
+                }
+                // 老档兼容：回复间隔改成 1 秒粒度后，把历史的 5 秒倍数之外的值就地保留；
+                // 只需保证 1~600 且 max >= min
+                settings.replyDelayMin = Math.min(600, Math.max(1, Math.round(Number(settings.replyDelayMin) || 2)));
+                settings.replyDelayMax = Math.min(600, Math.max(settings.replyDelayMin, Math.round(Number(settings.replyDelayMax) || 5)));
                 // 老档兼容：主动搭话由单值 activeInterval 迁移成 min/max 双值
                 if (settings.activeIntervalMin === undefined) {
                     settings.activeIntervalMin = settings.activeInterval || 30;
