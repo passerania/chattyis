@@ -1195,7 +1195,7 @@ body { color: var(--color-text); }
 
                 <div class="flex items-center gap-2 mt-1 px-1">
                     <span v-if="msg.dictTag" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
-                    <span v-if="msg.freeCompose && !msg.retracted" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
+                    <span v-if="msg.freeCompose && !msg.retracted" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(0,0,0,0.06);color:#555;">{{ freeComposeLabel(msg) }}</span>
                     <span class="text-[10px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
                 </div>
             </div>
@@ -1576,7 +1576,7 @@ body { color: var(--color-text); }
                 <div class="flex items-center gap-2 mt-1 px-1">
 <span v-if="msg.dictTag" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ msg.dictTag }}</span>
 <span v-if="msg.chattyTyped" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0" style="background:rgba(120,120,180,0.12);color:#666;">{{ chattyLabel(msg) }}</span>
-<span v-if="msg.freeCompose" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">梦角自由造句</span>
+<span v-if="msg.freeCompose" class="text-[10px] tracking-wider px-1.5 py-0.5 rounded-full" style="background:rgba(0,0,0,0.06);color:#555;">{{ freeComposeLabel(msg) }}</span>
                     <span class="text-[10px] tracking-wider px-1 rounded" :class="chatBgDark ? 'text-white/70 bg-black/20' : 'text-muted/80 bg-surface/30'">{{ formatTime(msg.timestamp) }}</span>
                     <span v-if="msg.sender === 'me'" class="text-[10px] tracking-widest px-1 rounded" :class="chatBgDark ? (msg.status === 'read' ? 'text-white bg-black/20' : 'text-white/60 bg-black/20') : (msg.status === 'read' ? 'text-text bg-surface/30' : 'text-muted bg-surface/30')">{{ msg.status === 'read' ? '已读' : '未读' }}</span>
                 </div>
@@ -1921,6 +1921,29 @@ body { color: var(--color-text); }
                        class="w-full" style="accent-color: var(--nav-icon-color);">
                 <button @click="openGrammarTplEditor()"
                         class="mt-1.5 text-[11px] text-text underline underline-offset-2">编辑语法模板库 ›</button>
+            </div>
+            <!-- 手法4 字词联想（独立玩法） -->
+            <div class="pt-1 border-t border-border/30">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[12px] text-muted">手法4 字词联想（独立玩法）</span>
+                    <button @click="toggleMethod4()" class="w-10 h-5 rounded-full relative transition-colors"
+                            :class="getFreeComposeSettings(currentSession.id).method4Enabled ? 'bg-text' : 'bg-border'">
+                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                             :class="getFreeComposeSettings(currentSession.id).method4Enabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                    </button>
+                </div>
+                <div class="text-[11px] text-muted/60 leading-relaxed px-1 mb-2">抽字 → 找含这个字的卡（词A）→ 随机词B → 拼一句。角标显示「捕捉到了关键词」。</div>
+                <div v-if="getFreeComposeSettings(currentSession.id).method4Enabled" class="flex items-center justify-between px-1">
+                    <span class="text-[12px] text-text">触发概率</span>
+                    <span class="text-[11px] text-muted tabular-nums">{{ Math.round((getFreeComposeSettings(currentSession.id).method4Prob ?? 0.3) * 100) }}%</span>
+                </div>
+                <input v-if="getFreeComposeSettings(currentSession.id).method4Enabled" type="range" min="0" max="100"
+                       :value="(getFreeComposeSettings(currentSession.id).method4Prob ?? 0.3) * 100"
+                       @input="e => { getFreeComposeSettings(currentSession.id).method4Prob = e.target.value / 100; debouncedSave(); }"
+                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                <div v-if="getFreeComposeSettings(currentSession.id).method4Enabled" class="text-[10px] text-muted/50 leading-relaxed px-1 mt-1">
+                    开了这个之后，建议把上面「玩法开关」里的「方法4」关掉，否则方法4会多一次触发机会。
+                </div>
             </div>
             <!-- 存公用库概率 -->
             <div class="pt-1 border-t border-border/30">
@@ -3972,8 +3995,49 @@ body { color: var(--color-text); }
                                             <div class="text-[11px] text-muted/60 leading-relaxed mt-2">
                                                 规则：<span class="text-text">[词性]</span> 会被替换成该词性的字词；
                                                 不在词性表里的（如 <span class="text-text">[好像]</span>）当固定词原样输出；
-                                                模板里至少要有一个词性槽位。改完记得点保存。
+                                                模板里至少要有一个词性槽位。改完记得点保存。<br>
+                                                可用槽位：<span class="text-text">[动词] [及物动词] [不及物动词]</span>（后两个是 B82 新增，不及物会自动省掉后面的宾语）
                                             </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- ===== 词性体检 / 一键校正 ===== -->
+                                    <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
+                                        <div class="p-3.5 border-b border-border">
+                                            <div class="text-[14px] text-text">词性体检</div>
+                                            <div class="text-[12px] text-muted/70 leading-relaxed mt-1">
+                                                扫一遍所有字卡，找出「明显打错词性」的卡：<br>
+                                                · 常见误标（偏偏被标成程度词、好像被标成动词…）<br>
+                                                · 标着「动词」但实际不及物（降温/睡觉/熬夜…）<br>
+                                                · 标着「程度词」但其实是别的副词（偏偏/竟然…）<br>
+                                                <span class="text-muted/60">这三类<span class="text-text">启动时会自动校正</span>，不用你点。这里可以随时重扫/补扫。</span>
+                                            </div>
+                                        </div>
+                                        <div class="p-3">
+                                            <div class="flex gap-1.5">
+                                                <button @click="runPosAudit()"
+                                                        class="flex-1 py-1.5 rounded border border-border text-[12px] text-text hover:bg-bg">{{ posAudit.done ? '重新检查' : '检查一下' }}</button>
+                                                <button v-if="posAudit.done && posAudit.list.length" @click="applyPosAudit()"
+                                                        class="flex-1 py-1.5 rounded border border-red-400/60 text-[12px] text-red-500">确认校正 {{ posAudit.list.length }} 张</button>
+                                                <button v-if="posAudit.done" @click="clearPosAudit()"
+                                                        class="px-3 py-1.5 rounded border border-border text-[12px] text-muted">清空</button>
+                                            </div>
+                                            <template v-if="posAudit.done">
+                                                <div v-if="!posAudit.list.length" class="text-[12px] text-muted mt-2">没查出要改的，很干净。</div>
+                                                <template v-else>
+                                                    <div class="text-[12px] text-text mt-2">
+                                                        共 <span class="text-red-500">{{ posAudit.list.length }}</span> 张：
+                                                        <span v-for="(cnt, reason) in posAudit.byReason" :key="'par-' + reason" class="text-muted ml-1">{{ reason }} {{ cnt }}</span>
+                                                    </div>
+                                                    <div class="mt-1 space-y-0.5">
+                                                        <div v-for="(f, fi) in posAudit.list.slice(0, 8)" :key="'paf-' + fi" class="text-[11px] text-muted">
+                                                            {{ f.text }} · {{ f.from }} → <span class="text-text">{{ f.to }}</span>
+                                                            <span class="text-muted/50">（{{ f.boxName }}）</span>
+                                                        </div>
+                                                        <div v-if="posAudit.list.length > 8" class="text-[11px] text-muted/50">…还有 {{ posAudit.list.length - 8 }} 张</div>
+                                                    </div>
+                                                </template>
+                                            </template>
                                         </div>
                                     </section>
                                 </template>
@@ -7560,11 +7624,14 @@ body { color: var(--color-text); }
 
                             <!-- 候选字卡浮层（输入框上方） -->
                 <transition name="navfade">
-                    <div v-if="chattyCandidates.length" class="relative shrink-0 px-3 pb-1.5">
+                    <div v-if="chattyCandidates.length || chattyResearching" class="relative shrink-0 px-3 pb-1.5">
                         <div class="rounded-2xl overflow-hidden shadow-lg" style="background: rgba(255,255,255,0.96); border: 1px solid rgba(0,0,0,0.08);">
-                            <div class="px-3 py-1.5 text-[11px] tracking-[0.25em]" style="color:#999; border-bottom: 1px solid rgba(0,0,0,0.05);">候选</div>
-                            <div class="flex flex-wrap gap-1.5 p-2">
+                            <div class="px-3 py-1.5 text-[11px] tracking-[0.25em]" style="color:#999; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                                {{ chattyResearching ? '重新搜索…' : ('候选 ' + chattyCandidates.length) }}
+                            </div>
+                            <div ref="chattyCandBox" class="flex flex-wrap gap-1.5 p-2 overflow-y-auto" style="max-height: 38vh;">
                                 <div v-for="(c, ci) in chattyCandidates" :key="ci"
+                                     :data-cand-idx="ci"
                                      class="px-2.5 py-1.5 rounded-lg text-[14px] transition-all"
                                      :style="chattyCandidatePicked === ci
                                          ? 'background: var(--nav-icon-color); color: #fff; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.15);'
@@ -11198,6 +11265,53 @@ const _buildPool = (session, opts) => {
     return out;
 };
 
+// ===== 加权·无放回抽样（B85）=====
+// 用 Fenwick 树（树状数组）：建树 O(n)，每次抽 O(log n)，抽走一张后 O(log n) 更新
+// 旧写法每次抽都 reduce 求总权重 + 线性扫 → O(抽样数 × 池子大小)（2 万张要 60~130ms）
+// 纯函数：items 传 [{ text, image, _w }]，返回最多 n 个（原对象引用）
+const _weightedSampleNoRepeat = (items, n) => {
+    const size = (items && items.length) || 0;
+    if (!size || n <= 0) return [];
+    const bit = new Float64Array(size + 1);
+    const w = new Float64Array(size);
+    for (let i = 0; i < size; i++) {
+        const v = Number(items[i] && items[i]._w);
+        w[i] = (isFinite(v) && v > 0) ? v : 0;
+    }
+    for (let i = 0; i < size; i++) {
+        for (let j = i + 1; j <= size; j += j & -j) bit[j] += w[i];
+    }
+    let remain = 0;
+    for (let i = 0; i < size; i++) remain += w[i];
+
+    const out = [];
+    const take = Math.min(n, size);
+    let stepBit = 1;
+    while (stepBit * 2 <= size) stepBit *= 2;
+    for (let k = 0; k < take && remain > 0; k++) {
+        let r = Math.random() * remain;
+        // 找最小的 pos，使前缀和 > r
+        let idx = 0;
+        for (let step = stepBit; step > 0; step >>= 1) {
+            if (idx + step <= size && bit[idx + step] <= r) {
+                idx += step;
+                r -= bit[idx];
+            }
+        }
+        let pos = idx;
+        if (pos >= size) pos = size - 1;
+        let guard = 0;
+        while (pos < size && w[pos] <= 0 && guard++ < size) pos++;
+        if (pos >= size) break;
+        out.push(items[pos]);
+        const dec = w[pos];
+        for (let j = pos + 1; j <= size; j += j & -j) bit[j] -= dec;
+        remain -= dec;
+        w[pos] = 0;
+    }
+    return out;
+};
+
 // 从池抽 N 张（allowRepeat=false 时不重复）
 const _drawFromPool = (pool, n, allowRepeat) => {
     if (!pool || !pool.length) return [];
@@ -11231,19 +11345,7 @@ const _drawFromPool = (pool, n, allowRepeat) => {
             work.push({ text: c.text, image: c.image, _w: c._w || 1 });
         });
         const maxN = Math.min(n, work.length);
-        for (let i = 0; i < maxN; i++) {
-            const totalW = work.reduce((sum, c) => sum + c._w, 0);
-            if (totalW <= 0) break;
-            let r = Math.random() * totalW;
-            let idx = work.length - 1;
-            for (let j = 0; j < work.length; j++) {
-                r -= work[j]._w;
-                if (r <= 0) { idx = j; break; }
-            }
-            const picked = work[idx];
-            out.push({ text: picked.text, image: picked.image });
-            work.splice(idx, 1);
-        }
+        _weightedSampleNoRepeat(work, maxN).forEach(p => out.push({ text: p.text, image: p.image }));
     }
     return out;
 };
@@ -11338,19 +11440,8 @@ const drawWeightedCards = (session, situation, n, opts = {}) => {
             work.push({ text: c.text, image: c.image, _w: c._w || 1 });
         });
         const maxN = Math.min(n, work.length);
-        for (let i = 0; i < maxN; i++) {
-            const totalW = work.reduce((sum, c) => sum + c._w, 0);
-            if (totalW <= 0) break;
-            let r = Math.random() * totalW;
-            let idx = work.length - 1;
-            for (let j = 0; j < work.length; j++) {
-                r -= work[j]._w;
-                if (r <= 0) { idx = j; break; }
-            }
-            const picked = work[idx];
-            out.push({ text: picked.text, image: picked.image });
-            work.splice(idx, 1);
-        }
+        // B85：改用 Fenwick 树抽样（建树 O(n) + 每次 O(log n)），大池子也不会卡
+        _weightedSampleNoRepeat(work, maxN).forEach(p => out.push({ text: p.text, image: p.image }));
     }
     return out;
 };
@@ -11880,6 +11971,9 @@ const getFreeComposeSettings = (sessionId) => {
     // 语法拼字造句（独立玩法，不依赖源句）
     if (fs2.syntaxEnabled === undefined) fs2.syntaxEnabled = false;
     if (fs2.syntaxProb === undefined) fs2.syntaxProb = 0.3;
+    // 手法4 字词联想（B83 单拎成独立玩法）
+    if (fs2.method4Enabled === undefined) fs2.method4Enabled = false;
+    if (fs2.method4Prob === undefined) fs2.method4Prob = 0.3;
     // 熟练度：每个玩法一个分值（0~100），用一次 +1；暂只记录不参与决策
     if (!fs2.skill || typeof fs2.skill !== 'object') {
         fs2.skill = { 0: 0, 1: 0, 2: 0, 4: 0, syntax: 0 };
@@ -12017,6 +12111,18 @@ const chattyLabel = (msg) => {
     if (!msg) return '';
     if (msg.chattyIsForeign) return msg.chattyForeignLang === 'ja' ? '日语打字' : '意大利语打字';
     return msg.chattySource === 'free' ? '梦角拼音自由打字' : '拼音选字卡';
+};
+
+// 「梦角自由造句」类消息的角标文案
+//   B83：拆成三个玩法各自的角标，但**存进的字卡书册不变**（还是「梦角自由造句」卷宗）
+//     · 语法拼词   = syntaxCompose（语法拼字造句 / 槽位造句）
+//     · 捕捉到了关键词 = 手法4 字词联想（composeMethod4）
+//     · 梦角自由造句   = 原来的自由组合/造句
+const freeComposeLabel = (msg) => {
+    if (!msg) return '梦角自由造句';
+    if (msg.syntaxPlay) return '语法拼词';
+    if (msg.method4Play) return '捕捉到了关键词';
+    return '梦角自由造句';
 };
 const retractContents = (msg) => {    if (!msg) return [];
     if (Array.isArray(msg.originalContents)) return msg.originalContents.filter(s => s && s.trim());
@@ -12285,34 +12391,52 @@ const composeMethod0 = (src) => {
 // ===== 手法 1：换词式 =====
 const composeMethod2a = (src, session) => {
     if (src.length < 4) return null;
-    const start = Math.floor(Math.random() * (src.length - 2));
-    const len = 2 + Math.floor(Math.random() * 3);  // 2~4 字
-    const end = Math.min(start + len, src.length);
-    const replacement = drawWordFromAllBoxes(session);
-    if (!replacement) return null;
-    const result = src.slice(0, start) + replacement + src.slice(end);
-    return result !== src ? result : null;
+    const MAX_CUT = 3, MAX_PICK = 3;
+    // 骰：截断位置满意吗？满意才去抽卡；抽到的卡合适吗？都过了才算一次换词成功
+    for (let ct = 0; ct < MAX_CUT; ct++) {
+        const start = Math.floor(Math.random() * (src.length - 2));
+        const len = 2 + Math.floor(Math.random() * 3);  // 2~4 字
+        const end = Math.min(start + len, src.length);
+        if (!_rollYes(YES_NO_BASE.CUT_OK)) continue;    // 不满意 → 重新截
+        for (let pt = 0; pt < MAX_PICK; pt++) {
+            const replacement = drawWordFromAllBoxes(session);
+            if (!replacement) continue;
+            if (!_rollYes(YES_NO_BASE.CARD_OK)) continue;   // 这张卡不合适 → 重抽
+            const result = src.slice(0, start) + replacement + src.slice(end);
+            return result !== src ? result : null;
+        }
+    }
+    return null;
 };
 
 // ===== 手法 2：换句式 =====
 const composeMethod2b = (src, session) => {
     if (src.length < 6) return null;
-    const start = Math.floor(Math.random() * (src.length - 4));
-    const maxLen = src.length - start - 2;
-    if (maxLen < 2) return null;
-    const len = 4 + Math.floor(Math.random() * Math.min(8, maxLen - 2));
-    const end = Math.min(start + len, src.length);
-    const replacement = drawSentenceOrWordFromAllBoxes(session);
-    if (!replacement) return null;
-    const result = src.slice(0, start) + replacement + src.slice(end);
-    return result !== src ? result : null;
+    const MAX_CUT = 3, MAX_PICK = 3;
+    for (let ct = 0; ct < MAX_CUT; ct++) {
+        const start = Math.floor(Math.random() * (src.length - 4));
+        const maxLen = src.length - start - 2;
+        if (maxLen < 2) continue;
+        const len = 4 + Math.floor(Math.random() * Math.min(8, maxLen - 2));
+        const end = Math.min(start + len, src.length);
+        if (!_rollYes(YES_NO_BASE.CUT_OK)) continue;    // 骰：这个截断位置满意吗
+        for (let pt = 0; pt < MAX_PICK; pt++) {
+            const replacement = drawSentenceOrWordFromAllBoxes(session);
+            if (!replacement) continue;
+            if (!_rollYes(YES_NO_BASE.CARD_OK)) continue;   // 骰：这句/这张合适吗
+            const result = src.slice(0, start) + replacement + src.slice(end);
+            return result !== src ? result : null;
+        }
+    }
+    return null;
 };
 
 // ===== 统一入口 =====
 // ===== 字卡词性打标（供手法 5 使用）=====
 // 用户可选的词性（主语/宾语已合并进「名词」，避免同一张卡被打多个标签）
-const CARD_POS_LIST = ['', '人称代词','物主代词','时间','肯定词','否定词','副词','连词','叹词','动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
-const CARD_POS_SHORT = { '':'', 人称代词:'人称', 物主代词:'物主', 时间:'时', 肯定词:'肯', 否定词:'否', 副词:'副', 连词:'连', 叹词:'叹', 动词:'动', 情态动词:'情态', 介词:'介', 助词:'助', 疑问词:'疑', 名词:'名', 形容词:'形', 指示代词:'指', 量词:'量', 程度词:'程', 语气词:'语' };
+// B82：动词拆成 及物/不及物；「动词」保留做"没细分"的兜底（老卡不用改也能跑）
+const CARD_POS_LIST = ['', '人称代词','物主代词','时间','肯定词','否定词','副词','连词','叹词','动词','及物动词','不及物动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
+const CARD_POS_SHORT = { '':'', 人称代词:'人称', 物主代词:'物主', 时间:'时', 肯定词:'肯', 否定词:'否', 副词:'副', 连词:'连', 叹词:'叹', 动词:'动', 及物动词:'及物', 不及物动词:'不及物', 情态动词:'情态', 介词:'介', 助词:'助', 疑问词:'疑', 名词:'名', 形容词:'形', 指示代词:'指', 量词:'量', 程度词:'程', 语气词:'语' };
 const posPicker = reactive({ show: false, reply: null, draft: '' });
 const openPosPicker = (reply) => {
     if (!reply) return;
@@ -12451,6 +12575,15 @@ const toggleSyntaxCompose = () => {
     debouncedSave();
 };
 
+// 手法4 字词联想（B83 单拎成独立玩法）
+const toggleMethod4 = () => {
+    if (!currentSession.value) return;
+    const g = getFreeComposeSettings(currentSession.value.id);
+    g.method4Enabled = !g.method4Enabled;
+    if (g.method4Enabled && !g.method4Prob) g.method4Prob = 0.3;
+    debouncedSave();
+};
+
 const composeSentence = (src, session) => {
     if (!src || !session) return null;
     const settings = getFreeComposeSettings(session.id);
@@ -12528,7 +12661,7 @@ const composeMethod4 = (src, session) => {
 
 // ===== 手法 5：纯槽位语法生成 =====
 // 槽位类型（模板里 [xxx] 的合法名）。注意这些不是"用户打标词性"，用户打标的见 CARD_POS_LIST
-const POS_TYPES = ['主语','宾语','定语','人称代词','物主代词','代词','时间','肯定词','否定词','副词','连词','叹词','动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
+const POS_TYPES = ['主语','宾语','定语','人称代词','物主代词','代词','时间','肯定词','否定词','副词','连词','叹词','动词','及物动词','不及物动词','情态动词','介词','助词','疑问词','名词','形容词','指示代词','量词','程度词','语气词'];
 
 // 可省略词性：抽不到就直接填空字符串（宁可不填，也不出错）
 const POS_OPTIONAL = ['情态动词','介词','助词','副词','语气词','连词','疑问词'];
@@ -12539,10 +12672,204 @@ const POS_FALLBACK = {
     人称代词: ['我','你','他'], 物主代词: ['我的','你的','他的'], 代词: ['你','我'],
     时间: ['今天','现在'], 肯定词: ['对','好'], 否定词: ['不','没'],
     副词: ['也','都'], 连词: ['然后','但是'], 叹词: ['哎','啊'],
-    动词: ['看','想'], 情态动词: ['想','要','能'], 介词: ['给','对'],
+    动词: ['看','想'], 及物动词: ['看','抱'], 不及物动词: ['睡','笑'], 情态动词: ['想','要','能'], 介词: ['给','对'],
     助词: ['的','得'], 疑问词: ['怎么','为什么'],
     名词: ['风','事'], 形容词: ['开心','好'], 指示代词: ['那个','这个'],
     量词: ['个','次'], 程度词: ['很','太'], 语气词: ['啊','呢'],
+};
+
+// ===== 动词：及物 / 不及物（老板反馈：语法库没区分，导致 [动词][名词] 拼出病句）=====
+// 这里列的是"带了宾语就明显不对"的词（动宾式短语、纯不及物）
+const POS_INTRANSITIVE = new Set([
+    '睡','睡觉','降温','下雨','熬夜','吃醋','撒娇','闹脾气','哼唧','黏人','散步','晒太阳','吹晚风',
+    '发呆','生气','发疯','打工','摸鱼','哭','笑','飘','走','跑','来','去','失眠','起床','洗澡','睡觉',
+    '叹气','迟到','加班','下班','回家','出门','旅行','毕业','吵架','撒娇','犯困',
+]);
+// 槽位后面跟这些，说明这个动词要带宾语 → 只能挑及物动词
+const _verbNeedsObject = (nextType) => ['名词', '宾语', '指示代词', '量词'].includes(String(nextType || ''));
+
+// 动词候选池（带分类）：卡片可以标「及物动词 / 不及物动词 / 动词（没细分）」
+//   · 标了及物/不及物的，以标签为准
+//   · 只标了「动词」的，用 POS_INTRANSITIVE 兜底猜
+const _verbCandidates = (session) => {
+    const out = [];
+    const push = (arr, trans) => (arr || []).forEach(w => out.push({ w, trans }));
+    push(_posPool('及物动词', session), true);
+    push(_posPool('不及物动词', session), false);
+    _posPool('动词', session).forEach(w => out.push({ w, trans: !POS_INTRANSITIVE.has(String(w)) }));
+    return out;
+};
+
+// 挑一个动词
+//   mode='auto'   按后一个槽判断要不要及物（原来 [动词] 的行为）
+//   mode='trans'  [及物动词] 槽
+//   mode='intrans'[不及物动词] 槽
+const _pickVerb = (session, nextType, mode) => {
+    const cands = _verbCandidates(session);
+    if (!cands.length) {
+        const fb = mode === 'trans' ? POS_FALLBACK['及物动词']
+            : (mode === 'intrans' ? POS_FALLBACK['不及物动词'] : POS_FALLBACK['动词']);
+        return fb[Math.floor(Math.random() * fb.length)];
+    }
+    let pool = cands;
+    if (mode === 'trans') pool = cands.filter(x => x.trans);
+    else if (mode === 'intrans') pool = cands.filter(x => !x.trans);
+    else if (_verbNeedsObject(nextType)) {
+        const trans = cands.filter(x => x.trans);
+        if (trans.length) pool = trans;
+    }
+    if (!pool.length) pool = cands;   // 不加及物/不及物标签时也别卡死
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return pick.w;
+};
+
+// ===== 常见词性误标纠正（同一个词被打了错词性时，按这张表纠正）=====
+// 现象：老板的库里"偏偏"被标成「程度词」→ 拼出"偏偏可爱"这种病句
+const POS_TEXT_FIX = {
+    '偏偏': '副词', '好像': '副词', '马上': '副词', '立刻': '副词', '一起': '副词',
+    '黏人': '形容词', '离谱': '形容词', '稍微': '程度词', '哇': '叹词',
+};
+
+// ===== 副词子类（老板反馈：副词种类多，搭配完全不同）=====
+// 语气副词（偏偏/竟然）只修饰"形容词 / 心理动词"；程度副词只能修饰"形容词 / 心理动词"；
+// 时间/频率/方式/关联副词可以修饰一般动词；否定副词都行。
+const POS_ADV_SUB = {
+    程度: ['太','很','非常','特别','真','超级','无敌','有点','稍微','过于','极其','极度','有一点点','格外','贼','简直','过分','无比','死','最','更','挺','蛮'],
+    时间: ['马上','立刻','刚刚','已经','正在','一直','突然','顿时','随后','曾经','将要','刚好','原先','本来'],
+    频率: ['总是','经常','偶尔','老是','又','再','常常','反复','时不时','隔三差五'],
+    关联: ['也','都','就','还','却','才','便'],
+    方式: ['一起','悄悄','偷偷','慢慢','果断','干脆','索性','特意','故意','轻轻','默默','渐渐','偷偷摸摸'],
+    语气: ['偏偏','竟然','居然','到底','究竟','难道','果然','幸亏','反而','莫非','偏偏就'],
+    否定: ['不','没','别','不必','不用','从不','从未'],
+};
+// 反查：词 → 子类（同一个词以先出现的为准）
+const POS_ADV_SUB_OF = (() => {
+    const m = new Map();
+    Object.entries(POS_ADV_SUB).forEach(([sub, arr]) => arr.forEach(w => { if (!m.has(w)) m.set(w, sub); }));
+    return m;
+})();
+
+// 心理动词：程度副词/语气副词可以修饰它们（"很喜欢""偏偏喜欢"），但修饰不了动作动词（"很睡觉"）
+const POS_PSYCH_VERB = new Set([
+    '喜欢','爱','想','觉得','认为','讨厌','恨','心疼','担心','害怕','羡慕','嫉妒','烦','气',
+    '惦记','在意','介意','怀念','想念','舍不得','满意','失望','后悔','期待','盼','嫌','怪',
+]);
+
+// 这个副词能不能放在 nextType 那个槽前面（nextWord 是已经挑好的下游词，可能为空）
+const _advFits = (word, nextType, nextWord) => {
+    const sub = POS_ADV_SUB_OF.get(word) || '';
+    const isAdj = nextType === '形容词';
+    const isPsych = POS_PSYCH_VERB.has(String(nextWord || ''));
+    const isVerb = nextType === '动词';
+    if (sub === '程度' || sub === '语气') return isAdj || (isVerb && isPsych);
+    if (!nextType) return true;
+    if (nextType === '名词') return false;        // 副词直接修饰名词 → 不做
+    return true;
+};
+
+// 挑一个副词：按下游槽位/词过滤；都过滤掉了就退回全量（不为难自己）
+const _pickAdverb = (session, nextType, nextWord) => {
+    const pool = _posPool('副词', session);
+    if (!pool.length) return getWordByType('副词', session);
+    const fits = pool.filter(w => _advFits(w, nextType, nextWord));
+    const arr = fits.length ? fits : pool;
+    return arr[Math.floor(Math.random() * arr.length)];
+};
+
+// ===== 词性体检 / 一键校正（B82）=====
+// 扫所有书册的字卡，找出"明显打错词性"的，先出报告，确认后再写回
+const _posAuditScan = () => {
+    const fixes = [];
+    const scanBox = (box, boxName) => {
+        if (!box || !Array.isArray(box.groups)) return;
+        box.groups.forEach(g => (g.replies || []).forEach(r => {
+            if (!r || r.enabled === false) return;
+            const text = String(r.text || '').trim();
+            if (!text) return;
+            const cur = String(r.pos || '').trim();
+            if (!cur) return;
+            // ① 常见误标（偏偏被标成程度词、好像被标成动词之类）
+            const fix = POS_TEXT_FIX[text];
+            if (fix && cur !== fix) {
+                fixes.push({ card: r, text, boxName, group: g.name || '', from: cur, to: fix, reason: '常见误标' });
+                return;
+            }
+            // ② 动词细分：标着「动词」但本身不及物 → 不及物动词
+            if (cur === '动词' && POS_INTRANSITIVE.has(text)) {
+                fixes.push({ card: r, text, boxName, group: g.name || '', from: cur, to: '不及物动词', reason: '不及物动词' });
+                return;
+            }
+            // ③ 标着「程度词」但其实是别的副词子类（偏偏/竟然…）
+            if (cur === '程度词') {
+                const sub = POS_ADV_SUB_OF.get(text);
+                if (sub && sub !== '程度') {
+                    fixes.push({ card: r, text, boxName, group: g.name || '', from: cur, to: '副词', reason: '副词子类不符' });
+                }
+            }
+        }));
+    };
+    // 所有会话的书册
+    const sessArr = (sessions && sessions.value) ? sessions.value : [];
+    sessArr.forEach(s => {
+        const boxes = (s && s.corpus && s.corpus.boxes) || {};
+        Object.keys(boxes).forEach(k => scanBox(boxes[k], (s.name || '会话') + '·' + k));
+    });
+    // 共享书册
+    Object.keys(sharedBoxes || {}).forEach(k => scanBox(sharedBoxes[k], '共享·' + k));
+    return fixes;
+};
+
+const posAudit = reactive({ done: false, list: [], byReason: {} });
+
+const runPosAudit = () => {
+    try {
+        const list = _posAuditScan();
+        const byReason = {};
+        list.forEach(f => { byReason[f.reason] = (byReason[f.reason] || 0) + 1; });
+        posAudit.list = list;
+        posAudit.byReason = byReason;
+        posAudit.done = true;
+        showToast(list.length ? ('查出 ' + list.length + ' 张待校正') : '很干净，没有要改的');
+    } catch (e) {
+        console.warn('[posAudit] 失败', e);
+        showToast('检查出错：' + e.message);
+    }
+};
+
+const applyPosAudit = () => {
+    if (!posAudit.list.length) { showToast('没有待校正的卡'); return; }
+    let n = 0;
+    posAudit.list.forEach(f => {
+        try { if (f.card) { f.card.pos = f.to; n++; } } catch (e) {}
+    });
+    posAudit.done = false;
+    posAudit.list = [];
+    posAudit.byReason = {};
+    debouncedSave();
+    showToast('已校正 ' + n + ' 张卡');
+};
+
+const clearPosAudit = () => {
+    posAudit.done = false;
+    posAudit.list = [];
+    posAudit.byReason = {};
+};
+
+// 启动时自动校正内置词库的词性（B84）
+// 只改"三条确定规则"命中的卡：常见误标 / 动词→不及物动词 / 程度词→副词
+// 幂等：第二次跑就是 0 张；改完立刻落盘
+const autoFixPosTags = (notify) => {
+    let list = [];
+    try { list = _posAuditScan(); } catch (e) { return 0; }
+    if (!list.length) return 0;
+    let n = 0;
+    list.forEach(f => { try { if (f.card) { f.card.pos = f.to; n++; } } catch (e) {} });
+    if (n > 0) {
+        try { debouncedSave(); } catch (e) {}
+        try { console.info('[词性自动校正] ' + n + ' 张'); } catch (e) {}
+        if (notify) { try { showToast('已自动校正 ' + n + ' 张卡的词性'); } catch (e) {} }
+    }
+    return n;
 };
 
 // 按词性取池：遍历当前会话所有书册 + 共享书册，过滤 reply.pos === type 且 enabled
@@ -12554,7 +12881,11 @@ const _posPool = (type, session) => {
             if (r.enabled === false) return;
             if (r.pos !== type) return;
             const t = String(r.text || '').trim();
-            if (t) out.push(t);
+            if (!t) return;
+            // 这个字被打了错的词性 → 不算进这个池（例：偏偏被标成程度词）
+            const fixPos = POS_TEXT_FIX[t];
+            if (fixPos && fixPos !== type) return;
+            out.push(t);
         }));
     };
     const boxes = session?.corpus?.boxes || {};
@@ -12569,6 +12900,7 @@ const POS_ALIAS = {
     宾语: ['名词', '人称代词', '代词'],
     定语: ['物主代词'],
     人称代词: ['人称代词', '代词'],
+    动词: ['动词', '及物动词', '不及物动词'],   // 老模板 [动词] 把细分后的卡也算进来
 };
 
 const getWordByType = (type, session) => {
@@ -12851,31 +13183,113 @@ const syntaxCompose = (session) => {
     const _g = _grammarTplFor(corePos);
     const tpl = _g.tpl;
 
-    // 5. 填槽（带省略机制）
+    // 5. 填槽（省略机制 + 前后搭配约束）
+    //    拆成 token 序列，才能看到"下一个槽是什么"：
+    //      · 动词看下一个槽 → 后面跟名词/宾语时只挑及物动词
+    //      · 副词看下一个槽+下一个词 → 语气副词/程度副词只能配形容词或心理动词
+    const _tokens = [];
+    String(tpl).replace(/\[([^\]]+)\]|[^\[\]]+/g, (m, slot) => {
+        if (slot === undefined) _tokens.push({ text: m });
+        else _tokens.push({ slot: String(slot).trim() });
+        return m;
+    });
+    const _nextSlotIdx = (i) => {
+        for (let k = i + 1; k < _tokens.length; k++) if (_tokens[k].slot) return k;
+        return -1;
+    };
     let usedCore = false;
-    let sentence = tpl.replace(/\[([^\]]+)\]/g, (m, type) => {
-        const t = String(type).trim();
+    let _omitObjectAt = -1;   // 谓语是不及物动词时，把后面的宾语槽留空（避免"降温睡衣"）
+    const _filled = new Array(_tokens.length).fill(null);
+
+    const _fillOne = (i) => {
+        if (i === _omitObjectAt) return '';   // 这一格已经判定要省略
+        const t = _tokens[i].slot;
+        const ni = _nextSlotIdx(i);
+        const nextType = ni >= 0 ? _tokens[ni].slot : '';
         // 核心词优先填到对应词性槽位
-        if (!usedCore && t === corePos && coreWord) { usedCore = true; return coreWord; }
-        if (!POS_TYPES.includes(t)) {
-            // 非词性槽位（如 [好像]/[觉得]）→ 当固定词用
-            return t;
+        //   及物/不及物 和「动词」互相认（老模板 [动词] 也能装细分过的核心词），
+        //   但 [及物动词]/[不及物动词] 要按核心词自己的类别认
+        const _isVerbSlot = (x) => ['动词', '及物动词', '不及物动词'].includes(String(x || ''));
+        const _coreTrans = _isVerbSlot(corePos)
+            ? (corePos === '及物动词' ? true
+                : (corePos === '不及物动词' ? false : !POS_INTRANSITIVE.has(String(coreWord))))
+            : null;
+        const _posMatch = (slotT, coreT) => {
+            if (slotT === coreT) return true;
+            if (!(_isVerbSlot(slotT) && _isVerbSlot(coreT))) return false;
+            if (slotT === '动词') return true;                       // 泛槽：及物/不及物都能进
+            return slotT === '及物动词' ? (_coreTrans === true) : (_coreTrans === false);
+        };
+        if (!usedCore && _posMatch(t, corePos) && coreWord) {
+            usedCore = true;
+            // 核心词是不及物动词、后面又跟着宾语槽 → 用它可以，但把宾语槽挖掉
+            if (_isVerbSlot(t) && (POS_INTRANSITIVE.has(String(coreWord)) || corePos === '不及物动词') && _verbNeedsObject(nextType)) _omitObjectAt = ni;
+            return coreWord;
         }
+        // 非词性槽位（如 [好像]/[觉得]）→ 当固定词用
+        if (!POS_TYPES.includes(t)) return t;
         // 省略机制：主语/人称代词 40% 空；语气词/副词 20% 空
         if (t === '主语' || t === '人称代词' || t === '代词') { if (Math.random() < 0.4) return ''; }
         if (t === '语气词' || t === '副词') { if (Math.random() < 0.2) return ''; }
+        // 动词：按后一个槽判断及物/不及物；挑到不及物就把宾语槽挖掉
+        if (t === '动词') {
+            // 如果那个宾语槽正是核心词的家，就先尽量挑及物动词，保住核心词
+            const _objSlotIsCore = ni >= 0 && !!coreWord && !usedCore && _tokens[ni].slot === corePos;
+            const v = _pickVerb(session, nextType, _objSlotIsCore ? 'trans' : 'auto');
+            if (POS_INTRANSITIVE.has(String(v)) && _verbNeedsObject(nextType)) {
+                _omitObjectAt = ni;
+            }
+            return v;
+        }
+        // 及物动词 / 不及物动词（B82 新增的可打标词性 + 可写进模板的槽位）
+        if (t === '及物动词') return _pickVerb(session, nextType, 'trans');
+        if (t === '不及物动词') {
+            const v = _pickVerb(session, nextType, 'intrans');
+            if (_verbNeedsObject(nextType)) {
+                _omitObjectAt = ni;   // 不及物一律不带宾语
+            }
+            return v;
+        }
+        // 副词：先把下游填出来，才知道配不配（语气副词/程度副词只能配形容词或心理动词）
+        if (t === '副词') {
+            let nextWord = '';
+            if (ni >= 0 && (nextType === '动词' || nextType === '形容词')) {
+                if (_filled[ni] == null) _filled[ni] = _fillOne(ni);
+                nextWord = _filled[ni] || '';
+            }
+            return _pickAdverb(session, nextType, nextWord);
+        }
+        // 程度词：只允许放在形容词/心理动词前，别处直接省略
+        if (t === '程度词') {
+            let nextWord = '';
+            if (ni >= 0 && (nextType === '形容词' || nextType === '动词')) {
+                if (_filled[ni] == null) _filled[ni] = _fillOne(ni);
+                nextWord = _filled[ni] || '';
+            }
+            const _ok = nextType === '形容词'
+                || (nextType === '动词' && POS_PSYCH_VERB.has(String(nextWord || '')));
+            if (!_ok) return '';
+            return getWordByType('程度词', session);
+        }
         return getWordByType(t, session);
-    });
+    };
 
-    // 核心词没用上就补在句尾
-    if (!usedCore && coreWord) sentence += coreWord;
+    for (let i = 0; i < _tokens.length; i++) {
+        if (!_tokens[i].slot) continue;
+        if (_filled[i] == null) _filled[i] = _fillOne(i);
+    }
+    let sentence = _tokens.map((tk, i) => (tk.slot ? (_filled[i] == null ? '' : _filled[i]) : tk.text)).join('');
+
+    // 核心词没能放进任何槽位时，不再硬拼到句尾（"猫看睡衣呢睡觉"这种反而更糟）
+    // 默认模板按核心词性选模块，必然有对应槽位，所以这里基本不会触发；只在溯源里记一笔
+    const _coreUsed = usedCore;
 
     // 6. 加标点（随机 或无）
     const punct = ['。', '！', '~', '？', ''][Math.floor(Math.random() * 5)];
     sentence = sentence.replace(/^[，、\s]+/, '').trim() + punct;
     // 溯源：记下用了哪个模块 + 哪条模板
     const _modName = _g.key === 'object' ? '事物模块' : (_g.key === 'emotion' ? '情绪模块' : '动作模块');
-    _lastGrammarTrace = _modName + '｜模板：' + tpl + '｜核心词：' + (coreWord || '无') + '（' + corePos + '）';
+    _lastGrammarTrace = _modName + '｜模板：' + tpl + '｜核心词：' + (coreWord || '无') + '（' + corePos + '）' + (_coreUsed ? '' : '｜核心词未入句');
     // 熟练度 +1
     try {
         const fs4 = getFreeComposeSettings(session.id);
@@ -13091,102 +13505,121 @@ const triggerRetractPlay = (session) => {
     if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
 
     // 抽 2~3 条字卡（默认多条）
-    const pool = drawWeightedCards(session, '私聊', 30);
-    if (!pool.length) return false;
-    const N = Math.min(2 + Math.floor(Math.random() * 2), pool.length);
-    const picked = [];
-    const copy = [...pool];
-    for (let i = 0; i < N && copy.length; i++) {
-        const idx = Math.floor(Math.random() * copy.length);
-        picked.push(copy[idx]);
-        copy.splice(idx, 1);
-    }
+    const _pickCards = () => {
+        const pool = drawWeightedCards(session, '私聊', 30);
+        if (!pool.length) return [];
+        const N = Math.min(2 + Math.floor(Math.random() * 2), pool.length);
+        const out = [];
+        const copy = [...pool];
+        for (let i = 0; i < N && copy.length; i++) {
+            const idx = Math.floor(Math.random() * copy.length);
+            out.push(copy[idx]);
+            copy.splice(idx, 1);
+        }
+        return out;
+    };
 
     // ===== 撤回模式 =====
     //  1 = 抽卡 → 撤回 → 直接发送（不造句）
     //  2 = 抽卡 → 造句 → 撤回 → 发送
     //  3 = 抽卡 → 先撤回 → 再造句 → 发送（两条随机分支）
     //  4 = 以上 1/2/3 随机
-    // 撤回手法：统一走"混合"（retractSentence 内部按查表随机 1/2，不再掷骰子）
-    let mode = rs.retractMode || 1;
-    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
+    const _pickMode = () => {
+        let m = rs.retractMode || 1;
+        if (m === 4) m = 1 + Math.floor(Math.random() * 3);
+        return m;
+    };
     const method = 3;
 
-    const remainingParts = [];
-    const removedList = [];
+    // 跑一轮：返回 { finalText, removedList } 或 null
+    const _rollOneRound = (picked, mode) => {
+        const remainingParts = [];
+        const removedList = [];
 
-    // 每条字卡三选一：整撤 / 半撤 / 不撤
-    const rollOne = (text) => {
-        const t = (text || '').trim();
-        if (!t) return;
-        const r = Math.random();
-        if (r < 1 / 3) {
-            // 整撤
-            removedList.push(t);
-        } else if (r < 2 / 3) {
-            // 半撤
-            const ret = retractSentence(t, method);
-            if (ret && ret.remaining) {
-                remainingParts.push(ret.remaining);
-                removedList.push(ret.removed || t);
-            } else {
-                removedList.push(t); // 撤不动 → 当整撤
-            }
-        } else {
-            // 不撤
-            remainingParts.push(t);
-        }
-    };
-
-    if (mode === 1) {
-        // 单独撤回：不造句
-        picked.forEach(item => rollOne(item.text));
-    } else if (mode === 2) {
-        // 先造句，再撤回
-        picked.forEach(item => {
-            const t = (item.text || '').trim();
+        // 每条字卡三选一：整撤 / 半撤 / 不撤
+        const rollOne = (text) => {
+            const t = (text || '').trim();
             if (!t) return;
-            const composed = composeSentence(t, session);
-            rollOne(composed || t);   // 造句失败 → 退回原句（第 2 点拍板）
-        });
-    } else if (mode === 3) {
-        // 先撤回，再造句：两条随机分支
-        picked.forEach(item => rollOne(item.text));
-        if (Math.random() < 0.5) {
-            // 分支 A：所有碎片合成一句，再造句
-            if (remainingParts.length) {
-                const merged = remainingParts.join('  ');
-                const composed = composeSentence(merged, session);
-                if (composed) {
-                    remainingParts.length = 0;
-                    remainingParts.push(composed);
+            const r = Math.random();
+            if (r < 1 / 3) {
+                removedList.push(t);                       // 整撤
+            } else if (r < 2 / 3) {
+                const ret = retractSentence(t, method);    // 半撤
+                if (ret && ret.remaining) {
+                    remainingParts.push(ret.remaining);
+                    removedList.push(ret.removed || t);
+                } else {
+                    removedList.push(t);
                 }
+            } else {
+                remainingParts.push(t);                    // 不撤
             }
-        } else {
-            // 分支 B：随机挑一条碎片造句，其余保留
-            if (remainingParts.length) {
+        };
+
+        if (mode === 1) {
+            picked.forEach(item => rollOne(item.text));
+        } else if (mode === 2) {
+            // 先造句，再撤回（造句内部现在带"截断满意 / 选卡合适"骰）
+            picked.forEach(item => {
+                const t = (item.text || '').trim();
+                if (!t) return;
+                const composed = composeSentence(t, session);
+                rollOne(composed || t);
+            });
+        } else if (mode === 3) {
+            picked.forEach(item => rollOne(item.text));
+            if (Math.random() < 0.5) {
+                if (remainingParts.length) {
+                    const merged = remainingParts.join('  ');
+                    const composed = composeSentence(merged, session);
+                    if (composed) {
+                        remainingParts.length = 0;
+                        remainingParts.push(composed);
+                    }
+                }
+            } else if (remainingParts.length) {
                 const i = Math.floor(Math.random() * remainingParts.length);
                 const composed = composeSentence(remainingParts[i], session);
                 if (composed) remainingParts[i] = composed;
             }
         }
+
+        if (!removedList.length) return null;   // 全都"不撤" → 这轮不算撤回
+
+        let finalText = remainingParts.join('  ');
+        if (!finalText) {
+            const extra = drawSentenceOrWordFromAllBoxes(session);
+            if (extra) finalText = extra.trim();
+        }
+        return { finalText, removedList };
+    };
+
+    let picked = _pickCards();
+    if (!picked.length) return false;
+    let mode = _pickMode();
+    let round = _rollOneRound(picked, mode);
+    if (!round) return false;
+
+    // ===== 确认发送（两步化）=====
+    // 骰：这一轮发得出去吗？不发 → 骰怎么重来（各 50%）
+    if (!_rollYes(YES_NO_BASE.RETRACT_SEND)) {
+        if (Math.random() < 0.5) {
+            // 分支 1：全部推翻重来（重新抽卡 + 重骰手法）
+            const picked2 = _pickCards();
+            round = picked2.length ? _rollOneRound(picked2, _pickMode()) : null;
+        } else {
+            // 分支 2：保手法重造（同一批卡、同一手法，只重新造句）
+            round = _rollOneRound(picked, mode);
+        }
+        if (!round) return false;
     }
 
-    if (!removedList.length) return false; // 全都"不撤" → 不算撤回，让原流程走
-
-    // 拼接随机一条句子（第 2 点拍板）：仅当"有撤回、但剩余碎片为空"时补一条
-    let finalText = remainingParts.join('  ');
-    if (!finalText) {
-        const extra = drawSentenceOrWordFromAllBoxes(session);
-        if (extra) finalText = extra.trim();
-    }
-
-    sendMessage('them', finalText || ' ', {
+    sendMessage('them', round.finalText || ' ', {
         session,
         retracted: true,
-        originalContents: removedList,
+        originalContents: round.removedList,
     });
-    if (finalText) saveFreeComposedSentence(finalText, session);
+    if (round.finalText) saveFreeComposedSentence(round.finalText, session);
     return true;
 };
   
@@ -13306,9 +13739,29 @@ const triggerFreeCompose = (session) => {
             if (sTxt) {
                 const lastS = session.messages[session.messages.length - 1];
                 if (!(lastS && lastS.content === sTxt)) {
-                    sendMessage('them', sTxt, { session, freeCompose: true, grammarTrace: _lastGrammarTrace || '' });
+                    sendMessage('them', sTxt, { session, freeCompose: true, syntaxPlay: true, grammarTrace: _lastGrammarTrace || '' });
                     saveFreeComposedSentence(sTxt, session);
                     return true;
+                }
+            }
+        }
+    }
+
+    // ===== 手法4 字词联想（独立玩法，B83 单拎出来）=====
+    // 和语法拼词同级：自己的开关 + 概率，角标叫「捕捉到了关键词」
+    if (settings.method4Enabled) {
+        const p4 = Number(settings.method4Prob ?? 0.3);
+        if (p4 > 0 && Math.random() < p4) {
+            const src4 = drawSourceSentence(session);
+            if (src4) {
+                const txt4 = composeMethod4(src4, session);
+                if (txt4) {
+                    const lastS4 = session.messages[session.messages.length - 1];
+                    if (!(lastS4 && lastS4.content === txt4)) {
+                        sendMessage('them', txt4, { session, freeCompose: true, method4Play: true });
+                        saveFreeComposedSentence(txt4, session);
+                        return true;
+                    }
                 }
             }
         }
@@ -15171,39 +15624,33 @@ const drawGroupPat = (group, memberId) => {
     };
 
 
-const getCombinedReply = (pool) => {
-    const textPool = pool.filter(item => item.text && item.text.trim());
-    const imagePool = pool.filter(item => item.image && !item.text);
+// 额外气泡：每次都重新骰（随机抽），并且不重复本轮已经说过的卡
+// ⚠ 之前这里是从池子"从头往后取第一张"，所以同一次回复里连发两条会拿到一模一样的内容
+const getCombinedReply = (pool, usedTexts) => {
+    const used = (usedTexts instanceof Set) ? usedTexts : new Set();
+    const textPool = (pool || []).filter(item => item.text && item.text.trim() && !used.has(String(item.text).trim()));
+    const imagePool = (pool || []).filter(item => item.image && !item.text);
     if (textPool.length > 0) {
         const rand = Math.random();
         let count = 1;
         if (rand < 0.45) count = 1;
         else if (rand < 0.85) count = 2;
         else count = 3;
-        let selected = [];
-        let copy = [...textPool];
-        const _seenT2 = new Set();
+        count = Math.min(count, textPool.length);
+        const copy = [...textPool];
+        const picked = [];
         for (let i = 0; i < count && copy.length > 0; i++) {
-            let pickIdx = -1;
-            for (let k = 0; k < copy.length; k++) {
-                const tx = String(copy[k].text || '').trim();
-                if (tx && _seenT2.has(tx)) continue;
-                pickIdx = k;
-                break;
-            }
-            if (pickIdx < 0) break;
-            const it = copy[pickIdx];
-            const tx = String(it.text || '').trim();
-            if (tx) _seenT2.add(tx);
-            selected.push(it);
-            copy.splice(pickIdx, 1);
+            const idx = Math.floor(Math.random() * copy.length);   // ← 每次重新骰
+            picked.push(copy[idx]);
+            copy.splice(idx, 1);
         }
-        const combinedText = selected.map(item => item.text).filter(t => t).join('    ');
-        return { text: combinedText, image: null };
+        const pieces = picked.map(it => String(it.text || '').trim()).filter(Boolean);
+        if (!pieces.length) return null;
+        return { text: pieces.join('    '), pieces, image: null };
     }
     if (imagePool.length > 0) {
         const pick = imagePool[Math.floor(Math.random() * imagePool.length)];
-        return { text: null, image: pick.image };
+        return { text: null, pieces: [], image: pick.image };
     }
     return null;
 };
@@ -15251,8 +15698,15 @@ const RTH = {
 
 // ===== 骰子状态机：模拟「翻卡 → 挑卡 → 反悔 → 继续挑 → 发送确认」=====
 // 返回 { items, costMs, regrets, retries }；纯函数，不碰 DOM/存储
-const _rollCardSelection = (pool, cfg) => {
-    const arr = Array.isArray(pool) ? pool.slice() : [];
+const _rollCardSelection = (pool, cfg, avoidTexts) => {
+    const all = Array.isArray(pool) ? pool.slice() : [];
+    // 尽量避开"最近刚说过的话"（避免连续两轮撞同一张卡）；避不开就用全量
+    const avoid = (avoidTexts instanceof Set) ? avoidTexts : null;
+    let arr = all;
+    if (avoid && avoid.size) {
+        const filtered = all.filter(it => !avoid.has(String((it && it.text) || '').trim()));
+        if (filtered.length) arr = filtered;
+    }
     const enabled = !cfg || cfg.concatEnabled !== false;
     const rawCap = Number(cfg && cfg.concatCount);
     const cap = Math.max(1, Math.min(35, isNaN(rawCap) ? 2 : rawCap));
@@ -15317,7 +15771,16 @@ const _rollCardSelection = (pool, cfg) => {
         }
         break;
     }
-    return { items: (res && res.items) || [], costMs: cost, regrets: (res && res.regret) || 0, retries };
+    // 反悔骰可能把候选吃光（池子小的时候尤其明显）→ 至少留一张，别变成"……"
+    if (!res || !res.items.length) {
+        if (arr.length) {
+            const fbItem = arr[Math.floor(Math.random() * arr.length)];
+            res = { items: [fbItem], cost: (res && res.cost) || 0, regret: (res && res.regret) || 0 };
+        } else {
+            res = res || { items: [], cost: 0, regret: 0 };
+        }
+    }
+    return { items: res.items || [], costMs: cost, regrets: res.regret || 0, retries };
 };
 
 // ===== 按「动作计划」逐步发送 =====
@@ -15477,7 +15940,12 @@ const opts = { marked, session: cur };
                 if (quote) opts.quote = quote;
                 if (tag) opts.tag = tag;
                 // ===== 骰子状态机：选卡 → 反悔 → 继续挑 → 发送确认 =====
-                const dice = _rollCardSelection(pool, concatSettings);
+                // 最近刚说过的几句先避开（防连续两轮撞同一张卡）
+                const _recentThem = new Set(
+                    (cur.messages || []).filter(m => m && m.sender === 'them' && m.content)
+                        .slice(-6).map(m => String(m.content).trim()).filter(Boolean)
+                );
+                const dice = _rollCardSelection(pool, concatSettings, _recentThem);
                 // 换手法：能走到这里说明前面几个玩法都没产出 → 沮丧、退格重来（只加时间）
                 // TODO(换手法·外部变体)：将来可再加低概率「发完再补一条不同玩法」
                 let _frustration = 0;
@@ -15499,13 +15967,18 @@ const opts = { marked, session: cur };
                 }
 
                 // ===== 额外多条消息（独立于主回复） =====
+                // 每条都重新骰，并且不重复本轮已说过的卡（主回复的内容也算"已说"）
+                const _usedTexts = new Set(
+                    (dice.items || []).map(it => String((it && it.text) || '').trim()).filter(Boolean)
+                );
                 const extraRand = Math.random();
                 let extraCount = 0;
                 if (extraRand < 0.05) extraCount = 2;
                 else if (extraRand < 0.25) extraCount = 1;
                 for (let i = 0; i < extraCount; i++) {
-                    const extraCombined = getCombinedReply(pool);
+                    const extraCombined = getCombinedReply(pool, _usedTexts);
                     if (extraCombined) {
+                        (extraCombined.pieces || []).forEach(p => _usedTexts.add(p));
                         const extraOpts = { marked: false, session: cur };
                         if (Math.random() < 0.1) {
                             const q2 = pickQuote(cur);
@@ -16965,6 +17438,18 @@ const replySubTab = ref('私聊');
     watch(replySettingsPage, () => {
         nextTick(() => { try { if (window.lucide) lucide.createIcons(); } catch (e) {} });
     });
+    // 一进「语法模板库」就自动体检一次词性（只统计不改数据，省得老板忘了点）
+    watch(replySettingsPage, (v) => {
+        if (v !== '语法模板库' || posAudit.done) return;
+        try {
+            const list = _posAuditScan();
+            const byReason = {};
+            list.forEach(f => { byReason[f.reason] = (byReason[f.reason] || 0) + 1; });
+            posAudit.list = list;
+            posAudit.byReason = byReason;
+            posAudit.done = true;
+        } catch (e) {}
+    });
 
 // 数字调整（- + 按钮用）
 const adjustSetting = (key, delta, min, max) => {
@@ -17390,7 +17875,18 @@ const chattyKeyActive = ref('');
 const chattyTaStatus = ref('online');         // 'online' | 'busy' | 'offline'
 const chattyTypingText = ref('');              // 正在打的拼音
 const chattyCandidates = ref([]);              // 候选字卡 [{text}]
+// ===== 候选配置（B85）=====
+// 一次"关键词搜索"给多少张备选（系统用户在这么多张里挑）
+const CHATTY_CAND_BATCH = 50;
+// 打错纠正那种小候选窗用多少张
+const CHATTY_CAND_SHOW = 12;
+// 骰：这批 50 里"没有想说的" → 点一下「重新搜索」换一批
+const CHATTY_RESEARCH_PROB = 0.3;
+// 最多换几批（防止一直换）
+const CHATTY_RESEARCH_MAX = 2;
+const chattyResearching = ref(false);          // 正在"重新搜索"（视觉提示）
 const chattyCandidatePicked = ref(null);       // 被选中的候选索引
+const chattyCandBox = ref(null);               // 候选滚动容器（模拟竖向滚动用）
 let _chattyStatusTimer = null;
 let _chattyLoopTimer = null;
 let _chattyTypeTimer = null;
@@ -17500,25 +17996,74 @@ const _typeChattyLetters = (py, onDone) => {
     step();
 };
 
-// ===== chatty · 真候选浮层（随机高亮）=====
-const _showRealCandidates = (s, cards, onDone) => {
+// 让候选框"像被人用手指划了一下"：平滑竖向滚到目标卡
+const _simulateScrollToChip = (idx) => new Promise((resolve) => {
+    const box = chattyCandBox.value;
+    if (!box) return resolve();
+    const chip = box.querySelector('[data-cand-idx="' + idx + '"]');
+    if (!chip) return resolve();
+    const targetTop = Math.max(0, chip.offsetTop - box.clientHeight / 2 + chip.clientHeight / 2);
+    // 先轻轻上下晃一下（像手指刚搭上去）
+    box.scrollTop = Math.min(24, targetTop);
+    setTimeout(() => { box.scrollTop = 0; }, 110);
+    let step = 0;
+    const STEPS = 9;
+    const tick = () => {
+        if (!chattyScreenOpen.value) return resolve();
+        step++;
+        const t = step / STEPS;
+        box.scrollTop = targetTop * (t * t);   // ease-in，越滑越快
+        if (step < STEPS) setTimeout(tick, 85);
+        else resolve();
+    };
+    setTimeout(tick, 240);
+});
+
+// ===== chatty · 候选浮层（B85：50 张一批 + 「重新搜索」骰子 + 模拟竖向滚动）=====
+// 流程：关键词搜到的卡 → 切一批 50 张 → 骰"这 50 张里有没有想说的"
+//        没有 → 点「重新搜索」换下一批（最多 2 次）→ 再滚动手动选一张
+const _showRealCandidates = async (s, cards, onDone) => {
     if (!cards || !cards.length) { if (onDone) onDone(null); return; }
     const myEpoch = _chattyEpoch;
-    const shuffled = cards.slice().sort(() => Math.random() - 0.5).slice(0, 8);
-    chattyCandidates.value = shuffled.map(c => ({ text: c.text }));
+    const alive = () => chattyScreenOpen.value && _chattyEpoch === myEpoch;
+
+    // ① 切批：打乱后每 50 一批
+    let rest = cards.slice().sort(() => Math.random() - 0.5);
+    let batch = rest.slice(0, Math.min(CHATTY_CAND_BATCH, rest.length));
+    rest = rest.slice(batch.length);
+
+    // ② 骰：这批里有没有想说的？没有就"重新搜索"换下一批
+    let research = 0;
+    while (rest.length && research < CHATTY_RESEARCH_MAX && Math.random() < CHATTY_RESEARCH_PROB) {
+        if (!alive()) return;
+        research++;
+        chattyResearching.value = true;
+        await _chattySleep(randomMs(350, 700));
+        chattyResearching.value = false;
+        if (!alive()) return;
+        batch = rest.slice(0, Math.min(CHATTY_CAND_BATCH, rest.length));
+        rest = rest.slice(batch.length);
+    }
+    if (!batch.length) { if (onDone) onDone(null); return; }
+
+    // ③ 展示这一批（整批都在 DOM 里，靠滚动选）
+    chattyCandidates.value = batch.map(c => ({ text: c.text }));
     chattyCandidatePicked.value = null;
-    const pickIdx = Math.floor(Math.random() * shuffled.length);
-    setTimeout(() => {
-        if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
-        chattyCandidatePicked.value = pickIdx;
-        setTimeout(() => {
-            if (!chattyScreenOpen.value || _chattyEpoch !== myEpoch) return;
-            chattyCandidates.value = [];
-            chattyCandidatePicked.value = null;
-            chattyTypingText.value = '';
-            if (onDone) onDone(shuffled[pickIdx]);
-        }, randomMs(500, 1000));
-    }, randomMs(800, 1500));
+    await _chattySleep(randomMs(300, 600));      // 等面板渲染出来
+    if (!alive()) return;
+
+    // ④ 在这一批里骰一个"想说的"，然后模拟竖向滚动过去
+    const pickIdx = Math.floor(Math.random() * batch.length);
+    await _simulateScrollToChip(pickIdx);
+    if (!alive()) return;
+    chattyCandidatePicked.value = pickIdx;
+    await _chattySleep(randomMs(500, 1000));
+    if (!alive()) return;
+
+    chattyCandidates.value = [];
+    chattyCandidatePicked.value = null;
+    chattyTypingText.value = '';
+    if (onDone) onDone(batch[pickIdx]);
 };
 
 
@@ -17526,10 +18071,10 @@ const _showRealCandidates = (s, cards, onDone) => {
 const _showChattyCandidates = (s, targetCard, onDone) => {
     if (!s || !targetCard) { if (onDone) onDone(); return; }
     const myEpoch = _chattyEpoch;
-    const extras = drawWeightedCards(s, null, 12, { boxNames: ['私聊', '梦角自由造句', '公共'] });
+    const extras = drawWeightedCards(s, null, CHATTY_CAND_SHOW * 2, { boxNames: ['私聊', '梦角自由造句', '公共'] });
     const pool = [targetCard];
     extras.forEach(e => {
-        if (e.text && e.text !== targetCard.text && pool.length < 8) pool.push(e);
+        if (e.text && e.text !== targetCard.text && pool.length < CHATTY_CAND_SHOW) pool.push(e);
     });
     const shuffled = pool.slice().sort(() => Math.random() - 0.5);
     chattyCandidates.value = shuffled.map(c => ({ text: c.text }));
@@ -17725,8 +18270,8 @@ const myEpoch = _chattyEpoch;
     if (!alive()) return;
 
     const pool = [{ text: wrongInfo.wrongText }, { text: wrongInfo.rightText }];
-    (drawWeightedCards(s, null, 12, { boxNames: ['私聊', '梦角自由造句', '公共'] }) || [])
-        .forEach(e => { if (e.text && pool.length < 8 && !pool.some(p => p.text === e.text)) pool.push({ text: e.text }); });
+    (drawWeightedCards(s, null, CHATTY_CAND_SHOW * 2, { boxNames: ['私聊', '梦角自由造句', '公共'] }) || [])
+        .forEach(e => { if (e.text && pool.length < CHATTY_CAND_SHOW && !pool.some(p => p.text === e.text)) pool.push({ text: e.text }); });
     const shuffled = pool.sort(() => Math.random() - 0.5);
     chattyCandidates.value = shuffled;
     await _chattySleep(randomMs(700, 1200));
@@ -17756,8 +18301,8 @@ const myEpoch = _chattyEpoch;
     if (!alive()) return;
 
     const pool2 = [{ text: wrongInfo.rightText }];
-    (drawWeightedCards(s, null, 12, { boxNames: ['私聊', '梦角自由造句', '公共'] }) || [])
-        .forEach(e => { if (e.text && pool2.length < 8 && !pool2.some(p => p.text === e.text)) pool2.push({ text: e.text }); });
+    (drawWeightedCards(s, null, CHATTY_CAND_SHOW * 2, { boxNames: ['私聊', '梦角自由造句', '公共'] }) || [])
+        .forEach(e => { if (e.text && pool2.length < CHATTY_CAND_SHOW && !pool2.some(p => p.text === e.text)) pool2.push({ text: e.text }); });
     const shuffled2 = pool2.sort(() => Math.random() - 0.5);
     chattyCandidates.value = shuffled2;
     await _chattySleep(randomMs(700, 1200));
@@ -17831,9 +18376,10 @@ const _rollOneSyllable = () => {
 };
 
 // 正查字卡池：找拼音前缀匹配 targetPy 的卡
+// 注意：这里用的是"加权抽样 800 张"再筛前缀，不是全库全量（权重是用户设的，不能绕过）
 const _findCardsByPinyin = (s, targetPy) => {
     if (!s || !targetPy) return [];
-    const pool = drawWeightedCards(s, null, 200, { boxNames: ['私聊', '梦角自由造句', '公共'] });
+    const pool = drawWeightedCards(s, null, 800, { boxNames: ['私聊', '梦角自由造句', '公共'] });
     const seen = new Set();
     const matched = [];
     pool.forEach(c => {
@@ -17876,10 +18422,31 @@ const _collectForeignCards = (s) => {
 };
 
 let _freeComposeBackspaces = 0;   // 最近一次生成里"退格重选"的次数
+// ===== 是否骰子（B86）=====
+// 老板要的模型：每个「是否」不写死概率，而是当场摇两次：
+//   ① 摇出"这次的概率"（0~base）
+//   ② 再摇一次看是否落入
+// base=100 → 均值 50%（方案 A）。将来想降成 B 方案，只改这里的 base，逻辑不用动。
+const YES_NO_BASE = {
+    BACKSPACE: 100,     // 拼音：这个字要不要退格重选
+    PUNCT: 100,         // 拼音：这一段要不要加标点
+    CONTINUE: 100,      // 拼音：还要不要继续说下一段
+    SEND_CONFIRM: 100,  // 确认发送（false = 不满意，重来）
+    CUT_OK: 100,        // 造句：截断位置满意吗
+    CARD_OK: 100,       // 造句：抽到的字卡合适吗
+    RETRACT_SEND: 100,  // 撤回：这一轮发不发出
+};
+const _rollYes = (base) => {
+    const b = Math.max(0, Math.min(100, Number(base == null ? 100 : base))) / 100;
+    if (b <= 0) return false;
+    const th = b * Math.random();      // ① 这次的概率
+    return Math.random() < th;         // ② 是否落入
+};
+
 const _makeFreeComposeText = (s) => {
     const MAX_SEGS = 5;
     const SEG_MIN = 2, SEG_MAX = 5;
-    const PUNCT_PROB = 0.4;   // 段长≥3 时加标点的概率
+    const MAX_SEND_RETRY = 2;     // 确认发送不满意 → 重来几次
     _freeComposeBackspaces = 0;   // 本次生成的退格次数（影响打字耗时）
 
     // ===== ⭐ 外文分支（优先）：按概率抽外文常用词，带中文翻译 =====
@@ -17908,33 +18475,44 @@ const _makeFreeComposeText = (s) => {
         }
     }
 
-    const segments = [];
-    for (let segIdx = 0; segIdx < MAX_SEGS; segIdx++) {
-        const len = SEG_MIN + Math.floor(Math.random() * (SEG_MAX - SEG_MIN + 1));
-        const units = [];
-        for (let i = 0; i < len; i++) {
-            let u = _rollOneUnit();
-            // 退格模拟：先骰一个 0~100 的阈值，再骰一次看是否落入
-            // 落入 → 退格、重新选这个字（同时让发送前的打字耗时变长）
-            const th = Math.random() * 100;
-            if (Math.random() * 100 < th) {
-                u = _rollOneUnit();
-                _freeComposeBackspaces++;
+    // ===== 中文分支：一段一段骰 =====
+    // 每段：骰段长 → 每字骰（声母/韵母/选字/退格）→ 骰标点 → 骰是否继续说
+    const buildOnce = () => {
+        const segments = [];
+        for (let segIdx = 0; segIdx < MAX_SEGS; segIdx++) {
+            const len = SEG_MIN + Math.floor(Math.random() * (SEG_MAX - SEG_MIN + 1));   // 骰：这段几字
+            const units = [];
+            for (let i = 0; i < len; i++) {
+                let u = _rollOneUnit();                                  // 骰：声母 + 韵母 + 选字（3 次）
+                if (_rollYes(YES_NO_BASE.BACKSPACE)) {                   // 骰：要不要退格（2 次）
+                    u = _rollOneUnit();                                  //   退格 → 重选这个字
+                    _freeComposeBackspaces++;
+                }
+                if (u) units.push(u);
             }
-            if (u) units.push(u);
-        }
-        if (!units.length) break;
+            if (!units.length) break;
 
-        let punct = '';
-        if (units.length >= 3 && Math.random() < PUNCT_PROB) {
-            punct = CHATTY_PUNCT_ROW[Math.floor(Math.random() * CHATTY_PUNCT_ROW.length)];
-        }
-        segments.push({ units, punct });
+            let punct = '';
+            if (units.length >= 3 && _rollYes(YES_NO_BASE.PUNCT)) {       // 骰：这段加不加标点（2 次）
+                punct = CHATTY_PUNCT_ROW[Math.floor(Math.random() * CHATTY_PUNCT_ROW.length)];   // 骰：哪个标点
+            }
+            segments.push({ units, punct });
 
-        if (!punct) break;   // 没加标点 → 结束
+            if (segIdx >= MAX_SEGS - 1) break;
+            if (!_rollYes(YES_NO_BASE.CONTINUE)) break;                   // 骰：还要继续说吗（2 次）
+        }
+        return segments.length ? { segments } : null;
+    };
+
+    // 骰：确认发送？不满意就全删重写（重来时不重置退格数——那些字确实打过）
+    let last = null;
+    for (let attempt = 0; attempt <= MAX_SEND_RETRY; attempt++) {
+        last = buildOnce();
+        if (!last) return null;
+        if (_rollYes(YES_NO_BASE.SEND_CONFIRM)) return last;
     }
-    if (!segments.length) return null;
-    return { segments };
+    // 重来几次都不满意 → 还是把最后一次发出去（总比什么都不发好）
+    return last;
 };
 
 const _pushFreeComposeToChat = (s, free, opts) => {
@@ -24352,6 +24930,8 @@ if (stored.money.installment) {
 try { startMailTimer(); } catch (e) {}
                 try { startTodoTimer(); } catch (e) {}
                 try { seedPosWords(); } catch (e) {}
+                // B84：内置词库的词性自动校正（只改三类确定规则命中的卡，静默执行）
+                try { setTimeout(() => { try { autoFixPosTags(true); } catch (e) {} }, 1200); } catch (e) {}
                 try { startJieyiHarvestTimer(); } catch (e) {}
             try { startStatusTimer(); } catch (e) {}
 try { startChattyWatcher(); } catch (e) {}
@@ -24519,7 +25099,8 @@ removeGroupMember,
 currentSession,
       draftText,
       plusOpen,
-      typingSessions, triggerTypingPlay, chattyLabel,
+      typingSessions, triggerTypingPlay, chattyLabel, freeComposeLabel,
+      toggleMethod4, chattyResearching, chattyCandBox,
       profiles,
       settings,
       replyGroups,
@@ -25006,6 +25587,8 @@ getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tr
   grammarTplArr, grammarTplCount, grammarTplTabLabel, grammarTplSlotList,
   grammarTplSwitchTab, grammarTplAppendSlot, grammarTplAdd, grammarTplStartEdit, grammarTplCancelEdit,
   grammarTplSaveEdit, grammarTplDelete, grammarTplMove, grammarTplRestoreTab, grammarTplTry, openGrammarTplEditor,
+// 词性体检 / 一键校正
+  posAudit, runPosAudit, applyPosAudit, clearPosAudit,
       replySettingsGroups, getPoolWeight, setPoolWeight, togglePool, toggleAllInCategory, _joinCardsForDisplay,groupSessions, toggleGroupChatFor, adjustGroupChatInterval, adjustReplyDelay,
 countBoxCards, countCategoryCards, countGroupCards,
 _clearPoolCache,
