@@ -670,6 +670,34 @@ body { color: var(--color-text); }
     font-weight: 500;
 }
 
+    /* ===== 排版引擎 B120：三套 UI（全部走主题变量，不写死颜色） ===== */
+    /* 瓦利亚：切角 */
+    .varia-cut {
+        clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    /* 瓦利亚：HUD 四角准星 */
+    .hud-corner { position: absolute; width: 8px; height: 8px; border-color: var(--color-muted); border-style: solid; opacity: 0.6; }
+    .corner-tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+    .corner-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+    .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+    .corner-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+    /* 瓦利亚：扫描线 */
+    .scanline {
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--nav-icon-color), transparent);
+        animation: scan 3s linear infinite; opacity: 0.4; pointer-events: none;
+    }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+    /* 彭格列：衬线字体 */
+    .font-vongola { font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; }
+    /* 彭格列：纸张内阴影 */
+    .paper-shadow { box-shadow: inset 0 0 10px rgba(0,0,0,0.02), 0 2px 6px rgba(0,0,0,0.03); }
+    /* 彭格列：信纸横线 */
+    .letter-lines {
+        background-image: repeating-linear-gradient(transparent, transparent 27px, var(--color-border) 28px);
+        line-height: 28px;
+    }
+
      </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.css">
@@ -761,7 +789,7 @@ body { color: var(--color-text); }
     <transition name="dialogfade">
         <div v-if="renameModal.show" @click.self="renameModal.show = false" style="position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;">
             <div class="w-[320px] max-w-[88vw] rounded-2xl bg-surface px-5 py-5 shadow-2xl border border-border" style="color: var(--color-text);">
-                <div class="text-center text-[16px] tracking-[0.2em] mb-4">{{ currentSession.type === 'group' ? '为群聊改名' : '为好友改昵称' }}</div>
+                <div class="text-center text-[16px] tracking-[0.2em] mb-4">为好友改昵称</div>
                 <input v-model="renameModal.name" @keyup.enter="confirmRename" type="text" maxlength="20" placeholder="写下新的名字" class="w-full px-3 py-2.5 rounded-lg border border-border bg-bg text-sm outline-none focus:border-[var(--nav-icon-color)]" style="color: var(--color-text);" />
                 <div class="flex gap-2 mt-4">
                     <button @click="renameModal.show = false" class="flex-1 py-2.5 rounded-lg border border-border text-[14px] tracking-widest" style="color: var(--color-text);">作罢</button>
@@ -832,7 +860,6 @@ body { color: var(--color-text); }
                     <div @click="homePlusMenuOpen = false" class="fixed inset-0 z-[80]"></div>
                     <div class="absolute right-0 top-0 z-[85] bg-surface border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
                         <div @click="homePlusMenuOpen = false; addNewSession()" class="px-3 py-2 text-[14px] text-text hover:bg-bg cursor-pointer">增加好友</div>
-                        <div @click="homePlusMenuOpen = false; openGroupPicker()" class="px-3 py-2 text-[14px] text-text hover:bg-bg cursor-pointer">新建群聊</div>
                         <div @click="homePlusMenuOpen = false; deleteSession()" class="px-3 py-2 text-[14px] text-red-500 hover:bg-bg cursor-pointer">送别</div>
                     </div>
                 </div>
@@ -842,18 +869,18 @@ body { color: var(--color-text); }
      @click="openSession(session.id)"
      @contextmenu.prevent="hideSession(session.id)"
      @touchstart="cardTouchStart($event, session.id)" @touchend="cardTouchEnd" @touchmove="cardTouchEnd"
-     class="flex items-center gap-3 px-3 py-3 rounded-2xl bg-surface/60 border border-border/40 cursor-pointer hover:bg-surface transition select-none relative"
-     :class="{ 'home-card-highlight': highlightId === session.id }">
+     class="flex items-center gap-3 px-3 py-3 border border-border/40 cursor-pointer transition select-none relative"
+     :class="[uiCardClass(), { 'home-card-highlight': highlightId === session.id }]"
+     :style="uiCardStyle()">
     <!-- 头像 -->
-    <div class="shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-surface border border-border/50 flex items-center justify-center">
+    <div class="shrink-0 w-12 h-12 overflow-hidden bg-surface border border-border/50 flex items-center justify-center" :class="uiAvatarClass()">
         <img v-if="session.avatar" :src="session.avatar" class="w-full h-full object-cover">
         <span v-else class="text-[18px] text-muted serif-text">{{ (session.name || '?').charAt(0) }}</span>
     </div>
     <!-- 中间 -->
     <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="font-medium text-[15px] text-text truncate">{{ session.name }}</span>
-            <span v-if="session.type === 'group'" class="text-[10px] tracking-widest text-muted bg-bg/60 px-1.5 py-0.5 rounded shrink-0">群 · {{ session.members.length }}</span>
+            <span class="text-[15px] text-text truncate" :class="uiNameClass()">{{ session.name }}</span>
         </div>
         <div class="text-[13px] text-muted truncate">{{ lastMessagePreview(session) || '暂无消息' }}</div>
     </div>
@@ -861,7 +888,8 @@ body { color: var(--color-text); }
     <div class="shrink-0 flex flex-col items-end gap-1.5">
         <span class="text-[11px] text-muted tabular-nums">{{ formatSessionTime(session.messages.length ? session.messages[session.messages.length - 1].timestamp : 0) }}</span>
         <span v-if="unreadOf(session) > 0"
-              class="min-w-[18px] h-[18px] px-1.5 rounded-full text-[11px] text-white flex items-center justify-center font-medium"
+              class="min-w-[18px] h-[18px] px-1.5 text-[11px] text-white flex items-center justify-center font-medium"
+              :class="uiBadgeClass()"
               style="background: var(--nav-icon-color);">
             {{ unreadOf(session) > 99 ? '99+' : unreadOf(session) }}
         </span>
@@ -1055,28 +1083,23 @@ body { color: var(--color-text); }
                     <div class="flex items-center gap-2">
                         <button @click="switchView('home')" class="p-2 -ml-1 hover:opacity-60" :class="chatBgDark ? 'text-white/90' : 'text-text'"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <div class="flex items-center gap-2 group cursor-pointer mt-5" >
-                            <div v-if="settings.showAvatar" @click.stop="editAvatar('them')" class="w-8 h-8 bg-surface border border-border/50 flex items-center justify-center overflow-hidden shadow-sm" :style="{ borderRadius: settings.avatarRadius + '%' }">
-                                <img v-if="currentSession.avatar" :src="currentSession.avatar" class="w-full h-full object-cover">
+                            <div v-if="settings.showAvatar" @dblclick.stop="patPickerOpen = true" class="w-8 h-8 bg-surface border border-border/50 flex items-center justify-center overflow-hidden shadow-sm select-none" :style="{ borderRadius: settings.avatarRadius + '%' }" title="双击拍一拍">
+                                <img v-if="currentSession.avatar" :src="currentSession.avatar" class="w-full h-full object-cover" draggable="false">
                                 <span v-else class="text-xs text-muted serif-text">{{ currentSession.name.charAt(0) }}</span>
                             </div>
-                            <div class="flex flex-col" @click.stop="editSessionName()">
+                            <div class="flex flex-col cursor-pointer" @click.stop="forceReply()" title="点一下让 TA 再说一句">
     <span class="text-[15px] font-medium tracking-widest hover:underline underline-offset-4" :class="chatBgDark ? 'text-white' : 'text-text'">
         {{ currentSession.name }}
     </span>
-    <!-- 群聊时：在线人数显示在群名下方 -->
-    <span v-if="currentSession.type === 'group'" class="text-[11px] tracking-wider -mt-1" :class="chatBgDark ? 'text-white/60' : 'text-muted'">
-        {{ groupOnlineInfo.online }}人在线 · 共{{ groupOnlineInfo.total }}人
-    </span>
-    <!-- 私聊时：显示状态文字 -->
-    <span v-if="currentSession.type !== 'group'" class="text-[10px] tracking-widest max-w-[120px] truncate" :class="chatBgDark ? 'text-white/70' : 'text-muted'">
+    <!-- 显示状态文字 -->
+    <span class="text-[10px] tracking-widest max-w-[120px] truncate" :class="chatBgDark ? 'text-white/70' : 'text-muted'">
         {{ currentSession.statusText || '在线' }}
     </span>
 </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-1">
-                        <button v-if="currentSession.type === 'group'" @click="groupMembersOpen = true" class="p-2 hover:text-white" :class="chatBgDark ? 'text-white/85' : 'text-muted hover:text-text'" title="查看群成员"><i data-lucide="users" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <button v-if="currentSession.type !== 'group'" @click="startOutgoingCall(currentSession)" :disabled="currentSession.call.status !== 'idle'" class="p-2 disabled:opacity-30" :class="chatBgDark ? 'text-white/85 hover:text-white' : 'text-muted hover:text-text'"><i data-lucide="phone" class="w-5 h-5 stroke-[1.5]"></i></button>
+                        <button @click="startOutgoingCall(currentSession)" :disabled="currentSession.call.status !== 'idle'" class="p-2 disabled:opacity-30" :class="chatBgDark ? 'text-white/85 hover:text-white' : 'text-muted hover:text-text'"><i data-lucide="phone" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <!-- 留言板按钮（原写信） -->
                         <!-- <button v-if="currentSession.type !== 'group'" @click="envelopeShow = true" class="p-2" :class="chatBgDark ? 'text-white/85 hover:text-white' : 'text-muted hover:text-text'"><i data-lucide="mail" class="w-5 h-5 stroke-[1.5]"></i></button>-->
 
@@ -1497,9 +1520,6 @@ body { color: var(--color-text); }
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                     </button>
                 </div>
-                <!-- 群聊时显示发送者名称 -->
-                <span v-if="currentSession.type === 'group' && msg.sender !== 'me' && shouldShowAvatar(index)" class="text-[11px] tracking-wider mb-0.5 px-1" :class="msg.sender === 'me' ? 'text-right' : 'text-left'" style="color:var(--color-muted);">{{ senderName(msg.sender) }}</span>
-
                 <!-- @提及 -->
                 <span v-if="msg.mention" class="text-[11px] mb-0.5 px-1.5 py-0.5 rounded tracking-wider" style="color:var(--nav-icon-color);background:rgba(24,95,165,0.1);">@{{ mentionNameOf(msg.mention) }}</span>
 
@@ -1594,6 +1614,10 @@ body { color: var(--color-text); }
                 </main>
 
                 <footer class="absolute bottom-0 left-0 right-0 p-3 bg-surface/70 backdrop-blur-xl shrink-0">
+                    <!-- 能量区（B92）：纯装饰占位，真人点它没有任何效果（pointer-events:none） -->
+                    <div aria-hidden="true"
+                         class="h-[18px] -mt-1 mb-1 rounded-full select-none"
+                         style="pointer-events:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;"></div>
                     <!-- 输入中：底部输入框上方圆条 + 三个跳动的点；横线在圆条下方（跟随当前会话独立） -->
                     <div v-if="currentSession && typingSessions[currentSession.id]" class="flex flex-col">
                         <div class="h-11 flex items-center px-1">
@@ -1625,13 +1649,11 @@ body { color: var(--color-text); }
                     </div>
                     <!-- 仿微信：加号展开的功能收纳条，高度与书写框一致 -->
                     <div v-if="plusOpen" class="mt-2 flex items-center gap-1 bg-surface/80 border border-border/60 rounded-2xl px-3 py-1.5 shadow-sm">
-                        <button @click="plusOpen = false; currentSession.type === 'group' ? openGrabPacket() : openSendRp()" class="p-2 text-muted hover:text-text" title="发红包"><i data-lucide="gift" class="w-5 h-5 stroke-[1.5]"></i></button>
+                        <button @click="plusOpen = false; openSendRp()" class="p-2 text-muted hover:text-text" title="发红包"><i data-lucide="gift" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <label @click="plusOpen = false" class="p-2 text-muted hover:text-text cursor-pointer" title="上传图片"><i data-lucide="image" class="w-5 h-5 stroke-[1.5]"></i><input type="file" accept="image/*" class="hidden" @change="handleImageSend"></label>
-                        <button v-if="currentSession.type === 'group'" @click="plusOpen = false; openMentionPicker()" class="p-2 text-muted hover:text-text" title="提及"><i data-lucide="at-sign" class="w-5 h-5 stroke-[1.5]"></i></button>
-<button v-if="currentSession.type === 'group'" @click="plusOpen = false; openPollCreator()" class="p-2 text-muted hover:text-text" title="发起投票"><i data-lucide="vote" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <button v-if="currentSession.type !== 'group'" @click="plusOpen = false; patPickerOpen = true" class="p-2 text-muted hover:text-text" title="拍一拍"><i data-lucide="hand" class="w-5 h-5 stroke-[1.5]"></i></button>
+                        <button @click="plusOpen = false; patPickerOpen = true" class="p-2 text-muted hover:text-text" title="拍一拍"><i data-lucide="hand" class="w-5 h-5 stroke-[1.5]"></i></button>
 <button @click="plusOpen = false; openDrawBoard()" class="p-2 text-muted hover:text-text" title="涂鸦画板"><i data-lucide="brush" class="w-5 h-5 stroke-[1.5]"></i></button>
-                        <button v-if="currentSession.type !== 'group'" @click="plusOpen = false; openSurveyEditor()" class="p-2 text-muted hover:text-text" title="问卷"><i data-lucide="clipboard-list" class="w-5 h-5 stroke-[1.5]"></i></button>
+                        <button @click="plusOpen = false; openSurveyEditor()" class="p-2 text-muted hover:text-text" title="问卷"><i data-lucide="clipboard-list" class="w-5 h-5 stroke-[1.5]"></i></button>
                         <button @click="plusOpen = false; forceReply()" :disabled="currentSession && typingSessions[currentSession.id]" class="p-2 -ml-1 text-muted hover:text-text disabled:opacity-30" title="让TA主动发消息"><i data-lucide="radio" class="w-5 h-5 stroke-[1.5]"></i></button>
                     </div>
                 </footer>
@@ -1656,36 +1678,63 @@ body { color: var(--color-text); }
                                     <i data-lucide="x" class="w-5 h-5 stroke-[1.5]"></i>
                                 </button>
                             </div>
-<!-- ===== 顶部快捷方块 ===== -->
-<div class="shrink-0 px-4 py-3 border-b border-border/50">
-    <div class="grid grid-cols-3 gap-2">
-        <!-- 清除聊天 -->
-        <button @click="clearCurrentChat(); settingsPanelOpen = false;"
-                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors"
-                style="aspect-ratio: 1.618 / 1;">
-            <i data-lucide="trash-2" class="w-4 h-4 text-muted mb-1"></i>
-            <span class="text-[11px] text-muted tracking-widest">清除</span>
-        </button>
-        <!-- 补全标签词条 -->
-        <button @click="fillDefaultTagBoxes();"
-                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors"
-                style="aspect-ratio: 1.618 / 1;">
-            <i data-lucide="book-plus" class="w-4 h-4 text-muted mb-1"></i>
-            <span class="text-[11px] text-muted tracking-widest">补词条</span>
-        </button>
-        <!-- 留言板（仅私聊） -->
-        <button v-if="currentSession && currentSession.type !== 'group'"
-                @click="settingsPanelOpen = false; envelopeShow = true;"
-                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors"
-                style="aspect-ratio: 1.618 / 1;">
-            <i data-lucide="mail" class="w-4 h-4 text-muted mb-1"></i>
-            <span class="text-[11px] text-muted tracking-widest">留言板</span>
-        </button>
-    </div>
-</div>
+                            <!-- 分页标签（B98）-->
+                            <div class="shrink-0 px-3 py-2 flex gap-1.5 border-b border-border/50 bg-bg/30">
+                                <button v-for="tb in ['玩法','其它']" :key="'pt'+tb"
+                                        @click="settingsPanelTab = tb"
+                                        class="flex-1 py-1.5 rounded-lg text-[13px] tracking-widest transition-colors"
+                                        :class="settingsPanelTab === tb ? 'bg-text text-white' : 'text-muted hover:text-text'">
+                                    {{ tb }}
+                                </button>
+                            </div>
                             <!-- 内容 -->
                             <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
 
+                                <!-- ===== 其它分页 ===== -->
+                                <div v-show="settingsPanelTab === '其它'">
+                                <!-- 资料与头像（B100：从聊天头部搬进来）-->
+                                <div v-if="currentSession">
+                                    <div class="text-[12px] text-muted tracking-widest mb-2">资料与头像</div>
+                                    <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
+                                        <div>
+                                            <div class="text-[12px] text-muted mb-1">角色名字</div>
+                                            <input :value="currentSession.name"
+                                                   @change="e => { currentSession.name = e.target.value.trim() || currentSession.name; debouncedSave(); }"
+                                                   class="w-full bg-surface border border-border rounded-lg px-2 py-1.5 text-[14px] outline-none"
+                                                   style="color:var(--color-text);">
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[14px] text-text">角色头像</span>
+                                            <button @click="editAvatar('them')"
+                                                    class="px-3 py-1.5 rounded-lg text-[13px] border border-border text-text">更换头像</button>
+                                        </div>
+                                        <div class="text-[11px] text-muted/60 leading-relaxed px-1">
+                                            双击头像＝拍一拍；点名字＝让 TA 再说一句。
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 快捷操作（B99：从面板顶部挪进来）-->
+                                <div>
+                                    <div class="text-[12px] text-muted tracking-widest mb-2">快捷操作</div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <button @click="clearCurrentChat(); settingsPanelOpen = false;"
+                                                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors py-3">
+                                            <i data-lucide="trash-2" class="w-4 h-4 text-muted mb-1"></i>
+                                            <span class="text-[11px] text-muted tracking-widest">清除</span>
+                                        </button>
+                                        <button @click="fillDefaultTagBoxes();"
+                                                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors py-3">
+                                            <i data-lucide="book-plus" class="w-4 h-4 text-muted mb-1"></i>
+                                            <span class="text-[11px] text-muted tracking-widest">补词条</span>
+                                        </button>
+                                        <button v-if="currentSession && currentSession.type !== 'group'"
+                                                @click="settingsPanelOpen = false; envelopeShow = true;"
+                                                class="flex flex-col items-center justify-center rounded-xl border border-border/40 bg-bg/40 hover:bg-bg transition-colors py-3">
+                                            <i data-lucide="mail" class="w-4 h-4 text-muted mb-1"></i>
+                                            <span class="text-[11px] text-muted tracking-widest">留言板</span>
+                                        </button>
+                                    </div>
+                                </div>
                                 <!-- ===== 需求 B：TA 的语言（回应字卡用）===== -->
                                 <div v-if="currentSession && currentSession.type !== 'group'">
                                     <div class="text-[13px] text-muted tracking-widest mb-2">TA 的语言</div>
@@ -1706,17 +1755,103 @@ body { color: var(--color-text); }
                                 </div>
 
                                 
-                                <!-- ===== 2. 字卡拼接设置 ===== -->
+                                </div>
+                                <!-- ===== 玩法分页 ===== -->
+                                <div v-show="settingsPanelTab === '玩法'">
+                                <!-- 回复玩法：每行自带展开区，参数就地展开（B108） -->
                                 <div>
+                                    <div class="text-[12px] text-muted tracking-widest mb-2">回复玩法</div>
+                                    <div class="text-[11px] text-muted/60 leading-relaxed px-1 mb-1">
+                                        点名字＝开/关这个玩法；点右边的 › 就地展开它的设置。
+                                    </div>
+                                    <!-- 翻页选字卡（原「主回复」） -->
+                                    <div class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-bg/50 border border-border/30"
+                                         :class="playOpen['main'] ? 'rounded-b-none border-b-0' : ''">
+                                        <button @click="togglePlay('main')" class="flex-1 text-left"
+                                                :title="playOn('main') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                                  :class="playOn('main') ? 'bg-text text-white' : 'text-muted'">翻页选字卡</span>
+                                        </button>
+                                        <button @click="togglePlayOpen('main')" class="p-1 text-muted hover:text-text transition-transform"
+                                                :class="playOpen['main'] ? 'rotate-90' : ''"
+                                                :title="playOpen['main'] ? '收起设置' : '展开设置'">
+                                            <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                        </button>
+                                    </div>
+                                    <!-- 翻页选字卡的参数 -->
+                                    <div v-if="playOpen['main']" class="mb-1.5">
+                                        <div class="bg-bg/50 rounded-b-xl p-3 space-y-3 border border-t-0 border-border/30">
+                                            <div>
+                                                <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                    <span>挑完反悔概率</span>
+                                                    <span>{{ Math.round((settings.regretProb ?? 0.12) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="60"
+                                                       :value="(settings.regretProb ?? 0.12) * 100"
+                                                       @input="e => { settings.regretProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[11px] text-muted/60 leading-relaxed px-1 mt-1">
+                                                    挑好第一张后又把它扔回去重挑（最多反悔 2 次）
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                    <span>发送前不确认概率</span>
+                                                    <span>{{ Math.round((settings.sendBackProb ?? 0.05) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="40"
+                                                       :value="(settings.sendBackProb ?? 0.05) * 100"
+                                                       @input="e => { settings.sendBackProb = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[11px] text-muted/60 leading-relaxed px-1 mt-1">
+                                                    临发出前觉得不对，整组重挑（最多重来 2 次）
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                    <span>补 1 条气泡</span>
+                                                    <span>{{ Math.round((settings.extraBubble1Prob ?? 0.25) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="100"
+                                                       :value="(settings.extraBubble1Prob ?? 0.25) * 100"
+                                                       @input="e => { settings.extraBubble1Prob = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                    <span>补 2 条气泡</span>
+                                                    <span>{{ Math.round((settings.extraBubble2Prob ?? 0.05) * 100) }}%</span>
+                                                </div>
+                                                <input type="range" min="0" max="50"
+                                                       :value="(settings.extraBubble2Prob ?? 0.05) * 100"
+                                                       @input="e => { settings.extraBubble2Prob = e.target.value / 100; debouncedSave(); }"
+                                                       class="w-full" style="accent-color: var(--nav-icon-color);">
+                                                <div class="text-[11px] text-muted/60 leading-relaxed px-1 mt-1">
+                                                    「补 2 条」优先于「补 1 条」：先骰能不能补 2 条，没中再骰补不补 1 条
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 拼接回复 -->
+                                    <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                         :class="playOpen['concat'] ? 'rounded-b-none border-b-0' : ''">
+                                        <button @click="togglePlay('concat')" class="flex-1 text-left"
+                                                :title="playOn('concat') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                                  :class="playOn('concat') ? 'bg-text text-white' : 'text-muted'">拼接回复</span>
+                                        </button>
+                                        <button @click="togglePlayOpen('concat')" class="p-1 text-muted hover:text-text transition-transform"
+                                                :class="playOpen['concat'] ? 'rotate-90' : ''"
+                                                :title="playOpen['concat'] ? '收起设置' : '展开设置'">
+                                            <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- ===== 2. 字卡拼接设置 ===== -->
+                                <div v-if="playOpen['concat']">
                                     <div class="text-[12px] text-muted tracking-widest mb-2">字卡拼接</div>
                                     <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
-                                        <!-- 开关 -->
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-[14px] text-text">启用拼接</span>
-                                            <button @click="toggleConcat" class="w-10 h-5 rounded-full relative transition-colors" :class="currentConcatSettings.concatEnabled ? 'bg-text' : 'bg-border'">
-                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentConcatSettings.concatEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
-                                            </button>
-                                        </div>
+                                        <!-- 开关已移到玩法列表（B102：名字就是开关） -->
                                         <!-- 拼接条数（上限） -->
                                         <div class="flex items-center justify-between">
                                             <span class="text-[14px] text-text">最多几条</span>
@@ -1739,20 +1874,25 @@ body { color: var(--color-text); }
 
   
 
+                                <!-- 词典拼字 -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                     :class="playOpen['dict'] ? 'rounded-b-none border-b-0' : ''">
+                                    <button @click="togglePlay('dict')" class="flex-1 text-left"
+                                            :title="playOn('dict') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('dict') ? 'bg-text text-white' : 'text-muted'">词典拼字</span>
+                                    </button>
+                                    <button @click="togglePlayOpen('dict')" class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['dict'] ? 'rotate-90' : ''"
+                                            :title="playOpen['dict'] ? '收起设置' : '展开设置'">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
 <!-- ===== 3.3 词典拼字设置（仅私聊） ===== -->
-<div v-if="currentSession && currentSession.type !== 'group'">
+<div v-if="currentSession && currentSession.type !== 'group' && playOpen['dict']">
     <div class="text-[12px] text-muted tracking-widest mb-2">词典拼字</div>
     <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
-        <!-- 开关 -->
-        <div class="flex items-center justify-between">
-            <span class="text-[14px] text-text">词典拼字</span>
-            <button @click="getDictSpellSettings(currentSession.id).enabled = !getDictSpellSettings(currentSession.id).enabled; debouncedSave();"
-                    class="w-10 h-5 rounded-full relative transition-colors"
-                    :class="getDictSpellSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
-                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-                     :class="getDictSpellSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
-            </button>
-        </div>
+        <!-- 开关在玩法列表里（B102） -->
         <!-- 拼字概率 -->
         <div>
             <div class="flex justify-between text-[12px] text-muted mb-1">
@@ -1788,11 +1928,87 @@ body { color: var(--color-text); }
             两个都开 = 各一半概率；都关 = 只走逐卡连发
         </div>
     </div>
-</div> 
+</div>
 
+                                <!-- 日语笔谈 -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                     :class="playOpen['ja'] ? 'rounded-b-none border-b-0' : ''">
+                                    <button @click="togglePlay('ja')" class="flex-1 text-left"
+                                            :title="playOn('ja') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('ja') ? 'bg-text text-white' : 'text-muted'">日语笔谈</span>
+                                    </button>
+                                    <button @click="togglePlayOpen('ja')" class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['ja'] ? 'rotate-90' : ''"
+                                            :title="playOpen['ja'] ? '收起设置' : '展开设置'">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
+<!-- ===== 3.3b 日语笔谈（仅私聊） ===== -->
+<div v-if="currentSession && currentSession.type !== 'group' && playOpen['ja']">
+    <div class="text-[12px] text-muted tracking-widest mb-2">日语笔谈</div>
+    <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
+        <!-- 开关在玩法列表里（B102） -->
+        <div>
+            <div class="flex justify-between text-[12px] text-muted mb-1">
+                <span>触发概率</span>
+                <span>{{ Math.round(getJaBrushedSettings(currentSession.id).prob * 100) }}%</span>
+            </div>
+            <input type="range" min="0" max="100"
+                   :value="getJaBrushedSettings(currentSession.id).prob * 100"
+                   @input="e => { getJaBrushedSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }"
+                   class="w-full" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <div>
+            <div class="flex justify-between text-[12px] text-muted mb-1">
+                <span>一句最多几个字</span>
+                <span>{{ getJaBrushedSettings(currentSession.id).maxChars }}</span>
+            </div>
+            <input type="range" min="1" max="8"
+                   :value="getJaBrushedSettings(currentSession.id).maxChars"
+                   @input="e => { getJaBrushedSettings(currentSession.id).maxChars = Number(e.target.value) || 1; debouncedSave(); }"
+                   class="w-full" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <div class="text-[11px] text-muted/60 leading-relaxed px-1">
+            用法读骰出同音汉字，拼成一串纯汉字（日本汉字字形）。音读表在下面维护。
+        </div>
+    </div>
+</div>
 
+                                </div>
+                                <!-- 音读表窗口已移除（B100：老板不改日语，表由我维护，界面不暴露） -->
+                                <div v-show="settingsPanelTab === '玩法'">
+                                <!-- 梦角自由造句 -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                     :class="playOpen['compose'] ? 'rounded-b-none border-b-0' : ''">
+                                    <button @click="togglePlay('compose')" class="flex-1 text-left"
+                                            :title="playOn('compose') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('compose') ? 'bg-text text-white' : 'text-muted'">梦角自由造句</span>
+                                    </button>
+                                    <button @click="togglePlayOpen('compose'); freeComposeSubTab = 'compose';"
+                                            class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['compose'] ? 'rotate-90' : ''"
+                                            :title="playOpen['compose'] ? '收起设置' : '展开设置'">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
+                                <!-- 撤回（参数在同一个面板里，点它直接切到「撤回」页） -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30">
+                                    <button @click="togglePlay('retract')" class="flex-1 text-left"
+                                            :title="playOn('retract') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('retract') ? 'bg-text text-white' : 'text-muted'">撤回</span>
+                                    </button>
+                                    <button @click="playOpen['compose'] = true; freeComposeSubTab = 'retract';"
+                                            class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['compose'] ? 'rotate-90' : ''"
+                                            title="展开撤回设置">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
 <!-- ===== 3.4 梦角自由造句（仅私聊） ===== -->
-<div v-if="currentSession && currentSession.type !== 'group'">
+<div v-if="currentSession && currentSession.type !== 'group' && playOpen['compose']">
     <div class="text-[12px] text-muted tracking-widest mb-2">梦角自由造句</div>
     <div class="bg-bg/50 rounded-xl p-3 border border-border/30">
 
@@ -1808,16 +2024,7 @@ body { color: var(--color-text); }
 
         <!-- ========== 面板 A：造句手法 ========== -->
         <div v-show="freeComposeSubTab === 'compose'" class="space-y-3">
-            <!-- 开关 -->
-            <div class="flex items-center justify-between">
-                <span class="text-[14px] text-text">梦角自由造句</span>
-                <button @click="getFreeComposeSettings(currentSession.id).enabled = !getFreeComposeSettings(currentSession.id).enabled; debouncedSave();"
-                        class="w-10 h-5 rounded-full relative transition-colors"
-                        :class="getFreeComposeSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
-                    <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-                         :class="getFreeComposeSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
-                </button>
-            </div>
+            <!-- 开关在玩法列表里（B102） -->
             <!-- 触发概率 -->
             <div>
                 <div class="flex justify-between text-[12px] text-muted mb-1">
@@ -1881,23 +2088,6 @@ body { color: var(--color-text); }
                     <div>4 = 字词联想：抽字 → 找相关词A → 随机词B → 拼凑</div>
                     <div class="text-muted/50 pt-0.5">（原「撤回式」已移到「撤回玩法 → 撤回手法」，此处不再重复）</div>
                     <div class="text-muted/50">（语法拼字造句已独立成单独玩法，见下方）</div>
-                </div>
-                <!-- 每玩法开关（为之后「只用一种方法」准备） -->
-                <div class="mt-2 pt-2 border-t border-border/30">
-                    <div class="text-[11px] text-muted mb-1.5">玩法开关（关掉的不会被抽到）</div>
-                    <div class="flex flex-wrap gap-1.5">
-                        <button v-for="m in [0,1,2,4]" :key="'t'+m"
-                                @click="toggleComposeMethod(m)"
-                                class="px-2 py-0.5 rounded text-[11px] border transition-colors"
-                                :class="((getFreeComposeSettings(currentSession.id).methodToggles || {})[m] === false) ? 'border-border text-muted/40 line-through' : 'border-text text-text'">
-                                方法{{ m }}
-                        </button>
-                        <button @click="toggleMainReply()"
-                                class="px-2 py-0.5 rounded text-[11px] border transition-colors"
-                                :class="getFreeComposeSettings(currentSession.id).mainReplyEnabled === false ? 'border-border text-muted/40 line-through' : 'border-text text-text'">
-                                主回复
-                        </button>
-                    </div>
                 </div>
             </div>
             <!-- 存公用库概率 -->
@@ -1963,18 +2153,8 @@ body { color: var(--color-text); }
 
         <!-- ========== 面板 B：撤回玩法 ========== -->
         <div v-show="freeComposeSubTab === 'retract'" class="space-y-3">
-            <!-- 总开关 -->
-            <div class="flex items-center justify-between">
-                <span class="text-[14px] text-text">启用撤回玩法</span>
-                <button @click="getRetractSettings(currentSession.id).retractEnabled = !getRetractSettings(currentSession.id).retractEnabled; debouncedSave();"
-                        class="w-10 h-5 rounded-full relative transition-colors"
-                        :class="getRetractSettings(currentSession.id).retractEnabled ? 'bg-text' : 'bg-border'">
-                    <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-                         :class="getRetractSettings(currentSession.id).retractEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
-                </button>
-            </div>
-
-            <template v-if="getRetractSettings(currentSession.id).retractEnabled">
+            <!-- 开关在玩法列表里（B102） -->
+            <template v-if="true">
                 <!-- 触发概率（独立于造句） -->
                 <div>
                     <div class="flex justify-between text-[12px] text-muted mb-1">
@@ -2045,10 +2225,48 @@ body { color: var(--color-text); }
     </div>
 </div>
 
-<!-- ===== 3.4b 梦角自由造句·卷宗管理（仅私聊） ===== -->
-<div v-if="currentSession && currentSession.type !== 'group'">
-    <div class="text-[12px] text-muted tracking-widest mb-2">卷宗管理</div>
+<!-- ===== 3.4b 抓取字卡（B101：跟造句一起展开） ===== -->
+<div v-if="currentSession && currentSession.type !== 'group' && playOpen['compose']">
+    <div class="text-[12px] text-muted tracking-widest mb-2">抓取字卡</div>
     <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
+        <!-- ① 梦角收走我的话 -->
+        <div class="flex items-center justify-between">
+            <span class="text-[14px] text-text">梦角主动收走我的话</span>
+            <button @click="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled = !getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled; debouncedSave();"
+                    class="w-10 h-5 rounded-full relative transition-colors"
+                    :class="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                     :class="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+            </button>
+        </div>
+        <div class="text-[11px] text-muted/60 leading-relaxed px-1">
+            开=TA 会按概率把你说的话收进「梦角自由造句」字卡，图片收进「私聊」书册的「图片」卷宗
+        </div>
+        <div v-if="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled">
+            <div class="flex justify-between text-[12px] text-muted mb-1">
+                <span>抓取概率</span>
+                <span>{{ Math.round(getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb * 100) }}%</span>
+            </div>
+            <input type="range" min="0" max="100"
+                   :value="getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb * 100"
+                   @input="e => { getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb = e.target.value / 100; debouncedSave(); }"
+                   class="w-full" style="accent-color: var(--nav-icon-color);">
+        </div>
+        <!-- ② 解译抓取 -->
+        <div class="flex items-center justify-between pt-2 border-t border-border/30">
+            <span class="text-[14px] text-text">解译抓取</span>
+            <button @click="settings.jieyiHarvestEnabled = !settings.jieyiHarvestEnabled; debouncedSave();"
+                    class="w-10 h-5 rounded-full relative transition-colors"
+                    :class="settings.jieyiHarvestEnabled ? 'bg-text' : 'bg-border'">
+                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                     :class="settings.jieyiHarvestEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+            </button>
+        </div>
+        <div class="text-[11px] text-muted/60 leading-relaxed px-1">
+            开=梦角不定期把你写的解译收进「梦角自由造句」字卡（长句按标点切段）
+        </div>
+        <!-- ③ 卷宗管理 -->
+        <div class="text-[11px] text-muted tracking-widest pt-2 border-t border-border/30">卷宗管理</div>
         <!-- 每卷上限 -->
 <div class="flex items-center justify-between">
     <span class="text-[14px] text-text">每卷上限</span>
@@ -2098,41 +2316,43 @@ body { color: var(--color-text); }
             关=严格按每卷上限才开新卷；开=每次存入有概率提前开
         </div>
     </div>
-<!-- 梦角选用户消息 -->
-<div class="flex items-center justify-between pt-2 border-t border-border/30">
-    <span class="text-[14px] text-text">梦角主动收走我的话</span>
-    <button @click="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled = !getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled; debouncedSave();"
-            class="w-10 h-5 rounded-full relative transition-colors"
-            :class="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled ? 'bg-text' : 'bg-border'">
-        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-             :class="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
-    </button>
+<!-- 梦角选用户消息（已上移到「抓取字卡」分组最上面） -->
 </div>
-<div class="text-[11px] text-muted/60 leading-relaxed px-1">
-    开=TA 会按概率把你说的话收进「梦角自由造句」字卡，图片收进「私聊」书册的「图片」卷宗
-</div>
-<div v-if="getFreeComposeGroupSettings(currentSession.id).grabUserMsgEnabled">
-    <div class="flex justify-between text-[12px] text-muted mb-1">
-        <span>抓取概率</span>
-        <span>{{ Math.round(getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb * 100) }}%</span>
-    </div>
-    <input type="range" min="0" max="100"
-           :value="getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb * 100"
-           @input="e => { getFreeComposeGroupSettings(currentSession.id).grabUserMsgProb = e.target.value / 100; debouncedSave(); }"
-           class="w-full" style="accent-color: var(--nav-icon-color);">
-</div>
-</div>
+                                <!-- 拼音自由打字（没有独立设置项） -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30">
+                                    <button @click="togglePlay('pinyin')" class="flex-1 text-left"
+                                            :title="playOn('pinyin') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('pinyin') ? 'bg-text text-white' : 'text-muted'">拼音自由打字</span>
+                                    </button>
+                                </div>
+                                <!-- 拼音选字卡（没有独立设置项） -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30">
+                                    <button @click="togglePlay('card')" class="flex-1 text-left"
+                                            :title="playOn('card') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('card') ? 'bg-text text-white' : 'text-muted'">拼音选字卡</span>
+                                    </button>
+                                </div>
+                                <!-- 吐槽 -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                     :class="playOpen['tease'] ? 'rounded-b-none border-b-0' : ''">
+                                    <button @click="togglePlay('tease')" class="flex-1 text-left"
+                                            :title="playOn('tease') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('tease') ? 'bg-text text-white' : 'text-muted'">吐槽</span>
+                                    </button>
+                                    <button @click="togglePlayOpen('tease')" class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['tease'] ? 'rotate-90' : ''"
+                                            :title="playOpen['tease'] ? '收起设置' : '展开设置'">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
 <!-- ===== 3.5 吐槽设置（仅私聊） ===== -->
-<div v-if="currentSession && currentSession.type !== 'group'">
+<div v-if="currentSession && currentSession.type !== 'group' && playOpen['tease']">
     <div class="text-[12px] text-muted tracking-widest mb-2">吐槽</div>
     <div class="bg-bg/50 rounded-xl p-3 space-y-3 border border-border/30">
-        <!-- 启用开关 -->
-        <div class="flex items-center justify-between">
-            <span class="text-[14px] text-text">启用吐槽</span>
-            <button @click="toggleTeaseEnabled" class="w-10 h-5 rounded-full relative transition-colors" :class="getTeaseSettings(currentSession.id).enabled ? 'bg-text' : 'bg-border'">
-                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="getTeaseSettings(currentSession.id).enabled ? 'translate-x-5' : 'translate-x-0'"></div>
-            </button>
-        </div>
+        <!-- 开关在玩法列表里（B103） -->
         <!-- 触发概率 -->
         <div>
             <div class="flex justify-between text-[12px] text-muted mb-1">
@@ -2316,6 +2536,7 @@ body { color: var(--color-text); }
                             <div class="px-4 py-3 border-t border-border/50 shrink-0 text-[11px] text-muted/60 text-center">
                                 设置仅对当前会话生效
                             </div>
+                                </div><!-- /玩法分页 -->
                         </div>
                     </div>
                 </transition>
@@ -2807,8 +3028,7 @@ body { color: var(--color-text); }
                             </h3>
                             <div v-if="isSectionOpen('角色气泡刺绣') && currentSession" class="bg-surface border border-border rounded-xl overflow-hidden text-[14px]">
                                 <div class="p-3.5 flex flex-col gap-2">
-                                    <span v-if="currentSession.type === 'group'">该群聊的气泡刺绣 (CSS，这座敞轩专属)</span>
-                                    <span v-else>TA的气泡刺绣 (CSS，这间静室专属)</span>
+                                    <span>TA的气泡刺绣 (CSS，这间静室专属)</span>
                                     <textarea v-model="settings.characterCSS" rows="2" class="w-full bg-bg border border-border rounded p-2 text-[11px] font-mono resize-none" placeholder=".custom-css-character { }"></textarea>
                                 </div>
                             </div>
@@ -3144,51 +3364,7 @@ body { color: var(--color-text); }
                                     以下都是 TA 随机行为的触发概率（%）：嫌频繁就把数值调小，调到 0 = 不再触发；开关关掉 = 彻底关闭该行为。修改即时保存生效。
                                 </div>
 
-                                                              <!-- ===== 群聊主动会话 ===== -->
-                                <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
-                                    <div @click="toggleSection('群聊主动会话', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
-                                        <div class="flex-1 min-w-0">
-                                            <div class="text-[14px] text-text">群聊主动会话</div>
-                                            <div class="text-[12px] text-muted/70 mt-0.5">群聊成员自动发言 · 间隔 · 标记</div>
-                                        </div>
-                                        <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('群聊主动会话', false) ? 'rotate-180' : ''"></i>
-                                    </div>
-                                    <div v-if="isSectionOpen('群聊主动会话', false)" class="border-t border-border/40">
-                                        <div v-if="!groupSessions.length" class="p-3.5 text-[13px] text-muted">
-                                            还没有群聊
-                                        </div>
-                                        <template v-else>
-                                            <div v-for="(g, idx) in groupSessions" :key="g.id"
-                                                 class="border-b border-border last:border-b-0">
-                                                <div class="flex items-center justify-between p-3.5"
-                                                     :class="g.groupChatEnabled ? '' : ''">
-                                                    <span class="text-[14px] text-text truncate pr-2">{{ g.name }}</span>
-                                                    <button @click="toggleGroupChatFor(g)"
-                                                            class="w-10 h-5 rounded-full relative transition-colors shrink-0"
-                                                            :class="g.groupChatEnabled ? 'bg-text' : 'bg-border'">
-                                                        <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
-                                                             :class="g.groupChatEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
-                                                    </button>
-                                                </div>
-                                                                                                <div v-if="g.groupChatEnabled" class="px-3.5 pb-3.5 bg-bg/50">
-                                                    <div class="flex items-center justify-between pt-3">
-                                                        <span class="text-[14px] text-text">发起间隔</span>
-                                                        <div class="flex items-center gap-2">
-                                                            <button @click="adjustGroupChatInterval(g, -5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">−</button>
-                                                            <span contenteditable="true" inputmode="numeric" @click="selectAllText($event)" @blur="commitNumInput($event, () => g.groupChatInterval, v => { g.groupChatInterval = v; }, 5, 600)" @keydown="numKey($event, () => g.groupChatInterval, v => { g.groupChatInterval = v; }, 5, 600)" class="w-14 text-center text-text font-medium tabular-nums text-[14px]">{{ g.groupChatInterval }} 分</span>
-                                                            <button @click="adjustGroupChatInterval(g, 5)" class="w-7 h-7 rounded-full border border-border text-text hover:bg-bg flex items-center justify-center text-sm">+</button>
-                                                        </div>
-                                                    </div>
-                                                    <div class="text-[11px] text-muted/60 leading-relaxed mt-1.5">
-                                                        开启后，TA 们会按此间隔随机有一位在群里主动说话。
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </section>
-
-
+                                <!-- 群聊功能已移除：原「群聊主动会话」设置块已删除 -->
                                 <!-- ===== 主动搭话 ===== -->
                                 <section class="mb-3 bg-surface border border-border rounded-xl overflow-hidden">
                                     <div @click="toggleSection('主动搭话', false)" class="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none">
@@ -3386,9 +3562,9 @@ body { color: var(--color-text); }
                                         <i data-lucide="chevron-down" class="w-4 h-4 stroke-[1.5] text-muted shrink-0 transition-transform" :class="isSectionOpen('字卡权重', false) ? 'rotate-180' : ''"></i>
                                     </div>
                                     <div v-if="isSectionOpen('字卡权重', false)" class="border-t border-border/40">
-                                <!-- 子 tab：私聊 / 群聊 / 主动来信 / 回信 -->
+                                <!-- 子 tab：私聊 / 主动来信 / 回信（群聊已移除） -->
                                 <div class="flex gap-1 p-3 pb-0 overflow-x-auto" style="scrollbar-width:none;">
-                                    <button v-for="sub in ['私聊','群聊','主动来信','回信']" :key="sub"
+                                    <button v-for="sub in ['私聊','主动来信','回信']" :key="sub"
                                             @click="replySubTab = sub"
                                             class="shrink-0 px-3 py-1.5 rounded-full text-[13px] tracking-widest transition-colors"
                                             :class="replySubTab === sub ? 'bg-text text-white' : 'bg-bg text-muted hover:text-text'">{{ sub }}</button>
@@ -4081,31 +4257,18 @@ body { color: var(--color-text); }
                                         </div>
                                         <div v-if="currentSession.type === 'group'" class="p-3.5 border-b border-border">
                                             <div class="flex items-center justify-between">
-                                                <span>TA可以发起抢红包
-                                                    <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-bg/60 text-muted/70 align-middle">群聊</span>
-                                                </span>
+                                                <span>TA可以发起抢红包</span>
                                                 <button @click="currentSession.roleGrabRedpacketEnabled = !currentSession.roleGrabRedpacketEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleGrabRedpacketEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleGrabRedpacketEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                             </div>
                                         </div>
                                         <div v-if="currentSession.type === 'group'" class="p-3.5">
-                                            <div>
-                                                <div v-if="currentSession.groupChatEnabled" class="flex items-center justify-between text-[12px] text-muted">
-                                                <span>发起间隔</span>
-                                                <span>{{ currentSession.groupChatInterval }} 分钟</span>
-                                            </div>
-                                            <input v-if="currentSession.groupChatEnabled" type="range" v-model.number="currentSession.groupChatInterval" min="5" max="300" class="w-full accent-text mt-2">
                                             <div class="flex items-center justify-between mt-3">
                                                 <span>标记</span>
                                                 <button @click="currentSession.groupMarkEnabled = !currentSession.groupMarkEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.groupMarkEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.groupMarkEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
                                             </div>
-                                            <div class="flex items-center justify-between mt-3">
-                                                <span>TA可以@任意一位</span>
-                                                <button @click="currentSession.roleAtRoleEnabled = !currentSession.roleAtRoleEnabled" class="w-10 h-5 rounded-full relative" :class="currentSession.roleAtRoleEnabled ? 'bg-text' : 'bg-border'"><div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform" :class="currentSession.roleAtRoleEnabled ? 'translate-x-5' : 'translate-x-0'"></div></button>
-                                            </div>
                                         </div>
                                     </div>
                                     <div v-else class="p-3.5 text-muted text-[13px]">进入某个会话后可调整红包档位</div>
-                                    </div>
                                 </div>
                             </section>
                         </template>
@@ -5365,34 +5528,13 @@ body { color: var(--color-text); }
                 </div>
                 <div class="redpacket-card-bottom" style="text-align:left;padding:8px;">
                     <div @click="menuAction('add')" class="px-3 py-3 rounded-lg text-[14px] text-text cursor-pointer hover:bg-bg border-b border-border/40 last:border-0">增加好友</div>
-                    <div @click="menuAction('zhuxuan')" class="px-3 py-3 rounded-lg text-[14px] text-text cursor-pointer hover:bg-bg border-b border-border/40 last:border-0">新建群聊</div>
                     <div @click="menuAction('delete')" class="px-3 py-3 rounded-lg text-[14px] text-red-500 cursor-pointer hover:bg-bg">送别</div>
                     <!-- 移除了云笺册 -->
                 </div>
             </div>
         </div>
 
-        <!-- 敞轩选人弹窗 -->
-        <div v-if="groupPickerOpen" class="redpacket-overlay" @click.self="closeGroupPicker">
-            <div class="redpacket-card" style="width:300px;">
-                <div class="redpacket-card-top" style="padding-bottom:14px;">
-                    <div class="text-white text-sm font-medium tracking-wider">新建群聊 · 选择好友</div>
-                </div>
-                <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
-                    <div v-if="!privateSessions.length" class="text-center text-xs text-muted/60 py-6">暂无好友可添加</div>
-                    <div v-for="s in privateSessions" :key="s.id" @click="toggleGroupPick(s.id)"
-                         class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2"
-                         :class="groupPickSelected.includes(s.id) ? 'border-text bg-bg' : ''">
-                        <span class="text-[14px] text-text">{{ s.name }}</span>
-                        <span v-if="groupPickSelected.includes(s.id)" class="text-text text-xs">✓</span>
-                    </div>
-                </div>
-                <div class="px-4 pb-4 flex gap-2">
-                    <button @click="closeGroupPicker" class="flex-1 py-2.5 rounded-lg text-[14px] border border-border text-muted">取消</button>
-                    <button @click="createGroup" class="flex-1 py-2.5 rounded-lg text-[14px] text-white" style="background:var(--nav-icon-color);">创建（{{ groupPickSelected.length }}）</button>
-                </div>
-            </div>
-        </div>
+        <!-- 群聊功能已移除：原「敞轩选人（新建群聊）」弹窗已删除 -->
 
         <!-- 问卷编辑器（用户发起，可多题） -->
         <div v-if="surveyEditOpen" class="redpacket-overlay" @click.self="surveyEditOpen = false">
@@ -5527,8 +5669,7 @@ body { color: var(--color-text); }
                             <img :src="em" class="w-full h-full object-cover">
                         </div>
                         <div v-if="!(currentSession.myEmotes || []).length" class="col-span-4 text-center text-[12px] text-muted/60 py-6">
-                            <span v-if="currentSession.type === 'group'">群聊表情包需手动添加，点下面按钮上传</span>
-                            <span v-else>还没有表情包，去「字卡·私聊」书册传几张，或点下面添加</span>
+                            <span>还没有表情包，去「字卡·私聊」书册传几张，或点下面添加</span>
                         </div>
                     </div>
                     <label class="mt-3 w-full py-2.5 rounded-lg border border-dashed border-border text-[13px] text-muted hover:text-text tracking-widest flex items-center justify-center gap-1.5 cursor-pointer">
@@ -5568,44 +5709,7 @@ body { color: var(--color-text); }
     </div>
 </div>
 
-        <!-- 群成员查看弹窗 -->
-<div v-if="groupMembersOpen" class="redpacket-overlay" @click.self="groupMembersOpen = false">
-    <div class="redpacket-card" style="width:320px;">
-        <div class="redpacket-card-top" style="padding-bottom:14px;">
-            <div class="text-white text-sm font-medium tracking-wider">群成员 · {{ (currentSession.members || []).length }} 位</div>
-        </div>
-        <div class="redpacket-card-bottom" style="text-align:left;padding:12px;max-height:320px;overflow-y:auto;">
-            <div v-for="mid in currentSession.members" :key="mid"
-                 class="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/40 mb-2">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="w-7 h-7 rounded-full bg-surface border border-border/50 flex items-center justify-center text-[11px] text-muted serif-text shrink-0">{{ mentionNameOf(mid).charAt(0) }}</span>
-                    <span class="text-[14px] text-text truncate">{{ mentionNameOf(mid) }}</span>
-                    <span v-if="isMemberOnline(currentSession.id, mid)" 
-                          class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block shrink-0" 
-                          title="在线"></span>
-                    <span v-else 
-                          class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block shrink-0" 
-                          title="离线"></span>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                    <!-- 🔥 拍一拍按钮 -->
-                    <button @click="openGroupPat(mid)" 
-                            class="text-[11px] px-2 py-0.5 rounded-full border border-border/60 text-muted hover:text-text hover:border-text transition-colors whitespace-nowrap"
-                            title="拍一拍TA">
-                        拍一拍
-                    </button>
-                    <button @click="removeGroupMember(mid)" 
-                            class="text-red-400 hover:text-red-600 text-sm font-light px-1.5" 
-                            title="移出群聊">×</button>
-                </div>
-            </div>
-        </div>
-        <div class="px-4 pb-4 flex gap-2">
-            <button @click="openAddGroupMember" class="flex-1 py-2.5 rounded-lg text-[14px] text-white" style="background:var(--nav-icon-color);">+ 添加成员</button>
-            <button @click="groupMembersOpen = false" class="flex-1 py-2.5 rounded-lg text-[14px] border border-border text-muted">关闭</button>
-        </div>
-    </div>
-</div>
+        <!-- 群聊功能已移除：原「群成员查看」弹窗已删除 -->
 
 <!-- 添加群成员弹窗 -->
 <div v-if="addGroupMemberOpen" class="redpacket-overlay" @click.self="addGroupMemberOpen = false">
@@ -5927,7 +6031,7 @@ body { color: var(--color-text); }
                     <div v-if="!filteredShareTargets.length" class="text-center text-xs text-muted/60 py-6">无匹配会话</div>
                     <div v-for="s in filteredShareTargets" :key="s.id" @click="confirmShare(s.id)"
                          class="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer border border-border/40 mb-2 hover:border-muted">
-                        <span class="text-[14px] text-text">{{ s.name }}<span v-if="s.type === 'group'" class="text-[11px] text-muted ml-1">· 群</span></span>
+                        <span class="text-[14px] text-text">{{ s.name }}</span>
                     </div>
                 </div>
                 <div class="px-4 pb-4">
@@ -7347,7 +7451,6 @@ body { color: var(--color-text); }
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5">
                             <span class="text-[14px] text-text truncate">{{ s.name }}</span>
-                            <span v-if="s.type === 'group'" class="text-[10px] tracking-widest text-muted bg-bg/60 px-1.5 py-0.5 rounded shrink-0">群</span>
                         </div>
                     </div>
                     <span class="shrink-0 text-red-400 text-[15px] leading-none">✕</span>
@@ -9252,9 +9355,7 @@ const sendDrawing = () => {
     closeDrawBoard();
     // 触发系统回复（如果有自动回复）
     if (settings.autoReply && sess) {
-        const isGroup = sess.type === 'group';
-        if (isGroup) setTimeout(() => triggerGroupReply(800, null, sess), 300);
-        else setTimeout(() => triggerReply(undefined, sess), 300);
+        setTimeout(() => triggerReply(undefined, sess), 300);
     }
     showToast('涂鸦已发送 ✨');
 };
@@ -9519,12 +9620,8 @@ const sendSystemDrawing = async (sess, mode) => {
       sharePickPayload.value = null;
       debouncedSave();
       showToast(`已分享给「${target.name}」`);
-      // === 情境触发：按目标类型走对应情境回复 ===
-      if (target.type === 'group') {
-        triggerGroupShareReply(target);   // 分享到群聊 → 群聊情境（当作普通消息，80% 概率）
-      } else {
-        triggerShareReply(target);         // 分享到私聊 → 按普通消息回复（共赏箱已删）
-      }
+      // === 情境触发：分享到私聊 → 按普通消息回复（B118：群聊分支已删）===
+      triggerShareReply(target);
     };
 
     // 分享回复（私聊）：「共赏」箱已删，分享到私聊按普通消息走「私聊」箱
@@ -9549,35 +9646,7 @@ const sendSystemDrawing = async (sess, mode) => {
         debouncedSave();
       }, randomMs(800, 2000));
     };
-    // 分享回复（群聊）：当作普通消息，群聊情境 80% 概率各角色回复
-    const triggerGroupShareReply = (group) => {
-      const memberIds = group.members || [];
-      memberIds.forEach((mid) => {
-        const member = sessions.value.find((s) => s.id === mid);
-        if (!member) return;
-        let pool = envelopeCardItems(member, '群聊', group.id);
-        if (!pool.length) pool = envelopeCardItems(member, '私聊');
-        if (!pool.length) return;
-        if (Math.random() >= 0.8) return; // 80% 回复
-        setTimeout(() => {
-          const pick = pool[Math.floor(Math.random() * pool.length)];
-          group.messages.push({
-            id: genId(),
-            sender: mid,
-            content: pick.text || '',
-            image: pick.image || null,
-            timestamp: Date.now(),
-            status: 'read',
-            isReadFlag: false,
-            isTyping: false,
-            marked: false,
-            mention: null,
-            quote: null,
-          });
-          debouncedSave();
-        }, randomMs(600, 1600));
-      });
-    };
+    // 分享回复（群聊）已删除（B118：群聊功能下线）
 
     // 分享详情查看浮层
     const shareViewState = reactive({ show: false, msg: null });
@@ -11745,6 +11814,7 @@ const exportSelectedBoxes = ref([]);
     const _cloneGrammarTplDefault = (k) => (GRAMMAR_TPL_DEFAULT[k] || []).slice();
     const settings = reactive({
       darkMode: false,
+      uiLayout: 'default',    // 排版引擎（B120）：'default' 原有 / 'varia' 瓦利亚机能风 / 'vongola' 彭格列信笺风
       visualStyle: '',        // 视觉方案：''=默认 / frosted=磨砂玻璃 / glass=毛玻璃 / clear=透明 / wechat=仿微信
       mainTypingProb: 0.2,    // 主回复拼音打字玩法的触发概率（0 = 关闭）
       foreignCardProb: 0.15,  // 外文语料（意/日）在自由组合里的占比，默认 15%
@@ -11859,6 +11929,7 @@ window.__chattySettings = settings;
 
 // ===== 侧拉面板开关 =====
 const settingsPanelOpen = ref(false);
+const settingsPanelTab = ref('玩法');   // 侧拉面板分页：玩法 / 音读表 / 其它
     // 设置·系统 Tab 内两张折叠卡片
     const sysCardOpen = reactive({ perf: false, storage: false });
 watch(settingsPanelOpen, (v) => {
@@ -13298,158 +13369,7 @@ const syntaxCompose = (session) => {
     return sentence.trim() || null;
 };
 
-// ===== P2-a：群聊梦角自由造句 =====
-const saveGroupFreeComposedSentence = (sentence) => {
-    if (!sentence) return;
-    const targetBox = sharedBoxes['公共梦角自由造句'];
-    if (!targetBox) return;
-    if (!Array.isArray(targetBox.groups)) targetBox.groups = [];
-    if (!targetBox.groups.length) {
-        targetBox.groups.push({ id: genId(), name: '梦角自由造句', replies: [] });
-    }
-    // 整本书册去重
-    const allTexts = new Set();
-    targetBox.groups.forEach(g => (g.replies || []).forEach(r => { if (r.text) allTexts.add(r.text); }));
-    if (allTexts.has(sentence)) return;
-    // 加到最后一个卷宗
-    const g = targetBox.groups[targetBox.groups.length - 1];
-    if (!g.replies) g.replies = [];
-    g.replies.push({ id: genId(), text: sentence, enabled: true, isSystem: false });
-    debouncedSave();
-};
-// ===== 群聊撤回玩法（独立判定，优先于造句） =====
-const triggerGroupRetractPlay = (member, group) => {
-    if (!member || !group) return false;
-    const rs = getRetractSettings(group.id);
-    if (!rs.retractEnabled) return false;
-    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
-
-    const gp = envelopeCardItems(group, '群聊', group.id);
-    const pp = envelopeCardItems(member, '私聊');
-    const pool = [...gp, ...pp];
-    if (!pool.length) return false;
-    const N = Math.min(2 + Math.floor(Math.random() * 2), pool.length);
-    const picked = [];
-    const copy = [...pool];
-    for (let i = 0; i < N && copy.length; i++) {
-        const idx = Math.floor(Math.random() * copy.length);
-        picked.push(copy[idx]);
-        copy.splice(idx, 1);
-    }
-
-    // ===== 撤回模式（与私聊一致）=====
-    //  1 = 抽卡 → 撤回 → 直接发送； 2 = 造句 → 撤回； 3 = 撤回 → 再造句； 4 = 随机
-    let mode = rs.retractMode || 1;
-    if (mode === 4) mode = 1 + Math.floor(Math.random() * 3);
-    const method = 3;
-
-    const remainingParts = [];
-    const removedList = [];
-
-    const rollOne = (text) => {
-        const t = (text || '').trim();
-        if (!t) return;
-        const r = Math.random();
-        if (r < 1 / 3) {
-            removedList.push(t);
-        } else if (r < 2 / 3) {
-            const ret = retractSentence(t, method);
-            if (ret && ret.remaining) {
-                remainingParts.push(ret.remaining);
-                removedList.push(ret.removed || t);
-            } else {
-                removedList.push(t);
-            }
-        } else {
-            remainingParts.push(t);
-        }
-    };
-
-    if (mode === 1) {
-        picked.forEach(item => rollOne(item.text));
-    } else if (mode === 2) {
-        picked.forEach(item => {
-            const t = (item.text || '').trim();
-            if (!t) return;
-            const composed = composeSentence(t, member);
-            rollOne(composed || t);
-        });
-    } else if (mode === 3) {
-        picked.forEach(item => rollOne(item.text));
-        if (Math.random() < 0.5) {
-            if (remainingParts.length) {
-                const merged = remainingParts.join('  ');
-                const composed = composeSentence(merged, member);
-                if (composed) {
-                    remainingParts.length = 0;
-                    remainingParts.push(composed);
-                }
-            }
-        } else {
-            if (remainingParts.length) {
-                const i = Math.floor(Math.random() * remainingParts.length);
-                const composed = composeSentence(remainingParts[i], member);
-                if (composed) remainingParts[i] = composed;
-            }
-        }
-    }
-
-    if (!removedList.length) return false;
-
-    let finalText = remainingParts.join('  ');
-    if (!finalText) {
-        const extra = drawSentenceOrWordFromAllBoxes(member);
-        if (extra) finalText = extra.trim();
-    }
-
-    sendMessage(member.id, finalText || ' ', {
-        session: group,
-        retracted: true,
-        originalContents: removedList,
-    });
-    if (finalText) saveGroupFreeComposedSentence(finalText);
-    return true;
-};
-const triggerGroupFreeCompose = (member, group) => {
-    if (!member || !group) return false;
-    const src = drawSourceSentence(member);
-    if (!src) return false;
-    const newSentence = composeSentence(src, member);
-    if (!newSentence) return false;
-    const lastMsg = group.messages[group.messages.length - 1];
-    if (lastMsg && lastMsg.content === newSentence) return false;
-
-    // 「撤回半句」已移除：撤回统一由「撤回玩法」负责（避免两套撤回机制重复）
-    const finalSend = newSentence;
-
-    const opts = { session: group, freeCompose: true };
-    sendMessage(member.id, finalSend, opts);
-    saveGroupFreeComposedSentence(finalSend);
-    return true;
-};
-
-const tryGroupGrabUserMessage = (msg, group) => {
-    if (!msg || !group) return;
-    const gs = getGroupFreeComposeSettings(group.id);
-    if (!gs.groupGrabEnabled) return;
-    if (Math.random() >= gs.groupGrabProb) return;
-    if (!msg.content || !msg.content.trim()) return;
-    const text = msg.content.trim();
-    if (text.length < 3) return;
-    setTimeout(() => {
-        saveGroupFreeComposedSentence(text);
-        group.messages.push({
-            id: genId(),
-            sender: 'system',
-            content: 'TA 把你的话收进了字卡',
-            timestamp: Date.now(),
-            isTyping: false,
-            isReadFlag: currentView.value === 'chat' && currentSessionId.value === group.id,
-        });
-        scrollToBottom();
-        debouncedSave();
-    }, 1500 + Math.random() * 1000);
-};
+// ===== P2-a 群聊梦角自由造句（B118：群聊下线，三块已删除）=====
 
 // ===== 保存自由造句到字卡 =====
 const saveFreeComposedSentence = (sentence, session) => {
@@ -13501,7 +13421,8 @@ const saveFreeComposedSentence = (sentence, session) => {
 const triggerRetractPlay = (session) => {
     if (!session) return false;
     const rs = getRetractSettings(session.id);
-    if (!rs.retractEnabled) return false;
+    // B102：开关只认「玩法列表」里名字那一个（playOn），这里不再有自己的启用项
+    if (!playOn('retract')) return false;
     if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
 
     // 抽 2~3 条字卡（默认多条）
@@ -13767,7 +13688,7 @@ const triggerFreeCompose = (session) => {
         }
     }
 
-    if (!settings.enabled) return false;
+    if (!playOn('compose')) return false;   // B102：开关只认玩法列表
     if (settings.prob <= 0) return false;
     if (Math.random() >= settings.prob) return false;
 
@@ -13856,70 +13777,233 @@ const splitByDict = (text, session) => {
     return words.filter(w => w.trim());
 };
 
-// ===== 词典拼字触发 =====
+// ===== 词典拼字触发（B89：三条途径 + 一串骰子）=====
+// 途径1 = 分组选字：骰进哪个分组 → 在分组里挑 → 骰确认 → 骰继续 → 骰是否换组
+// 途径2 = 感应选字：随机抽一张 → 骰满意 → 骰确认 → 骰继续（第2词起）→ 骰调序
+// 途径3 = 拼音关键词：骰音节 → 只在「词典」里搜 → 骰满意 → 骰确认 → 骰继续
+// 权重只轻微影响「继续骰」（不做成绝对）
+const _dictPickRoute = () => {
+    // 老板的设计：两个随机数切两刀 → 三段（前=1 / 中=3 / 后=2），三段各约 1/3
+    const c1 = Math.random(), c2 = Math.random();
+    const lo = Math.min(c1, c2), hi = Math.max(c1, c2);
+    const at = Math.random();
+    if (at < lo) return 1;
+    if (at > hi) return 2;
+    return 3;
+};
+
+// 词典里的所有可用条目（带分组名）
+const _dictAllItems = (session) => {
+    const out = [];
+    const box = sharedBoxes['词典'];
+    if (!box || !Array.isArray(box.groups)) return out;
+    box.groups.forEach((g) => {
+        (g.replies || []).forEach((r) => {
+            if (r.enabled === false) return;
+            const t = String(r.text || '').trim();
+            if (!t || t.startsWith('data:')) return;
+            const cn = (t.match(/[\u4e00-\u9fa5]/g) || []).length;
+            if (cn < 1) return;
+            out.push({ text: t, weight: 1, group: g.name || '' });
+        });
+    });
+    return out;
+};
+
 const triggerDictSpell = (session) => {
     if (!session) return false;
-    const settings = getDictSpellSettings(session.id);
-    if (!settings.enabled) return false;
-    if (settings.prob <= 0) return false;
-    if (Math.random() >= settings.prob) return false;
+    const ds = getDictSpellSettings(session.id);
+    if (!playOn('dict')) return false;   // B102：开关只认玩法列表
+    if (ds.prob <= 0) return false;
+    if (Math.random() >= ds.prob) return false;
 
-    // 模式选择：单气泡 / 逐卡连发
-    const canSingle = settings.singleBubble;
-    const canMulti = settings.multiReply !== false;
-    let useSingle;
+    // ① 骰：走哪条途径
+    const route = _dictPickRoute();
+    const _routeName = route === 1 ? '分组选字' : (route === 2 ? '感应选字' : '拼音关键词');
+
+    // 把「词典」按分组名聚一下（只保留有内容的组）
+    const _groupsWithItems = () => {
+        const all = _dictAllItems(session);
+        const map = new Map();
+        all.forEach((it) => {
+            if (!map.has(it.group)) map.set(it.group, []);
+            map.get(it.group).push(it);
+        });
+        return [...map.entries()]
+            .filter(([, arr]) => arr.length)
+            .map(([name, items]) => ({ name, items }));
+    };
+
+    // 跑一轮：返回 { text, cost } 或 null
+    const _buildOnce = () => {
+        const picked = [];
+        const seen = new Set();
+        const pushItem = (it) => {
+            if (!it) return false;
+            const key = String(it.text).trim();
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            picked.push(it);
+            return true;
+        };
+        let cost = RTH.browsePages() * RTH.browseMs();   // 打开词典翻几页
+
+        // ===== 途径1：分组选字 =====
+        if (route === 1) {
+            const groups = _groupsWithItems();
+            if (!groups.length) return null;
+            let g = groups[Math.floor(Math.random() * groups.length)];   // 骰：进哪个分组
+            cost += RTH.pickMs();
+            let guard = 0;
+            while (guard++ < 12) {
+                if (!g.items.length) break;
+                const it = g.items[Math.floor(Math.random() * g.items.length)];   // 骰：在抽屉里挑一张
+                cost += RTH.pickMs();
+                if (!pushItem(it)) { if (picked.length >= 2) break; continue; }
+                // 骰：这张确认吗（选错了就删掉重挑）
+                if (!_rollYes(YES_NO_BASE.CARD_OK)) {
+                    seen.delete(String(it.text).trim());
+                    picked.pop();
+                    cost += RTH.hesitateMs();
+                    continue;
+                }
+                // 骰：还继续吗（权重轻影响）
+                if (!_rollYes(YES_NO_BASE.CONTINUE)) break;
+                if (Math.random() > RTH.continueProb(it.weight)) break;
+                // 骰：要不要退出这个分组换一组
+                if (_rollYes(YES_NO_BASE.CUT_OK)) {
+                    g = groups[Math.floor(Math.random() * groups.length)];
+                    cost += RTH.hesitateMs();
+                }
+                cost += RTH.pickMs();
+            }
+        } else if (route === 2) {
+            // ===== 途径2：感应选字 =====
+            const pool = _dictAllItems(session);
+            if (!pool.length) return null;
+            let guard = 0, first = null;
+            while (guard++ < 6) {
+                const it = pool[Math.floor(Math.random() * pool.length)];   // 骰：直接感应一张
+                cost += RTH.pickMs();
+                if (!_rollYes(YES_NO_BASE.CARD_OK)) { cost += RTH.hesitateMs(); continue; }   // 骰：符合我想表达的吗
+                first = it;
+                break;
+            }
+            if (!first || !pushItem(first)) return null;
+            // 第 1 个词之后默认继续（老板拍板），从第 2 个词起才骰「继续 / 调序」
+            guard = 0;
+            while (guard++ < 10) {
+                const it = pool[Math.floor(Math.random() * pool.length)];
+                cost += RTH.pickMs();
+                if (!_rollYes(YES_NO_BASE.CARD_OK)) { cost += RTH.hesitateMs(); continue; }
+                if (!pushItem(it)) break;
+                // 骰：还要继续说吗
+                if (!_rollYes(YES_NO_BASE.CONTINUE)) break;
+                if (Math.random() > RTH.continueProb(it.weight)) break;
+                // 骰：要不要调一下顺序
+                if (picked.length >= 2 && _rollYes(YES_NO_BASE.CARD_OK)) {
+                    const from = Math.floor(Math.random() * picked.length);   // 骰：选哪张
+                    const to = Math.floor(Math.random() * picked.length);     // 骰：排到第几位
+                    if (from !== to) {
+                        const [mv] = picked.splice(from, 1);
+                        picked.splice(to, 0, mv);
+                    }
+                    cost += RTH.hesitateMs();
+                    // 骰：这个顺序确认吗（不满意就换回来）
+                    if (!_rollYes(YES_NO_BASE.CARD_OK)) {
+                        const a = Math.min(from, to), b = Math.max(from, to);
+                        if (a !== b) { const [mv2] = picked.splice(a, 1); picked.splice(b, 0, mv2); }
+                    }
+                }
+            }
+        } else {
+            // ===== 途径3：拼音关键词（只在词典里搜）=====
+            const pool = _dictAllItems(session);
+            if (!pool.length) return null;
+            const withPy = [];
+            pool.forEach((it) => {
+                const py = _getFullPinyin(it.text);
+                if (py) withPy.push({ it, py });
+            });
+            if (!withPy.length) return null;
+            let guard = 0, hit = null;
+            while (guard++ < 6) {
+                const py = _rollOneSyllable();          // 骰：首字母 + 韵母
+                cost += RTH.pickMs();
+                if (!py) continue;
+                const matched = withPy.filter((x) => x.py.startsWith(py));
+                if (!matched.length) continue;          // 搜不到 → 换个音节再骰
+                const cand = matched[Math.floor(Math.random() * matched.length)];
+                if (!_rollYes(YES_NO_BASE.CARD_OK)) { cost += RTH.hesitateMs(); continue; }   // 骰：满意吗
+                hit = cand.it;
+                break;
+            }
+            if (!hit || !pushItem(hit)) return null;
+            // 继续 + 调序（和途径2 同款）
+            guard = 0;
+            while (guard++ < 10) {
+                const it = pool[Math.floor(Math.random() * pool.length)];
+                cost += RTH.pickMs();
+                if (!_rollYes(YES_NO_BASE.CARD_OK)) { cost += RTH.hesitateMs(); continue; }
+                if (!pushItem(it)) break;
+                if (!_rollYes(YES_NO_BASE.CONTINUE)) break;
+                if (Math.random() > RTH.continueProb(it.weight)) break;
+                if (picked.length >= 2 && _rollYes(YES_NO_BASE.CARD_OK)) {
+                    const from = Math.floor(Math.random() * picked.length);
+                    const to = Math.floor(Math.random() * picked.length);
+                    if (from !== to) { const [mv] = picked.splice(from, 1); picked.splice(to, 0, mv); }
+                    cost += RTH.hesitateMs();
+                }
+            }
+        }
+
+        if (!picked.length) return null;
+        const text = picked.map((p) => String(p.text).trim()).filter(Boolean).join(' ');
+        if (!text) return null;
+        return { text, cost };
+    };
+
+    // ② 骰：确认发送吗？（不满意就整条重来，最多 1 次）
+    let built = _buildOnce();
+    if (!built) return false;
+    if (!_rollYes(YES_NO_BASE.SEND_CONFIRM)) {
+        const again = _buildOnce();
+        if (again) built = { text: again.text, cost: built.cost + again.cost + RTH.hesitateMs() };
+    }
+
+    // 避免和上一条重复（重复就不发，交给后面的玩法）
+    const lastMsg = session.messages[session.messages.length - 1];
+    if (lastMsg && lastMsg.content === built.text) return false;
+
+    // ③ 发送方式：沿用设置里的「单气泡 / 多回复逐卡连发」两个开关
+    //    两个都开 → 骰一下 50/50；只开一个 → 就用那个
+    const dictTag = '词典拼字·' + _routeName;
+    const canSingle = ds.singleBubble !== false;
+    const canMulti = ds.multiReply !== false;
+    let useSingle = true;
     if (canSingle && canMulti) useSingle = Math.random() < 0.5;
     else if (canSingle) useSingle = true;
     else if (canMulti) useSingle = false;
-    else useSingle = false;
 
+    const plan = [];
     if (useSingle) {
-        // ===== 单气泡：抽 2~5 条空格拼接 =====
-        const count = 2 + Math.floor(Math.random() * 4);
-        const quotes = drawQuotesFromDict(session, count);
-        if (quotes.length < 2) return false;
-
-        const finalText = quotes.map(q => q.text).join(' ');
-        if (!finalText) return false;
-
-        // 避免上一条重复
-        const lastMsg = session.messages[session.messages.length - 1];
-        if (lastMsg && lastMsg.content === finalText) return false;
-
-                // tag：有语录 → 「词典拼字·语录」；纯词库 → 「词典拼字」
-        const hasQuote = quotes.some(q => q.fromQuote);
-        const dictTag = hasQuote ? '词典拼字·语录' : '词典拼字';
-
-        sendMessage('them', finalText, {
-            session,
-            dictSpell: true,
-            dictTag,
+        plan.push({
+            fn: () => sendMessage('them', built.text, { session, dictSpell: true, dictTag }),
+            delay: RTH.typingMs(built.text),
         });
-        return true;
     } else {
-        // ===== 逐卡连发：抽 1 条，切词后逐条发 =====
-        const quotes = drawQuotesFromDict(session, 1);
-        if (!quotes.length) return false;
-        const quote = quotes[0];
-        const words = splitByDict(quote.text, session);
-        if (words.length < 2 || words.length > 7) return false;
-
-        // 避免上一条重复
-        const lastMsg = session.messages[session.messages.length - 1];
-        if (lastMsg && lastMsg.content === quote.text) return false;
-
-        // 逐条发
-        words.forEach((w, i) => {
-            setTimeout(() => {
-                sendMessage('them', w, {
-                    session,
-                    dictSpell: true,
-                    dictTag: '词典逐卡连发',
-                });
-            }, i * (900 + Math.random() * 900));
+        // 逐卡连发：按空格切成几个词，一条一条发（每条都有自己的打字耗时）
+        const words = String(built.text).split(/\s+/).filter(Boolean);
+        const parts = words.length >= 2 ? words : [built.text];
+        parts.forEach((w, i) => {
+            plan.push({
+                fn: () => sendMessage('them', w, { session, dictSpell: true, dictTag: '词典逐卡连发' }),
+                delay: RTH.typingMs(w) + (i ? 300 : 0),
+            });
         });
-        return true;
     }
+    _runReplyPlan(session, plan, built.cost);
+    return true;
 };
 
 
@@ -14562,6 +14646,7 @@ sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),
 mailReadStatus: JSON.parse(JSON.stringify(mailReadStatus)),
 sharedBoxes: JSON.parse(JSON.stringify(sharedBoxes)),
 dictSpellSettingsMap: JSON.parse(JSON.stringify(dictSpellSettingsMap)),
+jaBrushedMap: JSON.parse(JSON.stringify(jaBrushedMap)),
 freeComposeSettingsMap: JSON.parse(JSON.stringify(freeComposeSettingsMap)),
 freeComposeGroupSettingsMap: JSON.parse(JSON.stringify(freeComposeGroupSettingsMap)),
 teaseSettingsMap: JSON.parse(JSON.stringify(teaseSettingsMap)),
@@ -15229,9 +15314,7 @@ const selectTag = (type, text) => {
     if (cur.type !== 'group' && lastMsg) tryGrabUserMessage(lastMsg, cur);
     emotePickerOpen.value = false;
     if (settings.autoReply) {
-        const isGroup = cur && cur.type === 'group';
-        if (isGroup) setTimeout(() => triggerGroupReply(800, null, cur), 200);
-        else setTimeout(() => triggerReply(undefined, cur), 200);
+        setTimeout(() => triggerReply(undefined, cur), 200);
     }
 };
     // 面板内添加表情包（仅进我的列表，不进语料）
@@ -15276,9 +15359,7 @@ const selectTag = (type, text) => {
         // 梦角选用户图片（仅私聊）
         if (sess.type !== 'group' && lastMsg) tryGrabUserMessage(lastMsg, sess);
         if (settings.autoReply && sess) {
-            const isGroup = sess.type === 'group';
-            if (isGroup) setTimeout(() => triggerGroupReply(800, null, sess), 200);
-            else setTimeout(() => triggerReply(undefined, sess), 200);
+            setTimeout(() => triggerReply(undefined, sess), 200);
         }
     };
     fr.readAsDataURL(file);
@@ -15323,8 +15404,7 @@ const selectTag = (type, text) => {
     const lastMsg = cur.messages[cur.messages.length - 1];
     // 梦角选用户消息（仅私聊）
     if (!isGroup && lastMsg) tryGrabUserMessage(lastMsg, cur);
-// 群聊抓取用户消息
-    if (isGroup && lastMsg) tryGroupGrabUserMessage(lastMsg, cur);
+    // 群聊抓取用户消息已删除（B118）
     draftText.value = '';
     draftText.value = '';
     mentionTarget.value = null;
@@ -15332,8 +15412,7 @@ const selectTag = (type, text) => {
     tagPickerOpen.value = false;
     pendingQuote.value = null;
     if (settings.autoReply) {
-        if (isGroup) setTimeout(() => triggerGroupReply(800, mention, cur), 200);
-        else setTimeout(() => triggerReply(undefined, cur), 200);
+        setTimeout(() => triggerReply(undefined, cur), 200);
     }
 };
 
@@ -15345,29 +15424,7 @@ let patLongPressTimer = null;
 // 群聊拍一拍的目标（临时存储）
 const patTarget = ref(null);
 
-// 打开群聊拍一拍（从群成员列表点击触发）
-const openGroupPat = async (mid) => {
-    const cur = currentSession.value;
-    if (!cur || cur.type !== 'group') return;
-    patTarget.value = mid;
-    
-    // 弹出输入框
-    const input = await appPrompt({
-        message: '输入拍法（留空则使用默认）',
-        defaultValue: '拍了拍',
-        placeholder: '例如：拍了拍肩膀'
-    });
-    
-    // 👇 关键：点击“作罢”或关闭弹窗时，input 为 null，此时取消操作
-    if (input === null) {
-        patTarget.value = null;
-        return;
-    }
-    
-    // 有输入内容（包括空字符串）则使用默认值“拍了拍”
-    const text = (input && input.trim()) ? input.trim() : '拍了拍';
-    doPat(text);
-};
+// 群聊拍一拍已删除（B118：openGroupPat / drawGroupPat / pushGroupPat 三块移除）
 
 
 // 执行拍一拍（私聊或群聊）
@@ -15375,42 +15432,7 @@ const doPat = (text) => {
     const cur = currentSession.value;
     if (!cur) return;
 
-    // ----- 群聊拍一拍（用户主动拍别人）-----
-    if (cur.type === 'group' && patTarget.value) {
-        const targetId = patTarget.value;
-        const targetName = senderName(targetId);
-        
-        // 1. 发送拍一拍消息（显示“我拍了拍 XXX：拍法”）
-        pushGroupPat(cur, 'me', targetId, text);
-        
-        // 2. 检查目标是否在线
-        if (!isMemberOnline(cur.id, targetId)) {
-            // 如果不在线，1.5~2.5 秒后让它上线
-            const delay = 1500 + Math.random() * 1000;
-            setTimeout(() => {
-                // 更新状态为在线
-                if (groupMemberStatus[cur.id]) {
-                    groupMemberStatus[cur.id][targetId] = true;
-                }
-                // 发一条系统消息：“XXX 上线了”
-                cur.messages.push({
-                    id: genId(),
-                    sender: 'system',
-                    content: `${targetName} 上线了`,
-                    timestamp: Date.now(),
-                    isTyping: false,
-                    isReadFlag: currentView.value === 'chat' && currentSessionId.value === cur.id,
-                });
-                scrollToBottom();
-                debouncedSave();
-            }, delay);
-        }
-        
-        // 清空目标，关闭面板
-        patTarget.value = null;
-        patPickerOpen.value = false;
-        return;
-    }
+    // 群聊拍一拍已删除（B118）
 
     // ----- 私聊拍一拍（原有逻辑）-----
     if (cur.type === 'private') {
@@ -15524,59 +15546,7 @@ const patLongPressEnd = () => {
       updateUnread();
       debouncedSave();
     };
-// ===== 群聊拍一拍：获取字卡池（从群聊和成员各自的拍一拍书册收集） ===== 保留
-const drawGroupPat = (group, memberId) => {
-  if (!group || group.type !== 'group') return null;
-  const pool = [];
-
-  // 1) 从群聊自己的「拍一拍」书册收集
-  const groupPatBox = group.corpus?.boxes?.['拍一拍'];
-  if (groupPatBox) {
-    (groupPatBox.groups || []).forEach(g => {
-      (g.replies || []).forEach(r => {
-        const t = (r.text || '').trim();
-        if (r.enabled !== false && t) pool.push(t);
-      });
-    });
-  }
-
-  // 2) 从成员自己的「拍一拍」书册收集
-  const member = sessions.value.find(s => s.id === memberId);
-  if (member) {
-    const memberPatBox = member.corpus?.boxes?.['拍一拍'];
-    if (memberPatBox) {
-      (memberPatBox.groups || []).forEach(g => {
-        (g.replies || []).forEach(r => {
-          const t = (r.text || '').trim();
-          if (r.enabled !== false && t) pool.push(t);
-        });
-      });
-    }
-  }
-
-  if (!pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
-};
-
-// ===== 群聊拍一拍：发送一条拍一拍消息（居中灰字） =====
-    const pushGroupPat = (group, fromId, targetId, text) => {
-    const fromName = senderName(fromId);
-    const targetName = senderName(targetId);
-    // 新格式：我 揍了揍 某用户（text 就是用户输入的“揍了揍”）
-    const content = `${fromName} ${text} ${targetName}`;
-    group.messages.push({
-        id: genId(),
-        sender: 'system',          // 作为系统消息，不显示头像
-        type: 'pat',               // 拍一拍类型，会使用居中灰字样式
-        content: content,
-        timestamp: Date.now(),
-        status: 'read',
-        isReadFlag: currentView.value === 'chat' && currentSessionId.value === group.id,
-        isTyping: false,
-    });
-    scrollToBottom();      // 滚动到最新消息
-    debouncedSave();       // 自动保存
-};
+// 群聊拍一拍的两个函数已删除（B118：drawGroupPat / pushGroupPat）
 
     // TA 发言前的专属书册骰子：8% 拍一拍 → 10% 问句 → 否则返回 false 走普通回复
     const trySpecialSpeak = () => {
@@ -15646,7 +15616,8 @@ const getCombinedReply = (pool, usedTexts) => {
         }
         const pieces = picked.map(it => String(it.text || '').trim()).filter(Boolean);
         if (!pieces.length) return null;
-        return { text: pieces.join('    '), pieces, image: null };
+        // B87：分隔符和主回复统一成两个空格（以前是四个，导致"看着一样但文本不同"，去重也失效）
+        return { text: pieces.join('  '), pieces, image: null };
     }
     if (imagePool.length > 0) {
         const pick = imagePool[Math.floor(Math.random() * imagePool.length)];
@@ -15736,8 +15707,8 @@ const _rollCardSelection = (pool, cfg, avoidTexts) => {
             if (cfg && cfg.concatEmoji === false && it && it.image) { copy.splice(idx, 1); continue; }
             if (tx && seen.has(tx)) { copy.splice(idx, 1); continue; }
 
-            // 骰子2：反悔（只在还没定稿时有意义）
-            if (items.length === 0 && regret < RTH.MAX_REGRET && Math.random() < RTH.REGRET_PROB) {
+            // 骰子2：反悔（只在还没定稿时有意义）—— 概率可在界面里调（B110）
+            if (items.length === 0 && regret < RTH.MAX_REGRET && Math.random() < (Number(settings.regretProb ?? 0.12))) {
                 regret++;
                 cost += RTH.hesitateMs();
                 copy.splice(idx, 1);
@@ -15763,8 +15734,8 @@ const _rollCardSelection = (pool, cfg, avoidTexts) => {
         res = pickOnce();
         cost += res.cost;
         if (!res.items.length) break;
-        // 骰子4：发送前觉得"没表达好" → 全删重来（限次，防死循环）
-        if (attempt < RTH.MAX_RETRY && Math.random() < RTH.SEND_BACK_PROB) {
+        // 骰子4：发送前觉得"没表达好" → 全删重来（限次，防死循环）—— 概率可在界面里调（B110）
+        if (attempt < RTH.MAX_RETRY && Math.random() < (Number(settings.sendBackProb ?? 0.05))) {
             cost += RTH.hesitateMs();
             retries++;
             continue;
@@ -15804,6 +15775,55 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
     }, Math.max(0, Math.round(preDelayMs || 0)));
 };
 
+// ===== 回复玩法（手法）独立开关（B96）=====
+// 老板拍板：取消旧的「方法0/1/2/4」那组开关，改成按玩法开关；全默认开启
+const PLAY_KEYS = ['main', 'concat', 'compose', 'retract', 'pinyin', 'card', 'ja', 'dict', 'tease'];
+const PLAY_LABELS = {
+    main: '翻页选字卡', concat: '拼接回复', compose: '梦角自由造句', retract: '撤回',
+    pinyin: '拼音自由打字', card: '拼音选字卡', ja: '日语笔谈', dict: '词典拼字', tease: '吐槽',
+};
+const playOn = (k) => {
+    if (!settings.playToggles || typeof settings.playToggles !== 'object') settings.playToggles = {};
+    return settings.playToggles[k] !== false;
+};
+// 每个玩法那一行右边的 › 展开按钮（B99）
+const playOpen = reactive({});
+const togglePlayOpen = (k) => { playOpen[k] = !playOpen[k]; };
+
+// ===== 排版引擎（B120）：三套 UI 的 class 生成器 =====
+// 全部只返回主题变量相关的 Tailwind 类，不写死颜色
+const uiLayoutNow = () => settings.uiLayout || 'default';
+const uiCardClass = () => {
+    const L = uiLayoutNow();
+    if (L === 'varia') return 'rounded-none font-mono bg-surface border-border/60 hover:bg-bg';
+    if (L === 'vongola') return 'rounded-r-xl rounded-l-sm mx-3 my-2 bg-surface paper-shadow border-border/40 border-l-4';
+    return 'rounded-2xl bg-surface/60 hover:bg-surface';
+};
+const uiCardStyle = () => (uiLayoutNow() === 'vongola' ? 'border-left-color: var(--nav-icon-color);' : '');
+const uiAvatarClass = () => {
+    const L = uiLayoutNow();
+    if (L === 'varia') return 'rounded-none';
+    if (L === 'vongola') return 'rounded-full border-border/60 p-0.5';
+    return 'rounded-xl';
+};
+const uiNameClass = () => {
+    const L = uiLayoutNow();
+    if (L === 'varia') return 'font-mono tracking-wider';
+    if (L === 'vongola') return 'font-vongola tracking-widest';
+    return 'font-medium';
+};
+const uiBadgeClass = () => {
+    const L = uiLayoutNow();
+    if (L === 'varia') return 'rounded-none';
+    if (L === 'vongola') return 'rounded-full';
+    return 'rounded-full';
+};
+const togglePlay = (k) => {
+    if (!settings.playToggles || typeof settings.playToggles !== 'object') settings.playToggles = {};
+    settings.playToggles[k] = !playOn(k);
+    debouncedSave();
+};
+
 //private conversation logic
   const triggerReply = (delay, sessArg) => {
     const sess = sessArg || currentSession.value;
@@ -15818,24 +15838,30 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
     setTimeout(() => {
         const cur = sess;
 // ===== 词典拼字：优先判断 =====
-if (cur.type !== 'group' && triggerDictSpell(cur)) {
+if (cur.type !== 'group' && playOn('dict') && triggerDictSpell(cur)) {
+    // B89：词典拼字现在自己延迟发送（_runReplyPlan 收尾），
+    // 不能在这里 delete typingSessions，否则「输入中」会提前灭掉
+    return;
+}
+// ===== 日语笔谈（B93）=====
+if (cur.type !== 'group' && playOn('ja') && triggerJaBrushed(cur)) {
     delete typingSessions[cur.id];
     return;
 }
         // ===== 撤回玩法：独立判定（不依赖造句） =====
-        if (cur.type !== 'group' && triggerRetractPlay(cur)) {
+        if (cur.type !== 'group' && playOn('retract') && triggerRetractPlay(cur)) {
             delete typingSessions[cur.id];
             return;
         }
         // ===== 梦角自由造句：第二优先 =====
-        if (cur.type !== 'group' && triggerFreeCompose(cur)) {
+        if (cur.type !== 'group' && playOn('compose') && triggerFreeCompose(cur)) {
             delete typingSessions[cur.id];
             return;
         }
         // ===== 需求 B：回应字卡（先判；路径①发了回应卡后继续走普通回复）=====
-        triggerReplyCardBranch(cur);
+        if (playOn('card')) triggerReplyCardBranch(cur);
         // ===== 主回复「拼音打字」玩法：第三优先 =====
-        if (!_skipTypingPlay && cur.type !== 'group' && triggerTypingPlay(cur)) {
+        if (!_skipTypingPlay && cur.type !== 'group' && playOn('pinyin') && triggerTypingPlay(cur)) {
             _skipTypingPlay = false;
             // 注意：不要在这里 delete typingSessions
             // （_pushFreeComposeToChat 现在会延迟发送，由它自己发完再清）
@@ -15869,7 +15895,7 @@ if (cur.type !== 'group' && triggerDictSpell(cur)) {
 // ===== 吐槽触发 =====
 if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
     const ts = getTeaseSettings(cur.id);
-    if (ts.enabled) {
+    if (playOn('tease')) {   // B103：开关只认玩法列表
         const teasePool = [];
         const teaseBox = cur.corpus?.boxes?.['吐槽'];
         if (teaseBox) {
@@ -15911,11 +15937,17 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
 }
 
         // ---- 普通回复 ----
+        if (!playOn('main')) {           // B96：主回复关掉 → 这一轮不发字卡
+            delete typingSessions[cur.id];
+            return;
+        }
         if (settings.blankReplyEnabled && Math.random() < 0.1) {
             _pushAct(() => sendMessage('them', ' ', { blank: true, session: cur }), RTH.typingMs(' '));
         } else {
                                                                     // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
-            const _concatCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
+            // B96：主回复 / 拼接回复 各自独立开关
+            const _rawCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
+            const _concatCfg = playOn('concat') ? _rawCfg : { ..._rawCfg, concatEnabled: false };
                         const pool = _concatCfg.concatEnabled
                 ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '主动写信', '信封回复', '梦角自由造句', '公共', '公共梦角自由造句'] })
                 : drawWeightedCards(cur, '私聊', 30);
@@ -15952,15 +15984,32 @@ const opts = { marked, session: cur };
                 if (Math.random() < RTH.SWITCH_METHOD_PROB) _frustration = RTH.hesitateMs() * 2;
                 _preDelay = dice.costMs + _frustration;
 
+                // B87：卡级去重挡不住"不同轮抽到同样几张卡 → 拼出同一句话"，
+                // 所以对**最终整句**再判一次；撞了就重骰（老板定：最多 1 次），还撞就照发（总比不发好）
+                const _buildMainText = (d) => (d.items || [])
+                    .filter(it => it && it.text)
+                    .map(it => String(it.text).trim())
+                    .filter(Boolean)
+                    .join('  ');
+                let _mainDice = dice;
+                let _mainText = _buildMainText(_mainDice);
+                for (let _t = 0; _t < 1; _t++) {
+                    const _hasImg = (_mainDice.items || []).some(it => it && it.image);
+                    if (_hasImg || !_mainText) break;
+                    if (!_recentThem.has(_mainText.trim())) break;
+                    _mainDice = _rollCardSelection(pool, concatSettings, _recentThem);
+                    _mainText = _buildMainText(_mainDice);
+                }
+                if (_mainDice !== dice) dice.items = _mainDice.items;
+
                 if (dice.items.length) {
                     const finalImage = dice.items.find(it => it && it.image);
                     if (finalImage) {
                         _pushAct(() => sendMessage('them', '', { ...opts, image: finalImage.image }), RTH.imageMs());
                     } else {
-                        let finalText = dice.items.map(it => (it && it.text) || '').filter(t => t).join('  ');
                         // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
-                        finalText = _applyReplyAffix(finalText);
-                        _pushAct(() => sendMessage('them', finalText || '', opts), RTH.typingMs(finalText));
+                        _mainText = _applyReplyAffix(_mainText);
+                        _pushAct(() => sendMessage('them', _mainText || '', opts), RTH.typingMs(_mainText));
                     }
                 } else {
                     _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
@@ -15972,13 +16021,19 @@ const opts = { marked, session: cur };
                     (dice.items || []).map(it => String((it && it.text) || '').trim()).filter(Boolean)
                 );
                 const extraRand = Math.random();
+                // 概率可在界面里调（B110）：先骰「补 2 条」，没中再骰「补 1 条」
+                const _p2 = Number(settings.extraBubble2Prob ?? 0.05);
+                const _p1 = Number(settings.extraBubble1Prob ?? 0.25);
                 let extraCount = 0;
-                if (extraRand < 0.05) extraCount = 2;
-                else if (extraRand < 0.25) extraCount = 1;
+                if (extraRand < _p2) extraCount = 2;
+                else if (extraRand < _p2 + Math.max(0, _p1 - _p2)) extraCount = 1;
                 for (let i = 0; i < extraCount; i++) {
                     const extraCombined = getCombinedReply(pool, _usedTexts);
                     if (extraCombined) {
                         (extraCombined.pieces || []).forEach(p => _usedTexts.add(p));
+                        // B87：补充气泡也要避开"最近说过的整句"和"本轮主回复"
+                        const _extraTx = String(extraCombined.text || '').trim();
+                        if (_extraTx && (_recentThem.has(_extraTx) || _extraTx === String(_mainText || '').trim())) continue;
                         const extraOpts = { marked: false, session: cur };
                         if (Math.random() < 0.1) {
                             const q2 = pickQuote(cur);
@@ -16016,117 +16071,12 @@ const opts = { marked, session: cur };
 
 
     // 群聊回复：用户发消息后按场景回复（@矩阵 / 普通80%）
-   const triggerGroupReply = (delay, mention = null, groupArg = null) => {
-  const group = groupArg || currentSession.value;
-  if (!group || group.type !== 'group') return;
-  const memberIds = group.members || [];
-  const _minS = Math.max(1, settings.replyDelayMin || 2);
-  const _maxS = Math.max(_minS, settings.replyDelayMax || 5);
-  const _startDelay = randomMs(_minS * 1000, _maxS * 1000);
-  setTimeout(() => {
-    const onlineMembers = memberIds.filter(mid => {
-      if (mention && mid === mention) return true;
-      return isMemberOnline(group.id, mid);
-    });
-    if (!onlineMembers.length) return;
+   // 群聊回复主链路已删除（B117：群聊功能下线，triggerGroupReply 整段移除）
 
-    onlineMembers.forEach((mid, i) => {
-      const member = sessions.value.find((s) => s.id === mid);
-      if (!member) return;
-
-      // ===== 5% 概率触发拍一拍（使用群聊共享库 + 成员自己的库）=====
-      if (Math.random() < 0.05) {
-        const patText = drawGroupPat(group, mid); // 用新的函数
-        if (patText) {
-          const otherOnline = onlineMembers.filter(m => m !== mid);
-          if (otherOnline.length > 0) {
-            const targetId = otherOnline[Math.floor(Math.random() * otherOnline.length)];
-            pushGroupPat(group, mid, targetId, patText);
-          
-          }
-        }
-      }
-      // ===== 拍一拍逻辑结束 =====
-
-                 // ===== 拼接模式固定「群聊+公共」；非拼接走权重 =====
-      const _gCfg = group ? getSessionSettings(group.id) : { concatEnabled: true };
-      let pool = _gCfg.concatEnabled
-        ? drawWeightedCards(group, null, 20, { boxNames: ['群聊', '公共'] })
-        : drawWeightedCards(group, '群聊', 20);
-      // 兼容：如果群聊权重没配或抽不到，回退到成员个人语料
-      if (!pool.length) {
-        const privateBox = member.corpus?.boxes?.['私聊'];
-        (privateBox?.groups || []).forEach((g) => {
-          (g.replies || []).forEach((r) => {
-            const t = (r.text || '').trim();
-            if (r.enabled !== false && (t || r.image)) pool.push({ text: t, image: r.image || null });
-          });
-        });
-      }
-      if (!pool.length) return;
-
-      let prob;
-      if (mention) {
-        const mentionedMarked = group.groupMarkEnabled && Math.random() < 0.15;
-        if (mentionedMarked) return;
-        prob = (mid === mention) ? 0.9 : 0.3;
-      } else {
-        prob = 0.6;
-      }
-               if (Math.random() >= prob) return;
-
-      // ===== 撤回玩法（独立判定，优先于造句） =====
-      if (triggerGroupRetractPlay(member, group)) {
-          return;
-      }
-
-      // ===== 群聊梦角自由造句：先掷造句概率 =====
-      const _gcs = getGroupFreeComposeSettings(group.id);
-      if (_gcs.groupComposeEnabled && Math.random() < _gcs.groupComposeProb) {
-        const srcMember = sessions.value.find((s) => s.id === mid);
-        if (srcMember) {
-          setTimeout(() => triggerGroupFreeCompose(srcMember, group), i * randomMs(600, 1600));
-          return;
-        }
-      }
-
-      const offset = i * randomMs(600, 1600);
-      setTimeout(() => {
-                        // ---- 主回复（使用概率拼接） ----
-                const combined = getCombinedReply(pool);
-                // 计算是否标记：没有被@ 且 群聊标记开关开启 且 15%概率
-const shouldMark = !mention && group.groupMarkEnabled && Math.random() < 0.15;
-const opts = { marked: shouldMark, session: group };
-if (mention && mid === mention) opts.mention = mention;
-if (Math.random() < 0.1) {
-    const q = pickQuote(group);
-    if (q) opts.quote = q;
-}
-
-                if (mention && mid === mention) opts.mention = mention;
-                if (Math.random() < 0.1) {
-                    const q = pickQuote(group);
-                    if (q) opts.quote = q;
-                }
-                if (combined) {
-                    if (combined.image) {
-                        opts.image = combined.image;
-                        sendMessage(mid, '', opts);
-                    } else if (combined.text) {
-                        sendMessage(mid, combined.text, opts);
-                    }
-                } else {
-                    sendMessage(mid, '……', opts);
-                }
-      }, offset);
-    });
-  }, delay);
-};
     const forceReply = () => {
       if (currentSession.value && typingSessions[currentSession.value.id]) return;
       const cur = currentSession.value;
-      if (cur && cur.type === 'group') triggerGroupReply(300);
-      else triggerReply(300);
+      triggerReply(300);
     };
     // ===== 主动搭话：冷却钩子（越久没理 TA，冷却越短）=====
     const computeActiveCoolDown = (gapSinceUserMsg) => {
@@ -16147,7 +16097,7 @@ if (Math.random() < 0.1) {
         const now = Date.now();
         const minMs = Math.max(1, settings.activeIntervalMin || 30) * 60 * 1000;
         const maxMs = Math.max(minMs, (settings.activeIntervalMax || 120) * 60 * 1000);
-        let firedThisTick = 0;                       // 每分钟最多触发 2 个会话，避免一口气冒 20 条
+        const due = [];                              // 本分钟"到点"的会话
         sessions.value.forEach(s => {
           if (!s || s.hidden || s.type === 'group') return;
           // 正在看的会话不打扰
@@ -16166,8 +16116,15 @@ if (Math.random() < 0.1) {
             s._nextActiveAt = now + randomMs(minMs, maxMs);
             return;
           }
-          if (firedThisTick >= 2) return;             // 本分钟额度用完
-          firedThisTick++;
+          due.push(s);
+        });
+        // B96：到点的会话打乱再取前 2 个。
+        // 以前按数组顺序取 → 每次进站都是同一串顺序（5-6-3-7…），不像真人。
+        for (let i = due.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = due[i]; due[i] = due[j]; due[j] = tmp;
+        }
+        due.slice(0, 2).forEach(s => {               // 每分钟最多 2 个，避免一口气冒一串
           s._nextActiveAt = now + randomMs(minMs, maxMs);
           s._lastActiveMsgAt = now;
           triggerReply(500, s);
@@ -17329,8 +17286,7 @@ const groupSessions = computed(() => sessions.value.filter(s => s.type === 'grou
 const toggleGroupChatFor = (g) => {
     if (!g || g.type !== 'group') return;
     g.groupChatEnabled = !g.groupChatEnabled;
-    if (g.groupChatEnabled) startGroupChatTimer(g);
-    else if (g._chatTimer) { clearTimeout(g._chatTimer); g._chatTimer = null; }
+    // 群聊定时器已移除（B114）
     debouncedSave();
 };
 
@@ -17345,7 +17301,7 @@ const adjustGroupChatInterval = (g, delta) => {
     if (g.groupChatEnabled && g._chatTimer) {
         clearTimeout(g._chatTimer);
         g._chatTimer = null;
-        startGroupChatTimer(g);
+        // 群聊定时器已移除（B114）
     }
     debouncedSave();
 };
@@ -18334,21 +18290,897 @@ const _getFullPinyin = (text) => {
     return result;
 };
 
-// 三次骰 + 选字 → {py, ch}
-const _rollOneUnit = () => {
-    const syl = _rollOneSyllable();
+// 三次骰 + 选字（含"确认选字"骰）→ {py, ch}
+const _rollOneUnit = (prevInitial) => {
+    const syl = _rollOneSyllable(prevInitial);
     if (!syl) return null;
     const chars = CHATTY_PINYIN_COMPACT[syl];
     if (!chars || !chars.length) return null;
-    const ch = chars[Math.floor(Math.random() * chars.length)];
+    let ch = chars[Math.floor(Math.random() * chars.length)];
+    // B92：「确认选字」走判定骰；不中 → 系统用户自己脉冲一次再换字（真人碰不到这条路径）
+    if (chars.length > 1) {
+        for (let i = 0; i < 3; i++) {
+            if (_rollJudgment()) break;
+            _systemPulse(1);
+            const next = chars[Math.floor(Math.random() * chars.length)];
+            if (next && next !== ch) ch = next;
+        }
+    }
     return { py: syl, ch };
 };
 
 
 // 三次骰出一个拼音（不选字）
-const _rollOneSyllable = () => {
-    const initials = Object.keys(CHATTY_PINYIN_BY_INITIAL);
+// ===== 能量脉冲（B90）=====
+// 老板的设定：假装"只能靠能量影响代码"的人 → 在能量区用节奏操作偷偷偏置骰子
+// 判定骰统一 0–100 两次摇：阈值 T（1–99）+ 落入 R；R < T 通过
+// E 初始 0 → 不影响原本的随机分布
+const ENERGY = {
+    MIN: -39, MAX: 59, STEP: 2,
+};
+const _energy = reactive({ E: 0, lastTap: 0, streak: 0, holdTimer: null, fired: false, pulses: 0 });
+const _energyQRef = () => Math.max(1, Math.min(99, 40 + _energy.E));
+const _energyPulse = () => {
+    const q = _energyQRef();
+    let posW;
+    if (q < 10) posW = 90;
+    else if (q < 20) posW = 50 + (20 - q) * 4;
+    else if (q <= 80) posW = 50;
+    else if (q <= 90) posW = 50 - (q - 80) * 3;
+    else posW = 10;
+    _energy.E += (Math.random() * 100 < posW) ? ENERGY.STEP : -ENERGY.STEP;
+    _energy.E = Math.max(ENERGY.MIN, Math.min(ENERGY.MAX, _energy.E));
+    _energy.pulses++;
+    return _energy.E;
+};
+// 判定骰：基础段 30–50，叠加 E 与 ±2 噪声，clamp 到 1–99；每次判定 E×0.9
+const _rollJudgment = (lo = 30, hi = 50) => {
+    let T = lo + Math.random() * (hi - lo) + _energy.E + (Math.random() * 4 - 2);
+    T = Math.max(1, Math.min(99, T));
+    const fall = Math.random() * 100;
+    _energy.E *= 0.9;
+    return fall < T;
+};
+// 声母按发音部位分组（组内微调 / 跨组跳跃）
+const INITIAL_GROUPS = {
+    b: 'bilabial', p: 'bilabial', m: 'bilabial', f: 'labiodental',
+    d: 'alveolar', t: 'alveolar', n: 'alveolar', l: 'alveolar',
+    z: 'alveolar_sibilant', c: 'alveolar_sibilant', s: 'alveolar_sibilant',
+    zh: 'retroflex', ch: 'retroflex', sh: 'retroflex', r: 'retroflex',
+    j: 'palatal', q: 'palatal', x: 'palatal',
+    g: 'velar', k: 'velar', h: 'velar',
+    '': 'zero',
+};
+const INITIALS_BY_GROUP = (() => {
+    const m = {};
+    Object.entries(INITIAL_GROUPS).forEach(([k, g]) => { (m[g] = m[g] || []).push(k); });
+    return m;
+})();
+// 取一个音节的声母（zh/ch/sh 优先）
+const _initialOf = (py) => {
+    const s = String(py || '');
+    if (!s) return '';
+    if (s.startsWith('zh') || s.startsWith('ch') || s.startsWith('sh')) return s.slice(0, 2);
+    if ('bpmfdtnlgkhjqxrzcs'.includes(s[0])) return s[0];
+    return '';
+};
+// ===== 能量脉冲的「谁来产生」（B92 硬约束）=====
+// 只有【系统用户】能产生脉冲；真人任何点击都不产生（这是硬约束）。
+// 系统脉冲只在"它想表达却骰不中"时发生 → 越别扭越推，概率自然被推高。
+// 真人侧：能量区只是装饰，pointer-events 都没有，点了等于点在空气上。
+const _systemPulse = (times = 1) => {
+    const n = Math.max(0, Math.min(5, Math.floor(times)));
+    for (let i = 0; i < n; i++) _energyPulse();
+    return _energy.E;
+};
+
+// ===== 日语数据层（B91）=====
+// ① 罗马字 → 假名（平文式）+ 四条转写规则：拗音整体、促音 っ、拨音 ん、长音逐字
+const ROMAJI_TO_KANA = {
+    a: 'あ', i: 'い', u: 'う', e: 'え', o: 'お',
+    ka: 'か', ki: 'き', ku: 'く', ke: 'け', ko: 'こ',
+    sa: 'さ', shi: 'し', su: 'す', se: 'せ', so: 'そ',
+    ta: 'た', chi: 'ち', tsu: 'つ', te: 'て', to: 'と',
+    na: 'な', ni: 'に', nu: 'ぬ', ne: 'ね', no: 'の',
+    ha: 'は', hi: 'ひ', fu: 'ふ', he: 'へ', ho: 'ほ',
+    ma: 'ま', mi: 'み', mu: 'む', me: 'め', mo: 'も',
+    ya: 'や', yu: 'ゆ', yo: 'よ',
+    ra: 'ら', ri: 'り', ru: 'る', re: 'れ', ro: 'ろ',
+    wa: 'わ', wo: 'を', n: 'ん',
+    ga: 'が', gi: 'ぎ', gu: 'ぐ', ge: 'げ', go: 'ご',
+    za: 'ざ', ji: 'じ', zu: 'ず', ze: 'ぜ', zo: 'ぞ',
+    da: 'だ', de: 'で', do: 'ど',
+    ba: 'ば', bi: 'び', bu: 'ぶ', be: 'べ', bo: 'ぼ',
+    pa: 'ぱ', pi: 'ぴ', pu: 'ぷ', pe: 'ぺ', po: 'ぽ',
+    kya: 'きゃ', kyu: 'きゅ', kyo: 'きょ',
+    sha: 'しゃ', shu: 'しゅ', sho: 'しょ',
+    cha: 'ちゃ', chu: 'ちゅ', cho: 'ちょ',
+    nya: 'にゃ', nyu: 'にゅ', nyo: 'にょ',
+    hya: 'ひゃ', hyu: 'ひゅ', hyo: 'ひょ',
+    mya: 'みゃ', myu: 'みゅ', myo: 'みょ',
+    rya: 'りゃ', ryu: 'りゅ', ryo: 'りょ',
+    gya: 'ぎゃ', gyu: 'ぎゅ', gyo: 'ぎょ',
+    ja: 'じゃ', ju: 'じゅ', jo: 'じょ',
+    bya: 'びゃ', byu: 'びゅ', byo: 'びょ',
+    pya: 'ぴゃ', pyu: 'ぴゅ', pyo: 'ぴょ',
+};
+const romajiToKana = (input) => {
+    const s = String(input || '').toLowerCase().replace(/[^a-z]/g, '');
+    let out = '';
+    let i = 0;
+    while (i < s.length) {
+        const c = s[i];
+        // 促音：k/s/t/p 双写 → っ（吞掉一个）
+        if (c === s[i + 1] && 'kstp'.includes(c)) { out += 'っ'; i += 1; continue; }
+        // 拨音：nn
+        //   末尾 n n → ん（一个）；n n + 元音 → ん + 下一个音节（おんな = o-n-na）
+        if (c === 'n' && s[i + 1] === 'n') {
+            out += 'ん';
+            i += (i + 2 >= s.length) ? 2 : 1;
+            continue;
+        }
+        // 拗音/长音：先试 3 字母，再 2，再 1
+        let hit = false;
+        for (let len = 3; len >= 1; len--) {
+            const part = s.slice(i, i + len);
+            if (ROMAJI_TO_KANA[part]) { out += ROMAJI_TO_KANA[part]; i += len; hit = true; break; }
+        }
+        if (hit) continue;
+        // 拨音：n 在末尾或后面不是元音 → ん
+        if (c === 'n') {
+            const nx = s[i + 1];
+            if (!nx || !'aiueoy'.includes(nx)) { out += 'ん'; i += 1; continue; }
+        }
+        i += 1;   // 认不出来就跳过（保证不卡死）
+    }
+    return out;
+};
+
+// ② 音读 → 同音汉字池（默认表；字用日文汉字字形）
+//    freq 是池内相对权重，readability 是"字形对中文读者可猜的程度"
+const ONYOMI_POOL = {
+    shin: [
+        { char: '心', freq: 0.30, readability: 1.0 }, { char: '信', freq: 0.25, readability: 1.0 },
+        { char: '新', freq: 0.20, readability: 1.0 }, { char: '真', freq: 0.10, readability: 0.9 },
+        { char: '神', freq: 0.08, readability: 0.9 }, { char: '進', freq: 0.04, readability: 0.7 },
+        { char: '森', freq: 0.03, readability: 1.0 },
+    ],
+    kou: [
+        { char: '光', freq: 0.20, readability: 1.0 }, { char: '行', freq: 0.18, readability: 1.0 },
+        { char: '工', freq: 0.15, readability: 1.0 }, { char: '公', freq: 0.12, readability: 1.0 },
+        { char: '高', freq: 0.12, readability: 1.0 }, { char: '口', freq: 0.10, readability: 1.0 },
+        { char: '校', freq: 0.08, readability: 1.0 }, { char: '構', freq: 0.05, readability: 0.7 },
+    ],
+    shou: [
+        { char: '小', freq: 0.20, readability: 1.0 }, { char: '正', freq: 0.18, readability: 1.0 },
+        { char: '生', freq: 0.16, readability: 1.0 }, { char: '声', freq: 0.14, readability: 1.0 },
+        { char: '商', freq: 0.10, readability: 1.0 }, { char: '証', freq: 0.08, readability: 0.7 },
+        { char: '章', freq: 0.07, readability: 1.0 }, { char: '勝', freq: 0.07, readability: 0.7 },
+    ],
+    ki: [
+        { char: '機', freq: 0.18, readability: 0.7 }, { char: '気', freq: 0.16, readability: 0.6 },
+        { char: '記', freq: 0.14, readability: 0.7 }, { char: '期', freq: 0.12, readability: 1.0 },
+        { char: '基', freq: 0.12, readability: 0.6 }, { char: '起', freq: 0.10, readability: 1.0 },
+        { char: '器', freq: 0.10, readability: 1.0 }, { char: '喜', freq: 0.08, readability: 1.0 },
+    ],
+    kan: [
+        { char: '感', freq: 0.20, readability: 1.0 }, { char: '間', freq: 0.18, readability: 0.7 },
+        { char: '関', freq: 0.15, readability: 0.6 }, { char: '官', freq: 0.12, readability: 1.0 },
+        { char: '管', freq: 0.10, readability: 1.0 }, { char: '観', freq: 0.08, readability: 0.7 },
+        { char: '完', freq: 0.07, readability: 1.0 }, { char: '漢', freq: 0.05, readability: 0.7 },
+    ],
+    ji: [
+        { char: '時', freq: 0.26, readability: 1.0 }, { char: '自', freq: 0.22, readability: 1.0 },
+        { char: '事', freq: 0.18, readability: 1.0 }, { char: '次', freq: 0.14, readability: 1.0 },
+        { char: '持', freq: 0.12, readability: 1.0 }, { char: '寺', freq: 0.08, readability: 1.0 },
+    ],
+    dou: [
+        { char: '道', freq: 0.28, readability: 1.0 }, { char: '動', freq: 0.22, readability: 0.8 },
+        { char: '同', freq: 0.20, readability: 1.0 }, { char: '堂', freq: 0.16, readability: 1.0 },
+        { char: '童', freq: 0.14, readability: 1.0 },
+    ],
+    chou: [
+        { char: '長', freq: 0.30, readability: 0.8 }, { char: '朝', freq: 0.24, readability: 1.0 },
+        { char: '町', freq: 0.20, readability: 1.0 }, { char: '調', freq: 0.16, readability: 1.0 },
+        { char: '聴', freq: 0.10, readability: 0.7 },
+    ],
+    kyou: [
+        { char: '京', freq: 0.24, readability: 1.0 }, { char: '強', freq: 0.22, readability: 1.0 },
+        { char: '共', freq: 0.18, readability: 1.0 }, { char: '教', freq: 0.18, readability: 1.0 },
+        { char: '境', freq: 0.10, readability: 0.8 }, { char: '興', freq: 0.08, readability: 0.7 },
+    ],
+    hou: [
+        { char: '方', freq: 0.28, readability: 1.0 }, { char: '法', freq: 0.24, readability: 1.0 },
+        { char: '報', freq: 0.20, readability: 0.8 }, { char: '宝', freq: 0.16, readability: 1.0 },
+        { char: '放', freq: 0.12, readability: 1.0 },
+    ],
+    an: [
+        { char: '安', freq: 0.34, readability: 1.0 }, { char: '案', freq: 0.28, readability: 1.0 },
+        { char: '暗', freq: 0.22, readability: 1.0 }, { char: '行', freq: 0.16, readability: 1.0 },
+    ],
+};
+
+// ②b 扩充音读表（B94）：常用音读的大批常用汉字，全部日本汉字字形
+//   前两个字权重高一点（更常用），其余统一低权重；已有条目不会被覆盖
+const ONYOMI_SRC = {
+    shi: '四死私詩指止紙氏試資師市視詞誌歯史使始施',
+    ji: '時自事次持寺治辞磁耳児',
+    shin: '心信新真神進森針振診親臣身深申伸',
+    jin: '人仁尽陣辰認任',
+    nin: '人任妊',
+    kou: '光行工公高口校構考好候効功幸港講航抗交向更',
+    gyou: '業形型仰',
+    shou: '小正生声商証章勝将称省相性政星昇承',
+    jou: '上常情城場条状乗嬢錠縄譲',
+    ki: '機気記期基起器喜危規希旗貴奇季紀技',
+    gi: '義儀議疑',
+    kai: '開解回会海改階界皆械介貝街絵快戒悔塊',
+    gai: '外害概涯',
+    kan: '感間関官管観完漢換干刊甘貫還環緩冠巻',
+    ken: '見件建検険権県研肩剣健献験憲賢堅',
+    gen: '元原現限源減厳眼言',
+    sou: '走想相争装層総草送像増燥操創窓宗',
+    zou: '造蔵臓像贈',
+    tou: '東当答投島等頭到倒凍桃討透統糖豆塔踏逃',
+    dou: '道動同堂童洞導銅働',
+    nan: '南男難軟',
+    dan: '段団弾談暖壇断',
+    tan: '単短炭探担淡誕胆嘆',
+    ten: '天店転点展典殿添',
+    den: '電田伝',
+    nen: '年念燃粘',
+    hen: '返変編辺遍片',
+    hon: '本品反翻',
+    han: '半飯犯判版般販班',
+    ban: '万番板盤晩',
+    man: '万満慢漫',
+    sai: '才材財祭際裁載採砕彩催歳債',
+    zai: '在財罪剤',
+    tai: '体対太退待帯態隊貸耐',
+    dai: '大代台題第弟滞袋',
+    sui: '水数吹垂推酔遂睡',
+    sei: '生性姓星正政制勢成省清静整聖精製',
+    hei: '平兵並閉幣弊',
+    bei: '米毎倍売買梅媒',
+    soku: '足速息側則測促束',
+    zoku: '族属俗続',
+    toku: '特得徳督',
+    roku: '六録緑',
+    kyuu: '九急級給球究救旧宮及吸泣',
+    juu: '十住重充銃縦従汁',
+    shichi: '七質室失湿執',
+    hachi: '八鉢',
+    hyaku: '百伯拍泊',
+    sen: '千川泉線選戦宣専洗船',
+    ka: '火加化花家歌科可何荷果課過価嫁',
+    gaku: '学楽岳額覚角',
+    rai: '来頼雷',
+    chuu: '中忠仲抽',
+    jo: '女如',
+    shu: '手首守取種主酒朱珠',
+    shutsu: '出卒率述術',
+    nyuu: '入乳柔',
+    kin: '金今近禁筋緊謹銀',
+    do: '土度渡徒努怒吐',
+    moku: '木目黙',
+    go: '語五後誤悟護',
+    getsu: '月越謁',
+    nichi: '日実',
+    chou: '長朝町調聴張帳腸',
+    kyou: '京強共教境興競協胸郷',
+    hou: '方法報宝放訪包抱砲芳',
+    an: '安案暗',
+    ryoku: '力',
+    riki: '力',
+    shoku: '食植識触職',
+    koku: '国黒刻告穀酷',
+    mou: '毛忘忙網妄',
+    bou: '亡望忘房防冒',
+};
+// 音读数据统一合并器（B112：原来每批各写一段循环，现在只留这一个）
+const _mergeOnyomi = (src) => {
+    Object.keys(src || {}).forEach((r) => {
+        if (!Array.isArray(ONYOMI_POOL[r])) ONYOMI_POOL[r] = [];
+        [...src[r]].forEach((ch, i) => {
+            if (ONYOMI_POOL[r].some((x) => x.char === ch)) return;
+            ONYOMI_POOL[r].push({ char: ch, freq: i < 2 ? 0.2 : 0.08, readability: 1.0 });
+        });
+    });
+};
+_mergeOnyomi(ONYOMI_SRC);
+
+// ②c 第二批扩充（B95）：继续往上加，追加式合并，不会覆盖已有条目
+const ONYOMI_SRC2 = {
+    ryou: '良両量領了僚涼猟',
+    bun: '文分聞問',
+    mon: '門問',
+    fun: '分粉紛',
+    hi: '比非否彼悲批疲皮秘',
+    bi: '美備微鼻尾味',
+    mi: '味未魅密蜜',
+    mu: '無武務夢矛',
+    bu: '部舞封',
+    rei: '礼例令冷齢零麗鈴霊',
+    ren: '連恋練廉',
+    rou: '老労郎楼浪廊露',
+    ro: '路露炉',
+    ha: '波破派端',
+    ba: '馬場婆',
+    nou: '能農脳濃納',
+    nai: '内奈',
+    taku: '宅択拓沢卓託',
+    seki: '石積責績惜席夕',
+    setsu: '設説切接節雪',
+    ketsu: '決結血欠潔穴',
+    zetsu: '絶舌',
+    tetsu: '鉄哲徹撤',
+    you: '用要陽様洋葉容養幼曜揚揺溶',
+    yaku: '約薬役訳躍',
+    eki: '駅液益疫易',
+    chiku: '竹畜築蓄',
+    ritsu: '立律率栗',
+    ryuu: '流留龍竜隆',
+    rui: '類涙累',
+    zui: '随髄瑞',
+    zu: '図頭豆',
+    shaku: '赤尺借酌釈',
+    kichi: '吉',
+    kitsu: '吉詰',
+    hitsu: '筆必',
+};
+_mergeOnyomi(ONYOMI_SRC2);
+
+// ②d 第三批扩充（B97）
+const ONYOMI_SRC3 = {
+    gun: '軍群郡',
+    ku: '区苦庫句具駆',
+    gu: '具愚偶遇',
+    kaku: '各角格拡革核殻獲得較隔閣確',
+    saku: '作昨策索削',
+    sa: '差座左砂唆詐鎖',
+    zatsu: '雑',
+    satsu: '札殺察撮擦',
+    tei: '定弟提程底抵廷庭停偵帝訂',
+    zei: '税',
+    gou: '合号豪剛郷傲',
+    ou: '王往横欧奥応桜皇旺翁',
+    fu: '不付夫婦富布府副複復負赴附符普浮腐',
+    mei: '名命明迷盟銘鳴',
+    myou: '妙明命',
+    ri: '理利里離裏吏履',
+    ryaku: '略',
+    wa: '和話輪倭',
+    ei: '永英映営栄泳影衛鋭',
+    yuu: '有友由遊優勇雄融郵誘',
+    yoku: '欲浴抑翼翌',
+    rin: '林臨輪倫隣',
+    mo: '模茂猛',
+    ya: '夜野耶',
+    yu: '油輸癒諭愉',
+    yo: '予余与誉預',
+    raku: '楽落絡酪',
+    ran: '乱覧藍欄濫',
+    riku: '陸',
+    waku: '惑枠',
+};
+_mergeOnyomi(ONYOMI_SRC3);
+
+// ②e 第四批扩充（B98）
+const ONYOMI_SRC4 = {
+    byou: '病秒描猫苗',
+    etsu: '悦越謁閲',
+    gan: '願丸岸岩眼玩頑顔',
+    gyo: '魚御漁',
+    haku: '薄迫舶博',
+    hyou: '表評票氷標漂',
+    jitsu: '実日',
+    ke: '家下気仮価佳架嫁華菓',
+    kei: '計係形型経径軽継恵慶掲傾系敬景警契',
+    kyo: '去挙拠距拒',
+    mai: '枚毎妹昧',
+    men: '面免綿麺',
+    metsu: '滅',
+    min: '民眠',
+    nei: '寧',
+    san: '三山産算散賛酸傘',
+    sha: '車者社謝射舎赦',
+    shitsu: '質室失湿執',
+    sho: '書所諸署初処庶',
+    shuku: '宿祝縮粛淑',
+    so: '祖組疎粗訴塑租',
+    son: '村尊損孫存',
+    zan: '残暫斬',
+};
+_mergeOnyomi(ONYOMI_SRC4);
+
+// ②f 第五批扩充（B101）
+const ONYOMI_SRC5 = {
+    ai: '愛哀挨',
+    aku: '悪握圧',
+    an: '安案暗',
+    bai: '売買梅倍陪',
+    ben: '便勉弁',
+    chi: '地知池遅稚致',
+    ge: '下夏華化仮',
+    gei: '芸迎',
+    i: '以意位衣医依胃異移易維違遺',
+    ichi: '一逸',
+    jiku: '軸',
+    ko: '固故個庫誇顧鼓古己戸呼',
+    za: '座罪挫',
+    shuu: '週集習収拾修終',
+};
+_mergeOnyomi(ONYOMI_SRC5);
+
+// ②g 第六批扩充（B108）
+const ONYOMI_SRC6 = {
+    en: '円遠園演煙縁宴延沿炎塩援',
+    oku: '屋奥億憶臆',
+    on: '音恩温穏',
+    guu: '宮偶遇寓',
+    ju: '受授需儒樹寿',
+    jo: '女助序叙除',
+    tsuu: '通痛',
+    teki: '敵的適滴笛',
+    hai: '配拝杯背肺廃輩',
+    batsu: '罰抜末',
+    butsu: '物仏',
+    boku: '僕木墨朴',
+    matsu: '末松抹',
+    wan: '湾腕碗',
+    kyaku: '客却脚',
+    gyaku: '逆虐',
+    reki: '歴暦',
+    retsu: '列烈裂劣',
+};
+_mergeOnyomi(ONYOMI_SRC6);
+
+// ②h 第七批扩充（B109）
+const ONYOMI_SRC7 = {
+    au: '会合遭逢',
+    chaku: '着著',
+    chitsu: '質',
+    fuku: '福副復複腹覆',
+    hatsu: '発髪',
+    ho: '保歩補穂舗',
+    maku: '幕膜漠募慕暮',
+    ni: '二弐',
+    suu: '数崇枢',
+    chin: '沈珍陳賃',
+    gyuu: '牛',
+};
+_mergeOnyomi(ONYOMI_SRC7);
+
+// ②i 第八批扩充（B111）
+const ONYOMI_SRC8 = {
+    su: '素図巣',
+    se: '世瀬畝',
+    ta: '多他太',
+    tsu: '津都',
+    me: '目芽',
+    ma: '馬麻磨魔',
+    ra: '羅裸',
+    ryo: '旅慮虜',
+    nyo: '女如',
+    netsu: '熱',
+    betsu: '別蔑',
+    katsu: '活勝割括滑喝',
+    tatsu: '達',
+    kuu: '空',
+    he: '戸辺',
+    ga: '我画芽賀雅餓',
+    gon: '言厳',
+    zen: '全禅善然漸',
+};
+_mergeOnyomi(ONYOMI_SRC8);
+
+// ②j 第九批扩充（B111）
+const ONYOMI_SRC9 = {
+    choku: '直勅',
+    tsui: '追墜',
+    fuu: '風封',
+    u: '宇雨羽',
+    e: '絵恵',
+    nu: '沼',
+    ne: '値',
+    ru: '留',
+    re: '列',
+    wo: '男',
+    baku: '爆縛',
+};
+_mergeOnyomi(ONYOMI_SRC9);
+
+// ②k 外部汉字表导入（B113：从老板给的 table.txt 清洗而来）
+// 已剔除「明显把相邻音读混在一起」的行（sui / sho / shou / shi / ki / kan 等 >30 字的行），
+// 那些行等有权威表再补；这里只补可靠的部分。
+const ONYOMI_SRC_EXTRA = {
+    ai: '曖隘穢拶',
+    aku: '渥幄齷',
+    an: '庵鞍按',
+    i: '伊偉囲委威尉慰為緯井猪',
+    ichi: '壱',
+    itsu: '溢佚',
+    in: '印員因姻引飲院陰隠韻允胤淫',
+    u: '右烏迂芋',
+    un: '運雲韻熨',
+    ei: '詠',
+    etsu: '粋',
+    en: '猿艶鉛怨奄俺宛',
+    o: '汚',
+    ou: '凹央押殴黄',
+    on: '怨',
+    ga: '牙蛾駕',
+    gai: '劾崖慨蓋該骸刈',
+    gaku: '顎嶽',
+    kaku: '嚇穫郭廓撹',
+    katsu: '渇葛褐轄',
+    gan: '含癌雁',
+    gi: '偽妓宜戯擬欺犠蟻誼',
+    kyuu: '丘久仇休弓朽求汲灸窮笈糾倶',
+    kyo: '居巨渠虚許鋸据墟裾',
+    gyou: '凝暁',
+    kyoku: '局曲極玉',
+    gyoku: '玉曲',
+    kin: '僅勤均巾錦斤欣欽琴禽芹菌衿襟',
+    gin: '吟慾',
+    ku: '倶狗玖矩躯駈駒供',
+    gu: '惧隅虞',
+    guu: '隅',
+    kutsu: '屈掘窟堀',
+    kun: '勲君薫訓',
+    gei: '鯨劇',
+    geki: '劇戟撃激隙',
+    ketsu: '訣傑蕨獗',
+    gen: '幻弦玄舷',
+    gou: '拷尭劫',
+    koku: '克獄漉甑忽惚骨',
+    kotsu: '骨忽惚',
+    kon: '困墾婚恨懇昏昆根混痕紺魂',
+    gon: '勤魂',
+    sa: '佐沙査嵯裟些叉瑳扨',
+    saku: '朔柵窄錯冊刷薩',
+    satsu: '薩冊刷',
+    san: '参惨撒桟燦珊纂蚕讃餐',
+    zan: '惨慚',
+    ji: '似侍字慈滋璽示呪綬爾冶',
+    shiki: '式鴫竺',
+    shitsu: '叱悉漆疾櫛',
+    shichi: '悉',
+    sha: '写捨斜煮遮蛇邪若',
+    shaku: '勺杓灼爵錫若寂弱',
+    jaku: '若寂弱',
+    juu: '渋獣熟塾',
+    shuku: '叔塾熟粥',
+    juku: '塾熟',
+    shutsu: '俊春瞬旬准循遵順',
+    shun: '俊春瞬駿',
+    jun: '旬准循遵順俊春瞬盾純巡殉',
+    jou: '丈丞冗剰壌擾杖浄畳穣蒸醸嘱',
+    shoku: '嘱埴飾拭殖燭織色式',
+    jin: '刃塵壬尋甚腎訊迅靭',
+    suu: '据',
+    zei: '脆',
+    seki: '隻斥昔析籍脊跡蹟',
+    setsu: '拙摂折窃',
+    zen: '前繕膳',
+    so: '措曾曽狙疏礎蘇阻遡鼠',
+    zou: '憎',
+    soku: '即',
+    zoku: '賊',
+    son: '遜',
+    ta: '汰詑唾堕妥惰打駄',
+    tai: '堆岱怠戴替泰胎腿苔逮黛鯛',
+    dai: '醍',
+    taku: '啄托濯琢鐸濁',
+    daku: '諾',
+    chi: '弛恥智痴置馳',
+    chiku: '筑逐秩窒',
+    chuu: '宙昼柱注虫衷酎鋳駐樗貯',
+    chou: '丁兆凋喋寵帖庁弔彫徴懲挑暢潮眺脹超跳頂鳥',
+    tsui: '椎槌鎚',
+    tei: '亭低剃貞呈堤悌挺締艇諦蹄逓邸鄭',
+    teki: '摘鏑',
+    tetsu: '迭銑凸',
+    to: '堵塗妬斗登賭途鍍',
+    dou: '胴峠',
+    toku: '匿篤毒読',
+    doku: '独読毒匿',
+    nai: '乃至',
+    nin: '忍',
+    nen: '捻',
+    nou: '悩嚢',
+    ha: '把覇罵芭',
+    ba: '罵芭',
+    hai: '排敗',
+    bai: '培',
+    haku: '白',
+    baku: '麦曝',
+    hatsu: '閥伐潑',
+    batsu: '閥伐跋',
+    han: '叛帆搬斑汎畔藩伴坂',
+    ban: '伴坂蛮蕃',
+    hi: '妃扉披泌碑罷肥被費避飛卑斐',
+    bi: '媚弥',
+    hyou: '俵彪豹',
+    hyaku: '白',
+    fu: '怖扶敷膚譜賦',
+    butsu: '勿',
+    fuku: '伏幅服払',
+    futsu: '払沸',
+    fun: '雰噴墳憤奮',
+    hei: '柄陛',
+    bei: '謎',
+    hou: '哺峰崩泡縫胞蜂褒豊飽鳳俸',
+    bou: '乏傍剖坊妨帽暴某棒紡肪膨謀貌',
+    boku: '撲牧睦勃',
+    hon: '奔凡盆浜',
+    bon: '凡盆梵',
+    ma: '摩',
+    maku: '枕',
+    matsu: '沫迄',
+    man: '蔓',
+    mi: '弥眉',
+    mu: '霧娘',
+    mei: '冥',
+    mou: '盲蒙耗',
+    motsu: '勿',
+    ya: '矢厄',
+    yaku: '厄',
+    yuu: '幽悠憂尤裕',
+    yu: '唯柚',
+    yo: '遥',
+    you: '遥羊擁謡踊沃',
+    yoku: '沃',
+    rai: '莱',
+    ran: '卵蘭',
+    ri: '痢璃李',
+    ryoku: '禄',
+    rin: '厘鱗',
+    rui: '塁蕾',
+    rei: '励',
+    rou: '弄朗漏籠',
+    ro: '芦賂',
+    roku: '禄鹿麓',
+    waku: '沸',
+};
+_mergeOnyomi(ONYOMI_SRC_EXTRA);
+
+// ②l 老板提供的第一批（B115：a ～ ka，质量好，直接合并）
+const ONYOMI_SRC_B1 = {
+    a: '亜',
+    ai: '愛哀挨曖',
+    aku: '悪握',
+    an: '安暗案行',
+    atsu: '圧',
+    e: '依会回絵恵',
+    ei: '営影映栄永泳英衛詠鋭',
+    eki: '易液疫益駅役',
+    en: '円園宴延怨援沿演炎煙猿縁艶遠鉛塩媛',
+    etsu: '悦謁越閲',
+    i: '以位依偉囲委威尉意慰易椅為畏異移維緯胃萎衣違遺医唯彙',
+    ichi: '一壱',
+    iki: '域',
+    iku: '育',
+    in: '因姻引飲淫院陰隠韻',
+    itsu: '一逸',
+    o: '悪汚和',
+    oku: '億屋憶臆',
+    on: '怨遠恩温穏音',
+    otsu: '乙',
+    ou: '凹央奥往応押旺横欧殴王翁黄皇桜',
+    u: '右宇羽雨有',
+    un: '運雲',
+    utsu: '鬱',
+    ka: '渦下化仮何価佳加可夏嫁家寡科暇果架歌河火禍稼箇花苛荷華菓課貨過靴',
+};
+_mergeOnyomi(ONYOMI_SRC_B1);
+
+// ②m 老板提供的第二批（B116：完整表 table.txt 里我还没收的字）
+const ONYOMI_SRC_B2 = {
+    fu: '父',
+    go: '午互呉',
+    han: '頒',
+    hei: '併塀癖',
+    hou: '倣邦',
+    ji: '餌仕',
+    kai: '灰蟹',
+    kan: '寒幹慣歓監簡缶肝艦鑑閑陥館',
+    kei: '兄刑茎啓渓蛍携詣憩鶏',
+    ken: '犬券倹兼拳軒圏嫌絹遣謙鍵繭顕懸',
+    ki: '企伎机岐忌祈軌飢鬼亀揮棄毀輝寄既棋帰汽',
+    ko: '孤枯湖雇互弧',
+    kyou: '兄凶叫況恐恭挟橋響驚卿',
+    mai: '埋',
+    rei: '戻',
+    ryo: '呂侶',
+    ryuu: '硫粒',
+    sa: '再茶',
+    sai: '再最塞妻宰栽済災采斎細菜西',
+    saku: '搾酢',
+    satsu: '刹',
+    shi: '仕伺刺司嗣士姉姿子志思支旨枝祉糸紫肢脂諮賜雌飼恣摯',
+    shin: '侵唇娠寝審慎浸紳芯薪辛震請',
+    shitsu: '嫉',
+    sho: '暑',
+    shou: '升召床招昭宵尚庄焼焦症祥笑粧紹衝詔詳象賞鐘障盛',
+    shu: '囚州舟秀秋衆襲醜',
+    teki: '嫡',
+    tou: '湯党騰謄闘棟搭陶痘悼盗稲涛',
+    tsu: '突闘',
+    you: '窯',
+};
+_mergeOnyomi(ONYOMI_SRC_B2);
+
+// ③ 自己加字：存在 settings.onyomiExtra = { 音读: ['汉字', ...] }
+const _onyomiExtra = () => {
+    if (!settings.onyomiExtra || typeof settings.onyomiExtra !== 'object') settings.onyomiExtra = {};
+    return settings.onyomiExtra;
+};
+// 取某个音读的汉字池（默认 + 自己加的）
+const _onyomiList = (reading) => {
+    const key = String(reading || '').toLowerCase().trim();
+    if (!key) return [];
+    const list = (ONYOMI_POOL[key] || []).map((x) => ({ ...x }));
+    const extra = _onyomiExtra()[key];
+    if (Array.isArray(extra)) {
+        extra.forEach((ch) => {
+            const c = String(ch || '').trim();
+            if (!c || list.some((x) => x.char === c)) return;
+            list.push({ char: c, freq: 0.05, readability: 1.0, custom: true });
+        });
+    }
+    return list;
+};
+// 所有可用音读（默认 + 自加）
+const _onyomiReadings = () => {
+    const set = new Set(Object.keys(ONYOMI_POOL));
+    Object.keys(_onyomiExtra()).forEach((k) => { if (k) set.add(k); });
+    return [...set];
+};
+// 加 / 删（后面做 UI 时直接用）
+const addOnyomi = (reading, char) => {
+    const key = String(reading || '').toLowerCase().trim();
+    const c = String(char || '').trim();
+    if (!key || !c) return false;
+    const box = _onyomiExtra();
+    if (!Array.isArray(box[key])) box[key] = [];
+    if (box[key].includes(c)) return false;
+    box[key].push(c);
+    debouncedSave();
+    return true;
+};
+const removeOnyomi = (reading, char) => {
+    const key = String(reading || '').toLowerCase().trim();
+    const box = _onyomiExtra();
+    if (!box[key]) return false;
+    const before = box[key].length;
+    box[key] = box[key].filter((x) => x !== String(char || '').trim());
+    if (box[key].length === before) return false;
+    if (!box[key].length) delete box[key];
+    debouncedSave();
+    return true;
+};
+
+// ④ 日语笔谈玩法设置（每个会话独立）
+const jaBrushedMap = reactive({});
+const getJaBrushedSettings = (sessionId) => {
+    if (!jaBrushedMap[sessionId]) {
+        jaBrushedMap[sessionId] = { enabled: false, prob: 0.2, maxChars: 5 };
+    }
+    return jaBrushedMap[sessionId];
+};
+// 落点骰：同音池按 freq×readability 加权，单字硬顶 25%（池子再大也不会被一个字吃满）
+const ONYOMI_W_HARD_CAP = 25;
+const _onyomiLanding = (pool) => {
+    if (!Array.isArray(pool) || !pool.length) return null;
+    let weights = pool.map((x) => Math.max(0.1, (Number(x.freq) || 0.05) * (Number(x.readability) || 1) * 100));
+    // 迭代截断：超上限的压到上限，多出来的按比例分给其他字
+    for (let pass = 0; pass < 4; pass++) {
+        const total = weights.reduce((a, b) => a + b, 0) || 1;
+        let overflow = 0;
+        weights = weights.map((w) => {
+            const share = (w / total) * 100;
+            if (share > ONYOMI_W_HARD_CAP) { overflow += share - ONYOMI_W_HARD_CAP; return ONYOMI_W_HARD_CAP; }
+            return share;
+        });
+        if (overflow <= 0.01) break;
+    }
+    const total = weights.reduce((a, b) => a + b, 0) || 1;
+    let r = Math.random() * total;
+    for (let i = 0; i < pool.length; i++) {
+        r -= weights[i];
+        if (r <= 0) return pool[i];
+    }
+    return pool[pool.length - 1];
+};
+// 日语笔谈：骰出音读 → 转假名 → 落点骰选字 → 满意骰不过就换 → 卷轴逐字追加
+// 时间上不做额外耗时（老板："骰子消耗多少就多少"）
+const triggerJaBrushed = (session) => {
+    if (!session) return false;
+    const cfg = getJaBrushedSettings(session.id);
+    if (!playOn('ja') || cfg.prob <= 0) return false;   // B102：开关只认玩法列表
+    if (Math.random() >= cfg.prob) return false;
+
+    const readings = _onyomiReadings().filter((r) => _onyomiList(r).length);
+    if (!readings.length) return false;
+
+    const want = Math.max(1, Math.min(8, Number(cfg.maxChars) || 5));
+    const chars = [];
+    const readingsUsed = [];
+    for (let i = 0; i < want; i++) {
+        // 骰：还要继续写吗（第一个字不骰）
+        if (chars.length && !_rollJudgment()) break;
+        const reading = readings[Math.floor(Math.random() * readings.length)];
+        const pool = _onyomiList(reading);
+        if (!pool.length) continue;
+        let picked = _onyomiLanding(pool);
+        if (!picked) continue;
+        // 骰：这个字满意吗？不中 → 系统脉冲后重落点（最多 3 次）
+        for (let t = 0; t < 3; t++) {
+            if (_rollJudgment()) break;
+            _systemPulse(1);
+            picked = _onyomiLanding(pool) || picked;
+        }
+        chars.push(picked.char);
+        readingsUsed.push(romajiToKana(reading));
+        _energy.E *= 0.3;   // 切换读音衰减
+    }
+    if (!chars.length) return false;
+
+    const text = chars.join('');
+    const lastMsg = session.messages[session.messages.length - 1];
+    if (lastMsg && lastMsg.content === text) return false;
+
+    sendMessage('them', text, { session, jaBrushed: true, dictSpell: false, dictTag: '日语笔谈' });
+    return true;
+};
+// ⑤b 模板专用别名（Vue 模板不允许 `_` 开头的标识符，否则直接 ReferenceError）
+const onyomiReadings = () => _onyomiReadings();
+const onyomiList = (r) => _onyomiList(r);
+
+// ⑤ 音读表编辑（界面用）
+const jaNewReading = ref('');
+const jaNewChars = ref('');
+const jaBulkText = ref('');
+const jaBulkMsg = ref('');
+const addOnyomiFromInput = () => {
+    const reading = String(jaNewReading.value || '').trim().toLowerCase();
+    const list = String(jaNewChars.value || '').replace(/[\s,，、]/g, '');
+    if (!reading || !list) { jaBulkMsg.value = '音读和汉字都要填'; return; }
+    let added = 0;
+    [...list].forEach((ch) => { if (addOnyomi(reading, ch)) added++; });
+    jaBulkMsg.value = added ? ('已加入 ' + added + ' 个字（' + reading + '）') : '这些字已经在表里了';
+    if (added) { jaNewChars.value = ''; }
+};
+// 批量导入：每行「shin 心信新真」 或「shin,心,信,新」
+const importOnyomiBulk = () => {
+    const raw = String(jaBulkText.value || '');
+    if (!raw.trim()) { jaBulkMsg.value = '先粘贴内容'; return; }
+    let added = 0, lines = 0;
+    raw.split(/\r?\n/).forEach((line) => {
+        const t = line.trim();
+        if (!t || t.startsWith('#')) return;
+        const parts = t.split(/[\s,，、\t]+/).filter(Boolean);
+        if (parts.length < 2) return;
+        const reading = parts[0].toLowerCase();
+        lines++;
+        parts.slice(1).join('').split('').forEach((ch) => {
+            if (/[\u4e00-\u9fff\u3005\u30f6]/.test(ch) && addOnyomi(reading, ch)) added++;
+        });
+    });
+    jaBulkMsg.value = '处理 ' + lines + ' 行，新增 ' + added + ' 个字';
+    if (added) jaBulkText.value = '';
+};
+
+const _rollOneSyllable = (prevInitial) => {
+    let initials = Object.keys(CHATTY_PINYIN_BY_INITIAL);
     if (!initials.length) return null;
+    // 能量脉冲的「组内微调 / 跨组跳跃」：|E|<5 时只在同组声母里换，E 大了才放开全表
+    if (prevInitial !== undefined && prevInitial !== null) {
+        const g = INITIAL_GROUPS[prevInitial];
+        const same = (INITIALS_BY_GROUP[g] || []).filter((k) => initials.includes(k));
+        if (Math.abs(_energy.E) < 5 && same.length > 1) initials = same;
+    }
     const initCands = initials.map(ini => {
         const fm = CHATTY_PINYIN_BY_INITIAL[ini] || {};
         let w = 0;
@@ -18435,6 +19267,7 @@ const YES_NO_BASE = {
     CUT_OK: 100,        // 造句：截断位置满意吗
     CARD_OK: 100,       // 造句：抽到的字卡合适吗
     RETRACT_SEND: 100,  // 撤回：这一轮发不发出
+    CHAR_CONFIRM: 100,  // 拼音：选中的这个字确认吗（B87）
 };
 const _rollYes = (base) => {
     const b = Math.max(0, Math.min(100, Number(base == null ? 100 : base))) / 100;
@@ -18480,15 +19313,18 @@ const _makeFreeComposeText = (s) => {
     const buildOnce = () => {
         const segments = [];
         for (let segIdx = 0; segIdx < MAX_SEGS; segIdx++) {
+            // 系统用户"蓄能"：想表达某个意思时先脉冲 1–2 次（真人无路径触发）
+            if (Math.random() < 0.3) _systemPulse(1 + Math.floor(Math.random() * 2));
             const len = SEG_MIN + Math.floor(Math.random() * (SEG_MAX - SEG_MIN + 1));   // 骰：这段几字
             const units = [];
             for (let i = 0; i < len; i++) {
                 let u = _rollOneUnit();                                  // 骰：声母 + 韵母 + 选字（3 次）
-                if (_rollYes(YES_NO_BASE.BACKSPACE)) {                   // 骰：要不要退格（2 次）
-                    u = _rollOneUnit();                                  //   退格 → 重选这个字
+                if (_rollJudgment()) {                                   // 骰：要不要退格（判定骰 1–99%）
+                    u = _rollOneUnit(_initialOf(u && u.py));             //   退格 → 重选这个字（E 小时只换同组声母）
                     _freeComposeBackspaces++;
                 }
                 if (u) units.push(u);
+                _energy.E *= 0.5;                                        // 每完成一个字衰减
             }
             if (!units.length) break;
 
@@ -18499,7 +19335,7 @@ const _makeFreeComposeText = (s) => {
             segments.push({ units, punct });
 
             if (segIdx >= MAX_SEGS - 1) break;
-            if (!_rollYes(YES_NO_BASE.CONTINUE)) break;                   // 骰：还要继续说吗（2 次）
+            if (!_rollJudgment()) break;                                 // 骰：还要继续说吗（判定骰 1–99%）
         }
         return segments.length ? { segments } : null;
     };
@@ -19252,56 +20088,14 @@ const hideSession = (sessionId) => {
     // 查看群成员弹窗状态
     const groupMembersOpen = ref(false);
 
-/// ===== 群成员在线状态 =====
+/// ===== 群成员在线状态（B114：群聊已下线，成员状态定时器已删除）=====
 const groupMemberStatus = reactive({});
 
-// 初始化或更新某个群的成员状态
-const initGroupMemberStatus = (group) => {
-  if (!group || group.type !== 'group') return;
-  if (!groupMemberStatus[group.id]) {
-    groupMemberStatus[group.id] = {};
-  }
-  const statusMap = groupMemberStatus[group.id];
-  (group.members || []).forEach(mid => {
-    if (statusMap[mid] === undefined) {
-      const memberCount = (group.members || []).length;
-let onlineProb = 0.85; // 默认 85%
-if (memberCount < 10) {
-  onlineProb = 1; // 10人以下全部在线
-} else {
-  onlineProb = 0.90 + Math.random() * 0.1; // 90%~95% 随机
-}
-statusMap[mid] = Math.random() < onlineProb;
-    }
-  });
-  // 清理已不存在的成员
-  const memberSet = new Set(group.members || []);
-  Object.keys(statusMap).forEach(mid => {
-    if (!memberSet.has(mid)) delete statusMap[mid];
-  });
-};
-
-// 检查某个群成员是否在线
+// 检查某个群成员是否在线（留着当兜底，返回 true）
 const isMemberOnline = (groupId, memberId) => {
   const statusMap = groupMemberStatus[groupId];
   if (!statusMap) return true; // 默认在线
   return statusMap[memberId] !== false;
-};
-
-// 随机切换群成员状态（每5秒调用一次）
-const toggleMemberStatus = () => {
-  sessions.value.forEach(s => {
-    if (s.type !== 'group') return;
-    initGroupMemberStatus(s);
-    const statusMap = groupMemberStatus[s.id];
-    if (!statusMap) return;
-    Object.keys(statusMap).forEach(mid => {
-      // 每个成员 5% 概率翻转状态
-      if (Math.random() < 0.15) {
-        statusMap[mid] = !statusMap[mid];
-      }
-    });
-  });
 };
 
 // 计算群聊在线人数
@@ -19350,8 +20144,7 @@ const addMemberToGroup = (sessionId) => {
   addGroupMemberOpen.value = false;
   debouncedSave();
   showToast('已添加');
-  // 为新成员启动群聊角色定时器
-  startGroupRoleTimer(g);
+  // 群聊角色定时器已移除（B114）
 };
 
 // 移除群成员
@@ -19430,7 +20223,7 @@ const removeGroupMember = (mid) => {
       groupPickerOpen.value = false;
       debouncedSave();
       showToast(`已创建「${g.name}」`);
-      startGroupRoleTimer(g); // 启动角色抢红包定时器
+      // 群聊角色定时器已移除（B114）
     };
       
     // 取代原生 prompt：自带样式的「重命名」弹窗（私聊/群聊标题自动区分，避免中文乱码）
@@ -22608,141 +23401,20 @@ const moneySubTab = ref('check');   // 虚拟币内：'check' 支票 | 'allowanc
       g.messages.push({ id: genId(), sender: 'system', content: `${name} 领取了你的红包`, timestamp: Date.now(), isTyping: false });
       scrollToBottom();
       debouncedSave();
-      // 抢到者 60% 回复
-      if (Math.random() < 0.6) groupMemberReply(g, memberId, '红包');
-      // 抢完后：没抢到的角色 80% 回复
+      // 抢到者回复 / 抢完后回复：随 groupMemberReply 一起删除（B119）
       if (p.remaining <= 0) {
         const allMembers = (g.members || []).filter((m) => m !== p.from);
         allMembers.forEach((m) => {
-          if (m === memberId) return; // 抢到者已处理
-          if (p.grabbed.some((x) => x.by === m)) return; // 已抢到的跳过
-          if (Math.random() < 0.3) groupMemberReply(g, m, '红包');
+          if (m === memberId) return;
+          if (p.grabbed.some((x) => x.by === m)) return;
         });
       }
     };
     // 群聊成员回复（带字卡；trigger 场景：'红包'|'group' 等）
-    const groupMemberReply = (g, memberId, scene) => {
-// ===== 检查是否被禁言 =====
-    if (isMuted(memberId)) {
-        return;
-    }
-    const member = sessions.value.find((s) => s.id === memberId);
-    if (!member) return;
-    const groupPool = envelopeCardItems(g, '群聊', g.id);
-    const privatePool = envelopeCardItems(member, '私聊');
-    const pool = [...groupPool, ...privatePool];
-    if (!pool.length) return;
-    setTimeout(() => {
-        // ===== 群聊涂鸦：5% 概率发送涂鸦 =====
-        if (Math.random() < 0.05) {
-            const modes = ['letters', 'shapes', 'freehand'];
-            const mode = modes[Math.floor(Math.random() * modes.length)];
-            const imgData = generateSystemDrawing(mode);
-            sendMessage(memberId, '', { image: imgData, session: g });
-            // 如果触发了 @，仍然可以继续回复文字，但这里选择不额外回复，只发涂鸦
-            return;
-        }
-        const marked = g.groupMarkEnabled && Math.random() < 0.15;
-      let mention = null;
-// 红包场景下不生成 @
-if (scene !== '红包') {
-    if (Math.random() < 0.3) {
-        const targets = g.roleAtRoleEnabled
-            ? [...(g.members || []), 'me'].filter((t) => t !== memberId)
-            : ['me'];
-        if (targets.length) mention = targets[Math.floor(Math.random() * targets.length)];
-    }
-}
-
-                               // ---- 主回复（根据拼接设置） ----
-                const s = currentSession.value;
-                const settings = s ? getSessionSettings(s.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
-                const opts = { marked, session: g };
-                if (mention) opts.mention = mention;
-                if (quote) opts.quote = quote;
-
-                if (settings.concatEnabled) {
-                    // 拼接模式：从池中取指定数量的字卡
-                    const count = Math.min(settings.concatCount, pool.length);
-                    let selected = [];
-                    let copy = [...pool];
-                    for (let i = 0; i < count && copy.length > 0; i++) {
-                        const idx = Math.floor(Math.random() * copy.length);
-                        const item = copy[idx];
-                        // 如果不包含表情包，跳过 image 项
-                        if (!settings.concatEmoji && item.image) { 
-                            // 如果跳过，本次不计数，重新抽一次（但为了简单，可以继续）
-                            // 这里简单处理：如果该条是图片且被禁用，则放弃本次抽取，减少条数
-                            // 但更好的是先过滤掉图片再抽
-                            continue; 
-                        }
-                        selected.push(item);
-                        copy.splice(idx, 1);
-                    }
-                    // 如果选中的条目少于期望（可能因为过滤导致），从原池补一条（但保留原逻辑）
-                    if (selected.length === 0) {
-                        // 没选到任何字卡，直接从pool取一条
-                        const fallback = pool[Math.floor(Math.random() * pool.length)];
-                        if (fallback.image) opts.image = fallback.image;
-                        else sendMessage(memberId, fallback.text || '……', opts);
-                        return;
-                    }
-                    // 拼接选中的字卡（文本用两个空格隔开）
-                    const finalText = selected.map(item => item.text).filter(t => t).join('  ');
-                    const finalImage = selected.find(item => item.image)?.image || null;
-                    if (finalImage) opts.image = finalImage;
-                    sendMessage(memberId, finalText || '', opts);
-                } else {
-                    // 非拼接模式：单条
-                    const pick = pool[Math.floor(Math.random() * pool.length)];
-                    if (pick.image) opts.image = pick.image;
-                    sendMessage(memberId, pick.text || '……', opts);
-                }
+    // 群聊成员回复引擎已删除（B119：groupMemberReply 整段移除）
 
 
-
-        // ===== 额外多条消息（群聊同样支持） =====
-        const extraRand = Math.random();
-        let extraCount = 0;
-        if (extraRand < 0.05) extraCount = 2;
-        else if (extraRand < 0.25) extraCount = 1;
-        for (let i = 0; i < extraCount; i++) {
-            const extraCombined = getCombinedReply(pool);
-            if (extraCombined) {
-                const extraOpts = { marked: false, session: g };
-                if (mention && i === 0) extraOpts.mention = mention; // 保留提及给第一条额外消息
-                if (Math.random() < 0.1) {
-                    const q2 = pickQuote(g);
-                    if (q2) extraOpts.quote = q2;
-                }
-                if (extraCombined.image) {
-                    extraOpts.image = extraCombined.image;
-                    sendMessage(memberId, '', extraOpts);
-                } else if (extraCombined.text) {
-                    sendMessage(memberId, extraCombined.text, extraOpts);
-                }
-            }
-        }
-
-        if (mention && mention !== 'me') {
-            setTimeout(() => respondToMention(g, mention), randomMs(800, 2000));
-        }
-   const delayRange = scene === '红包' ? randomMs(800, 2500) : randomMs(400, 1200);
-    }, delayRange);
-};
-
-    // 响应角色发出的@：被@者90%，其他角色30%
-    const respondToMention = (g, mentionTarget) => {
-      (g.members || []).forEach((mid, i) => {
-        if (mid === mentionTarget) {
-          // 被@者 90% 回复
-          if (Math.random() < 0.9) groupMemberReply(g, mid, 'mention');
-          return;
-        }
-        // 其他角色 30% 回复
-        if (Math.random() < 0.3) groupMemberReply(g, mid, 'mention');
-      });
-    };
+    // 响应角色发出的@ 已删除（B119：群聊功能下线）
     // 红包过期：剩余金额退回发红包方
     const expireGrabPacket = (g, packetId) => {
       const p = (g.groupPackets || []).find((x) => x.id === packetId);
@@ -22764,128 +23436,7 @@ if (scene !== '红包') {
     };
 
     // ===== 角色发抢红包 =====
-    // 群聊角色抢红包定时器：每个角色每 3h 掷骰子 10% 概率（受群聊开关控制）
-    const startGroupRoleTimer = (group) => {
-      const memberIds = group.members || [];
-      group._grabTimers = group._grabTimers || {};
-      memberIds.forEach((mid) => {
-        if (group._grabTimers[mid]) return; // 已有定时器则跳过
-        const loop = () => {
-          const g = sessions.value.find((x) => x.id === group.id);
-          if (!g || g.type !== 'group' || !g.roleGrabRedpacketEnabled) {
-            // 群没了或开关关闭，停止（不再自循环）
-            return;
-          }
-          const interval = 3 * 60 * 60 * 1000;
-          group._grabTimers[mid] = setTimeout(() => {
-            if (Math.random() < 0.1) {
-              triggerGroupRoleRedpacket(g, mid);
-            }
-            loop(); // 继续下一轮
-          }, interval);
-        };
-        loop();
-      });
-    };
-    // 角色发起抢红包
-    const triggerGroupRoleRedpacket = (group, memberId) => {
-      const member = sessions.value.find((s) => s.id === memberId);
-      if (!member) return;
-      const { amount } = generateRedpacket(member); // 按该角色私聊三档选档
-      const N = Math.max(2, (group.members || []).length);
-      const count = randomMs(2, N);
-      const splits = splitAmount(amount, count);
-      const packet = {
-        id: genId(),
-        from: memberId,
-        amount,
-        count,
-        remaining: count,
-        splits: splits.slice(),
-        grabbed: [],
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        windowStart: Date.now() + randomMs(5000, 120000), // 抢包窗口 5s~2min
-      };
-      group.groupPackets = group.groupPackets || [];
-      group.groupPackets.push(packet);
-
-      // 发抢红包消息：90% 带字卡（1 或 2 条）
-      let content = '';
-      if (Math.random() < 0.9) {
-        let pool = envelopeCardPool(member, '群聊');
-        if (!pool.length) pool = envelopeCardPool(member, '私聊');
-        if (pool.length) {
-          const n = Math.random() < 0.5 ? 1 : 2;
-          const picked = [];
-          for (let i = 0; i < n; i++) picked.push(pool[Math.floor(Math.random() * pool.length)]);
-          content = picked.join('，');
-        }
-      }
-      group.messages.push({
-        id: genId(), sender: memberId, type: 'grabPacket', content, amount,
-        packetId: packet.id, status: 'active', timestamp: Date.now(), isTyping: false,
-      });
-      updateUnread();
-      debouncedSave();
-
-      // 其他角色在窗口内抢（5s~2min 内各角色随机时间点）
-      const others = (group.members || []).filter((m) => m !== memberId);
-      others.forEach((mid) => {
-        setTimeout(() => {
-          if (packet.remaining > 0 && Math.random() < 1) attemptGrab(group, packet.id, mid);
-        }, randomMs(5000, 120000));
-      });
-      // 过期检查
-      setTimeout(() => expireGrabPacket(group, packet.id), 24 * 60 * 60 * 1000);
-    };
-    // 主动会话定时器：群聊开启后按间隔 80% 概率随机一角色发起对话
-    const startGroupChatTimer = (group) => {
-      if (group._chatTimer) return;
-      const loop = () => {
-        const g = sessions.value.find((x) => x.id === group.id);
-        if (!g || g.type !== 'group') return;
-        if (!g.groupChatEnabled) {
-          // 开关关闭，稍后再试（不自循环，靠开关切换时重启）
-          group._chatTimer = null;
-          return;
-        }
-        const interval = (g.groupChatInterval || 30) * 60 * 1000;
-        group._chatTimer = setTimeout(() => {
-          const cur = sessions.value.find((x) => x.id === group.id);
-          if (cur && cur.groupChatEnabled && Math.random() < 0.8) {
-            triggerGroupChat(cur);
-          }
-          loop();
-        }, interval);
-      };
-      loop();
-    };
-    // 主动会话：随机一角色发起对话，其他角色 70% 回复
-const triggerGroupChat = (group) => {
-  const members = group.members || [];
-  if (!members.length) return;
-  // 只从在线成员中选发起者
-  const onlineMembers = members.filter(mid => isMemberOnline(group.id, mid));
-  if (!onlineMembers.length) return;
-  const starter = onlineMembers[Math.floor(Math.random() * onlineMembers.length)];
-  groupMemberReply(group, starter, 'group');
-  // 其他在线成员 70% 回复
-  onlineMembers.forEach((m) => {
-    if (m === starter) return;
-    if (Math.random() < 0.7) groupMemberReply(group, m, 'group');
-  });
-};
-
-    // 切换主动会话开关并启停定时器
-    const toggleGroupChat = () => {
-      const g = currentSession.value;
-      if (!g || g.type !== 'group') return;
-      g.groupChatEnabled = !g.groupChatEnabled;
-      if (g.groupChatEnabled) startGroupChatTimer(g);
-      else if (g._chatTimer) { clearTimeout(g._chatTimer); g._chatTimer = null; }
-      debouncedSave();
-    };
+    // 群聊角色抢红包 / 主动会话 / 开关 三个函数已删除（B118：群聊功能下线）
     // 用户抢红包（直接抢，不排队）
     const userGrabPacket = (packetId) => {
       const g = currentSession.value;
@@ -24622,6 +25173,8 @@ const fillDefaultTagBoxes = async () => {
 if (stored) {
     if (Array.isArray(stored.sessions)) {
         stored.sessions = stored.sessions.filter(x => x && typeof x === 'object' && x.id);
+        // 群聊功能已移除：旧档里的群聊会话直接丢弃（老板拍板"群聊缓存删掉就行"）
+        stored.sessions = stored.sessions.filter(x => x.type !== 'group');
         stored.sessions.forEach(s => {
             if (Array.isArray(s.messages)) s.messages = s.messages.filter(m => m && typeof m === 'object');
         });
@@ -24631,6 +25184,13 @@ if (stored) {
         // 专注（番茄钟/山林）已移除：清掉旧存档里的入口
         stored.settings.apps = stored.settings.apps.filter(x => x.view !== 'focus');
     }
+    // 群聊专属的旧设置/缓存一并清掉，别留在存档里
+    try {
+        if (stored.settings) {
+            delete stored.settings.groupChatProb;   // 万一有残留
+        }
+        if (stored.groupPackets) delete stored.groupPackets;
+    } catch (e) {}
 }
             if (stored) {
 if (stored.freeComposeSettingsMap) {
@@ -24885,6 +25445,9 @@ if (stored.mutedMembers) {
 if (stored.dictSpellSettingsMap) {
     Object.assign(dictSpellSettingsMap, stored.dictSpellSettingsMap);
 }
+if (stored.jaBrushedMap) {
+    Object.assign(jaBrushedMap, stored.jaBrushedMap);
+}
 if (stored.money.installment) {
     Object.assign(money.installment, stored.money.installment);
 }
@@ -24907,8 +25470,7 @@ if (stored.money.installment) {
             if (!currentSessionId.value) {
                 const vis = visibleSessions.value;
                 if (vis.length) currentSessionId.value = vis[Math.floor(Math.random() * vis.length)].id;
-            }
-            updateUnread();
+            }            updateUnread();
             applyCSS();
             if (settings.soundEnabled)
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -24942,24 +25504,13 @@ try { startChattyBackstageTimer(); } catch (e) {}
             sessions.value.forEach((s) => {
                 if (s.type !== 'group') startIncomingTimer(s);
                 startRedpacketTimer(s);
-                if (s.type === 'group') {
-                    startGroupRoleTimer(s);
-                    if (s.groupChatEnabled) startGroupChatTimer(s);
-                }
             });
 
             // ===== 每日系统检查 =====
             try { runDailyCheck(); } catch (e) {}
             try { setInterval(runDailyCheck, 60 * 1000); } catch (e) {}
 
-// ===== 群成员在线状态定时器（每5秒更新） =====
-try {
-  // 先初始化所有群的成员状态
-  sessions.value.forEach(s => { if (s.type === 'group') initGroupMemberStatus(s); });
-  setInterval(() => {
-    try { toggleMemberStatus(); } catch (e) {}
-  }, 5000);
-} catch (e) {}
+// 群成员在线状态定时器已移除（B114：群聊功能下线）
 
             // ===== 投票过期检查（每分钟） =====
             try {
@@ -25324,12 +25875,7 @@ moneySubTab,
       openGrabPacket,
       sendGrabPacket,
       packetCountOf,
-      startGroupRoleTimer,
-      triggerGroupRoleRedpacket,
       userGrabPacket,
-      toggleGroupChat,
-      startGroupChatTimer,
-      triggerGroupChat,
       toast,
       boardMessages,
       boardWriteShow,
@@ -25449,11 +25995,8 @@ moneySubTab,
         getOptionPercent,
         getMemberName,
 groupMemberStatus,
-initGroupMemberStatus,
 isMemberOnline,
-toggleMemberStatus,
 groupOnlineInfo,
-openGroupPat,
 patTarget,
 pollFilter,
 resetPollFilter,
@@ -25575,8 +26118,7 @@ isMuted,
 // 消息工具栏
       activeMsgId, toggleMsgToolbar, closeMsgToolbar,
       msgMenuCopy2, msgMenuQuote2, msgMenuRetract2, msgMenuDelete2,
-getGroupFreeComposeSettings, triggerGroupFreeCompose, tryGroupGrabUserMessage,tryGroupGrabUserMessage,
-      saveGroupFreeComposedSentence,
+getGroupFreeComposeSettings,
 // P2-b 撤回
       getRetractSettings, retractSentence,  toggleRetractExpand,openMuteDialog,retractExpandedIds,retractContents, retractLabel,showRetractModeHelp, showRetractMethodHelp,
 // 回复设置（全局）
@@ -25632,6 +26174,35 @@ visibleGroups,
 getPublicCards,
 getPublicTexts,
 dictSpellSettingsMap,
+playOn,
+togglePlay,
+playOpen,
+togglePlayOpen,
+uiLayoutNow,
+uiCardClass,
+uiCardStyle,
+uiAvatarClass,
+uiNameClass,
+uiBadgeClass,
+PLAY_KEYS,
+PLAY_LABELS,
+settingsPanelTab,
+getJaBrushedSettings,
+jaNewReading,
+jaNewChars,
+jaBulkText,
+jaBulkMsg,
+addOnyomiFromInput,
+importOnyomiBulk,
+_energy,
+_systemPulse,
+romajiToKana,
+onyomiReadings,
+onyomiList,
+_onyomiList,
+_onyomiReadings,
+addOnyomi,
+removeOnyomi,
 getDictSpellSettings,
 drawQuotesFromDict,
 splitByDict,
