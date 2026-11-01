@@ -1735,6 +1735,36 @@ body { color: var(--color-text); }
                                         </button>
                                     </div>
                                 </div>
+                                <!-- ===== 手机推送（B123）===== -->
+                                <div>
+                                    <div class="text-[12px] text-muted tracking-widest mb-2">手机推送</div>
+                                    <div class="bg-bg/50 rounded-xl p-3 space-y-2.5 border border-border/30">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[13px]">页面在后台时推到手机</span>
+                                            <button @click="settings.pushEnabled = !settings.pushEnabled; debouncedSave();"
+                                                    class="w-10 h-5 rounded-full relative"
+                                                    :class="settings.pushEnabled ? 'bg-text' : 'bg-border'">
+                                                <div class="absolute top-1 left-1 w-3 h-3 bg-surface rounded-full transition-transform"
+                                                     :class="settings.pushEnabled ? 'translate-x-5' : 'translate-x-0'"></div>
+                                            </button>
+                                        </div>
+                                        <input v-model="settings.pushUrl" @change="debouncedSave()"
+                                               type="text" placeholder="https://api.day.app/你的KEY"
+                                               class="w-full px-3 py-2 rounded-lg bg-surface border border-border text-[12px] outline-none"
+                                               style="color: var(--color-text);">
+                                        <div class="flex gap-2">
+                                            <button @click="testPush()"
+                                                    class="flex-1 py-1.5 rounded-lg border border-border text-[12px]">测试推送</button>
+                                            <a href="https://apps.apple.com/app/bark-customed-notifications/id1403753865"
+                                               target="_blank" rel="noopener"
+                                               class="flex-1 py-1.5 rounded-lg border border-border text-[12px] text-center">下载 Bark</a>
+                                        </div>
+                                        <div class="text-[11px] text-muted/70 leading-relaxed">
+                                            装 Bark App 后复制它给你的地址（含 KEY）填上面。<br>
+                                            只有页面还在后台运行时才会推；被系统杀掉就不行了。
+                                        </div>
+                                    </div>
+                                </div>
                                 <!-- ===== 需求 B：TA 的语言（回应字卡用）===== -->
                                 <div v-if="currentSession && currentSession.type !== 'group'">
                                     <div class="text-[13px] text-muted tracking-widest mb-2">TA 的语言</div>
@@ -14892,6 +14922,12 @@ const newMsg = {
           _showAppBanner(target, content || (isImage ? '[图片]' : ''));
         }
       } catch (e) {}
+      // 页面在后台 / 锁屏时，推到手机（Bark）
+      try {
+        if (sender !== 'me' && sender !== 'system' && !opts.blank && document.hidden) {
+          _pushToPhone(target, content || (isImage ? '[图片]' : ''));
+        }
+      } catch (e) {}
       // 打字机逐字动画已移除（移动端易卡）：消息直接完整显示
       newMsg.content = content;
       // 消息 DOM 新增后重绘 lucide 图标
@@ -21538,6 +21574,29 @@ const availableExportBoxes = computed(() => {
       if (_appBannerTimer) clearTimeout(_appBannerTimer);
       _appBannerTimer = setTimeout(() => { appBanner.show = false; }, 3400);
     };
+    // ===== 手机推送（B123）：页面不在前台时，把消息推到手机 =====
+    // 用 Bark（iOS 免费 App，公网 API），不需要自己搭服务器
+    // 地址形如：https://api.day.app/你的KEY
+    const _pushToPhone = (s, text) => {
+      try {
+        if (!settings.pushEnabled) return;
+        const base = (settings.pushUrl || '').trim().replace(/\/+$/, '');
+        if (!base) return;
+        const title = (s && s.name) ? s.name : '京京';
+        const body = String(text || '').replace(/<[^>]+>/g, '').slice(0, 100) || '发来一条消息';
+        const url = base + '/' + encodeURIComponent(title) + '/' + encodeURIComponent(body)
+          + '?group=' + encodeURIComponent('聊斋') + '&level=active';
+        fetch(url, { mode: 'no-cors' }).catch(() => {});
+      } catch (e) {}
+    };
+    const testPush = () => {
+      const base = (settings.pushUrl || '').trim().replace(/\/+$/, '');
+      if (!base) { showToast('先填 Bark 地址'); return; }
+      const url = base + '/' + encodeURIComponent('测试') + '/' + encodeURIComponent('推送接通了');
+      fetch(url, { mode: 'no-cors' })
+        .then(() => showToast('已发送，看手机通知'))
+        .catch(() => showToast('发送失败，检查地址'));
+    };
     const closeAppBanner = () => {
       appBanner.show = false;
       if (_appBannerTimer) { clearTimeout(_appBannerTimer); _appBannerTimer = null; }
@@ -25793,6 +25852,7 @@ CHATTY_KEYBOARD_ROWS, chattyKeyActive, CHATTY_PINYIN_BY_INITIAL,CHATTY_PUNCT_ROW
       rejectCall,
       callMinimized,
       appBanner, openAppBanner, closeAppBanner, appBannerTouch, onBannerTouchStart, onBannerTouchMove, onBannerTouchEnd,
+testPush,
       callSize,
       callSizes,
       callWindowStyle,
