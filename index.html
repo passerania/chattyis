@@ -48,7 +48,7 @@
     <script src="./lib/lucide.min.js"></script>
     <script src="./lib/localforage.min.js"></script>
     <script src="./lib/Sortable.min.js"></script>
-    <!-- html2canvas 改成点截图时才动态加载（B131：首屏省 199KB） -->
+    <script src="./lib/html2canvas.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -710,6 +710,8 @@ body { color: var(--color-text); }
 
      </style>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.css">
+    <style id="custom-css-injection"></style>
 </head>
 <body class="flex justify-center items-center h-screen w-screen transition-colors duration-300">
     <!-- 启动挡板：盖住冷启动脏快照，纯白底+白云，约 1 秒后自动淡出 -->
@@ -1034,7 +1036,11 @@ body { color: var(--color-text); }
                     </div>
                 </div>
 </div>
-                                    <!-- 音乐卡已移除（B131：网易云播放器不再使用） -->
+                                    <!-- 音乐卡 -->
+            <div class="rounded-2xl p-3 bg-white/40 border border-border/30">
+                <div class="text-[11px] tracking-widest text-muted/70 mb-2 px-1">OUR LITTLE SOUNDTRACK</div>
+                <div class="netease-mini-player" data-id="14273792576" data-server="netease" data-type="playlist"></div>
+            </div>
 <!-- ===== 大div不要删 ===== -->
 </div>
                 <!-- ===== 第 3 页：软件 ===== -->
@@ -8232,6 +8238,7 @@ body { color: var(--color-text); }
     </div>
 </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.js"></script>
     <script>
 if (typeof Vue === 'undefined') {
   document.body.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;color:#333;line-height:1.8;text-align:center">'
@@ -16615,24 +16622,6 @@ const opts = { marked, session: cur };
 
     const _captureAreaEl = () => document.getElementById('capture-area');
 
-    // html2canvas 按需加载（B131）：只有第一次点截图才去拉这 199KB
-    let _h2cLoading = null;
-    const _ensureH2C = () => {
-        if (window.html2canvas) return Promise.resolve();
-        if (_h2cLoading) return _h2cLoading;
-        _h2cLoading = new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = './lib/html2canvas.min.js';
-            s.onload = () => resolve();
-            s.onerror = () => {
-                _h2cLoading = null;
-                reject(new Error('html2canvas 加载失败'));
-            };
-            document.head.appendChild(s);
-        });
-        return _h2cLoading;
-    };
-
     // iOS Safari 的 canvas 单边上限约 4096，超出直接出白图/失败
     // 所以按内容高度反推缩放：短内容保持清晰，长内容自动降清（B124）
     const SHOT_MAX_SIDE = 4000;
@@ -16641,11 +16630,9 @@ const opts = { marked, session: cur };
       return Math.max(0.35, Math.min(1.2, SHOT_MAX_SIDE / longest));
     };
 
-    const _renderCapture = async (extra = {}) => {
+    const _renderCapture = (extra = {}) => {
       const el = _captureAreaEl();
       if (!el) return Promise.reject(new Error('no capture area'));
-      // 首次截图时再加载 html2canvas（B131）
-      await _ensureH2C();
       // 没显式给 scale 时，按裁剪高度自动算，避免超出 canvas 上限
       const merged = Object.assign({}, extra);
       if (merged.scale === undefined) {
