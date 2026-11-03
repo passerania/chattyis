@@ -48,7 +48,7 @@
     <script src="./lib/lucide.min.js"></script>
     <script src="./lib/localforage.min.js"></script>
     <script src="./lib/Sortable.min.js"></script>
-    <script src="./lib/html2canvas.min.js"></script>
+    <!-- html2canvas 改成点截图时才动态加载（B131：首屏省 199KB） -->
 
     <script>
         tailwind.config = {
@@ -138,23 +138,21 @@ body { color: var(--color-text); }
            注意：content-visibility 会裁剪溢出内容，导致气泡外侧的竖排工具栏被裁掉，
            所以这里去掉它（已有 chatRenderLimit=50 限制渲染条数，性能足够） */
 
-        /* 强化气泡玻璃拟态，稳定表现 */
+        /* 气泡：B128 去掉 backdrop-filter（iOS 上模糊会渲染成一条灰色长条），改用高不透明度底 */
                         .msg-bubble {
             display: inline-block;
             padding: 8px 12px;
             border-radius: 20px;
             color: var(--color-text);
             position: relative;
-            background: rgba(255,255,255,0.5);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(255,255,255,0.88);
             line-height: 1.45;
             border: 1px solid rgba(255,255,255,0.6);
             box-shadow: 0 2px 6px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
             word-wrap: break-word; max-width: 100%;
         }
         .dark .msg-bubble {
-            color: var(--color-text); background: rgba(30,30,35,0.55);
+            color: var(--color-text); background: rgba(30,30,35,0.88);
             border: 1px solid rgba(255,255,255,0.12);
             box-shadow: 0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
         }
@@ -249,7 +247,7 @@ body { color: var(--color-text); }
         .intro-text { font-family: 'Noto Serif SC', serif; font-size: 22px; font-weight: 300; letter-spacing: 0.4em; opacity: 0; animation: introReveal 3s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
         @keyframes introReveal { 0% { opacity: 0; transform: translateY(12px); } 25% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
 
-        .glass-header { background: rgba(var(--color-surface-rgb), 0.55); backdrop-filter: blur(10px); border-bottom: 1px solid var(--color-border); }
+        .glass-header { background: rgba(var(--color-surface-rgb), 0.97); border-bottom: 1px solid var(--color-border); }
 
         /* ===== 视觉方案系统 =====
            主题管颜色，视觉方案管"卡片透明度 / 模糊 / 边框"，两者可叠加。
@@ -698,13 +696,11 @@ body { color: var(--color-text); }
         line-height: 28px;
     }
 
-    /* ===== 性能模式（B126）：关掉最贵的模糊/阴影/动画 ===== */
+    /* ===== 性能模式（B126）：关掉最贵的模糊 ===== */
+    /* B128：不再全局压 animation-duration（会把「正在输入」的三点动画压成抽搐） */
     body.perf-mode * {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        animation-duration: 0.001s !important;
-        animation-delay: 0s !important;
-        transition-duration: 0.05s !important;
     }
     body.perf-mode .paper-shadow,
     body.perf-mode .home-card-highlight {
@@ -714,8 +710,6 @@ body { color: var(--color-text); }
 
      </style>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.css">
-    <style id="custom-css-injection"></style>
 </head>
 <body class="flex justify-center items-center h-screen w-screen transition-colors duration-300">
     <!-- 启动挡板：盖住冷启动脏快照，纯白底+白云，约 1 秒后自动淡出 -->
@@ -1040,11 +1034,7 @@ body { color: var(--color-text); }
                     </div>
                 </div>
 </div>
-                                    <!-- 音乐卡 -->
-            <div class="rounded-2xl p-3 bg-white/40 border border-border/30">
-                <div class="text-[11px] tracking-widest text-muted/70 mb-2 px-1">OUR LITTLE SOUNDTRACK</div>
-                <div class="netease-mini-player" data-id="14273792576" data-server="netease" data-type="playlist"></div>
-            </div>
+                                    <!-- 音乐卡已移除（B131：网易云播放器不再使用） -->
 <!-- ===== 大div不要删 ===== -->
 </div>
                 <!-- ===== 第 3 页：软件 ===== -->
@@ -1632,11 +1622,11 @@ body { color: var(--color-text); }
                     <div aria-hidden="true"
                          class="h-[18px] -mt-1 mb-1 rounded-full select-none"
                          style="pointer-events:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;"></div>
-                    <!-- 输入中：底部输入框上方圆条 + 三个跳动的点；横线在圆条下方（跟随当前会话独立） -->
+                    <!-- 输入中：只留一个干净的胶囊（B129：去掉了那条会糊成横条的边框/阴影） -->
                     <div v-if="currentSession && typingSessions[currentSession.id]" class="flex flex-col">
-                        <div class="h-11 flex items-center px-1">
+                        <div class="h-9 flex items-center px-1 mb-1">
                             <transition name="navfade">
-                                <div class="inline-flex items-center gap-2 rounded-full bg-surface/95 border border-border/50 shadow-sm px-4 py-2">
+                                <div class="inline-flex items-center gap-2 rounded-full bg-surface border border-border/40 px-3.5 py-1.5">
                                     <span class="text-[13px] text-muted tracking-widest">输入中</span>
                                     <span class="flex gap-[4px] items-center">
                                         <span class="typing-dot" style="background: var(--nav-icon-color);"></span>
@@ -1646,7 +1636,6 @@ body { color: var(--color-text); }
                                 </div>
                             </transition>
                         </div>
-                        <div class="border-t border-border/30 mb-2.5"></div>
                     </div>
                     <div v-if="pendingQuote" class="mb-2 flex items-center gap-2 bg-surface/80 border border-border/60 rounded-xl px-3 py-2">
                         <div class="flex-1 min-w-0">
@@ -2377,6 +2366,78 @@ body { color: var(--color-text); }
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
                                               :class="playOn('card') ? 'bg-text text-white' : 'text-muted'">拼音选字卡</span>
                                     </button>
+                                </div>
+                                <!-- 涂鸦（B130） -->
+                                <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
+                                     :class="playOpen['draw'] ? 'rounded-b-none border-b-0' : ''">
+                                    <button @click="togglePlay('draw')" class="flex-1 text-left"
+                                            :title="playOn('draw') ? '点一下＝关闭这个玩法' : '点一下＝开启这个玩法'">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[14px] transition-colors"
+                                              :class="playOn('draw') ? 'bg-text text-white' : 'text-muted'">涂鸦</span>
+                                    </button>
+                                    <button @click="togglePlayOpen('draw')" class="p-1 text-muted hover:text-text transition-transform"
+                                            :class="playOpen['draw'] ? 'rotate-90' : ''"
+                                            :title="playOpen['draw'] ? '收起设置' : '展开设置'">
+                                        <i data-lucide="chevron-right" class="w-4 h-4 stroke-[1.5]"></i>
+                                    </button>
+                                </div>
+                                <!-- 涂鸦参数 -->
+                                <div v-if="currentSession && currentSession.type !== 'group' && playOpen['draw']" class="mb-1.5">
+                                    <div class="bg-bg/50 rounded-b-xl p-3 space-y-3 border border-t-0 border-border/30">
+                                        <div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>触发概率</span>
+                                                <span>{{ Math.round((getDrawSettings(currentSession.id).prob || 0) * 100) }}%</span>
+                                            </div>
+                                            <input type="range" min="0" max="40"
+                                                   :value="(getDrawSettings(currentSession.id).prob || 0) * 100"
+                                                   @input="e => { getDrawSettings(currentSession.id).prob = e.target.value / 100; debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>自由画最多几笔</span>
+                                                <span>{{ getDrawSettings(currentSession.id).maxStrokes || 6 }}</span>
+                                            </div>
+                                            <input type="range" min="1" max="12"
+                                                   :value="getDrawSettings(currentSession.id).maxStrokes || 6"
+                                                   @input="e => { getDrawSettings(currentSession.id).maxStrokes = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>拼单词 最少字数</span>
+                                                <span>{{ getDrawSettings(currentSession.id).wordMin || 2 }}</span>
+                                            </div>
+                                            <input type="range" min="1" max="8"
+                                                   :value="getDrawSettings(currentSession.id).wordMin || 2"
+                                                   @input="e => { getDrawSettings(currentSession.id).wordMin = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>拼单词 最多字数</span>
+                                                <span>{{ getDrawSettings(currentSession.id).wordMax || 5 }}</span>
+                                            </div>
+                                            <input type="range" min="1" max="12"
+                                                   :value="getDrawSettings(currentSession.id).wordMax || 5"
+                                                   @input="e => { getDrawSettings(currentSession.id).wordMax = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>不满意重画次数</span>
+                                                <span>{{ getDrawSettings(currentSession.id).retry ?? 2 }}</span>
+                                            </div>
+                                            <input type="range" min="0" max="4"
+                                                   :value="getDrawSettings(currentSession.id).retry ?? 2"
+                                                   @input="e => { getDrawSettings(currentSession.id).retry = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div class="text-[11px] text-muted/60 leading-relaxed px-1">
+                                            所有内部决策（画单词/自由画、敲错字母、退格、继续、工具/粗细/空心）都走「阈值骰 + 落入骰」，会受能量偏置影响。
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- 吐槽 -->
                                 <div class="flex items-center justify-between px-3 py-2.5 mt-1.5 rounded-xl bg-bg/50 border border-border/30"
@@ -8171,7 +8232,6 @@ body { color: var(--color-text); }
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.js"></script>
     <script>
 if (typeof Vue === 'undefined') {
   document.body.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;color:#333;line-height:1.8;text-align:center">'
@@ -9631,6 +9691,168 @@ const sendSystemDrawing = async (sess, mode) => {
     }
     const imgData = await generateSystemDrawing(mode, bgImg);
     sendMessage('them', '', { image: imgData, session: sess });
+};
+
+// ===== 涂鸦玩法（B130）：所有决策走 _rollJudgment（受能量影响）=====
+const DRAW_DEFAULTS = { prob: 0.06, maxStrokes: 6, wordMin: 2, wordMax: 5, retry: 2 };
+const drawSettingsMap = reactive({});
+const getDrawSettings = (id) => {
+    const key = id || '__global';
+    if (!drawSettingsMap[key] || typeof drawSettingsMap[key] !== 'object') {
+        drawSettingsMap[key] = JSON.parse(JSON.stringify(DRAW_DEFAULTS));
+    }
+    return drawSettingsMap[key];
+};
+
+// 英语键盘上「手滑会打到」的邻居键（用于模拟打错字母）
+const DRAW_NEAR_KEYS = {
+    a: 'sqzw', b: 'vgn', c: 'xvd', d: 'sfc', e: 'wrds', f: 'dgtr', g: 'fhyt',
+    h: 'gjuy', i: 'uojk', j: 'hkiu', k: 'jlio', l: 'kop', m: 'nj', n: 'bmhj',
+    o: 'ipkl', p: 'ol', q: 'wa', r: 'edft', s: 'adwe', t: 'rfgy', u: 'yijk',
+    v: 'cbf', w: 'qase', x: 'zcsd', y: 'tugh', z: 'asx',
+};
+const DRAW_COLORS = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db', '#9b59b6', '#e91e63', '#00bcd4', '#ff6f00'];
+const _drawPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const _drawLetter = () => {
+    const s = 'abcdefghijklmnopqrstuvwxyz';
+    return s[Math.floor(Math.random() * s.length)];
+};
+const _drawSlip = (ch) => {
+    const near = DRAW_NEAR_KEYS[ch];
+    return near ? near[Math.floor(Math.random() * near.length)] : _drawLetter();
+};
+
+// 骰一笔：工具 → 大小 → 颜色 → 空心/实心（全部走 _rollJudgment）
+const _rollStroke = () => {
+    const tools = ['freehand', 'line', 'circle', 'rect'];
+    const tool = tools[Math.floor(Math.random() * tools.length)];
+    const color = _drawPick(DRAW_COLORS);
+    // 粗细：细 / 中 / 粗 各一次判定
+    const width = _rollJudgment(34, 54) ? 2 : (_rollJudgment(24, 44) ? 5 : 9);
+    const fill = !_rollJudgment(32, 52);          // 不通过 → 实心
+    if (tool === 'freehand') {
+        const x0 = 40 + Math.random() * 320, y0 = 40 + Math.random() * 320;
+        const pts = [[x0, y0]];
+        for (let i = 0; i < 4; i++) {
+            pts.push([pts[i][0] + (Math.random() * 80 - 40), pts[i][1] + (Math.random() * 80 - 40)]);
+        }
+        return { tool, color, width, fill, x1: x0, y1: y0, pts };
+    }
+    if (tool === 'circle') {
+        return { tool, color, width, fill, x1: 80 + Math.random() * 240, y1: 80 + Math.random() * 240, r: 20 + Math.random() * 70 };
+    }
+    if (tool === 'rect') {
+        return { tool, color, width, fill, x1: 60 + Math.random() * 220, y1: 60 + Math.random() * 220, w: 40 + Math.random() * 120, h: 40 + Math.random() * 120 };
+    }
+    return { tool: 'line', color, width, fill, x1: 60 + Math.random() * 280, y1: 60 + Math.random() * 280, x2: 60 + Math.random() * 280, y2: 60 + Math.random() * 280 };
+};
+
+// 把「骰出来的方案」画成图
+const _drawCanvasFromChain = (plan) => new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 400, 400);
+    if (plan.kind === 'word') {
+        ctx.textBaseline = 'middle';
+        let x = 40 + Math.random() * 40;
+        const y = 200 + (Math.random() * 80 - 40);
+        plan.letters.forEach((L) => {
+            const size = 24 + Math.random() * 22;
+            ctx.save();
+            ctx.translate(x, y + (Math.random() * 16 - 8));
+            ctx.rotate((Math.random() - 0.5) * 0.35);
+            ctx.font = (L.bold ? 'bold ' : '') + size + 'px "Comic Sans MS", cursive, sans-serif';
+            ctx.fillStyle = L.color;
+            ctx.fillText(L.ch, 0, 0);
+            ctx.restore();
+            x += size * 0.85 + Math.random() * 6;
+        });
+    } else {
+        plan.strokes.forEach((st) => {
+            ctx.save();
+            ctx.strokeStyle = st.color;
+            ctx.fillStyle = st.color;
+            ctx.lineWidth = st.width;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            if (st.tool === 'line') {
+                ctx.moveTo(st.x1, st.y1);
+                ctx.lineTo(st.x2, st.y2);
+                ctx.stroke();
+            } else if (st.tool === 'circle') {
+                ctx.arc(st.x1, st.y1, st.r, 0, Math.PI * 2);
+                if (st.fill) ctx.fill(); else ctx.stroke();
+            } else if (st.tool === 'rect') {
+                ctx.rect(st.x1, st.y1, st.w, st.h);
+                if (st.fill) ctx.fill(); else ctx.stroke();
+            } else {
+                ctx.moveTo(st.x1, st.y1);
+                st.pts.forEach((p) => ctx.lineTo(p[0], p[1]));
+                ctx.stroke();
+            }
+            ctx.restore();
+        });
+    }
+    resolve(canvas.toDataURL('image/png'));
+});
+
+// 涂鸦主入口：骰子链 → 出图 → 发送
+const triggerDrawingPlay = async (sess) => {
+    const s = sess || currentSession.value;
+    if (!s || s.type === 'group') return false;
+    if (!playOn('draw')) return false;
+    const cfg = getDrawSettings(s.id);
+    if (!_rollEntry(cfg.prob)) return false;
+
+    const retry = Math.max(0, Number(cfg.retry) || 0);
+    let plan = null;
+    for (let attempt = 0; attempt <= retry; attempt++) {
+        // ① 骰：画单词（不通过）还是自由画（通过）
+        const wantFree = _rollJudgment(28, 46);
+        if (!wantFree) {
+            // ---- 拼单词：逐字母敲 ----
+            const wMin = Math.max(1, Number(cfg.wordMin) || 2);
+            const wMax = Math.max(wMin, Number(cfg.wordMax) || 5);
+            const total = wMin + Math.floor(Math.random() * (wMax - wMin + 1));
+            const letters = [];
+            for (let i = 0; i < total; i++) {
+                let ch = _drawLetter();
+                // ② 骰：这个键敲对了吗？不通过 → 手滑打到邻居键
+                if (!_rollJudgment(24, 44)) ch = _drawSlip(ch);
+                // ③ 骰：退格吗？通过 → 删掉上一个再重敲
+                if (letters.length && _rollJudgment(18, 34)) {
+                    letters.pop();
+                    i--;
+                    continue;
+                }
+                // ④ 骰：继续敲吗？不通过 → 就此打住
+                if (letters.length && !_rollJudgment(28, 48)) break;
+                letters.push({
+                    ch,
+                    color: _drawPick(DRAW_COLORS),
+                    bold: _rollJudgment(40, 60),
+                });
+            }
+            plan = letters.length ? { kind: 'word', letters } : null;
+        } else {
+            // ---- 自由画：骰几笔，每笔再骰工具/大小/颜色/填充 ----
+            const maxS = Math.max(1, Number(cfg.maxStrokes) || 6);
+            const n = 1 + Math.floor(Math.random() * maxS);
+            const strokes = [];
+            for (let i = 0; i < n; i++) strokes.push(_rollStroke());
+            plan = { kind: 'free', strokes };
+        }
+        // ⑤ 骰：满意吗？通过就发，不通过就整套重来
+        if (plan && _rollJudgment(40, 62)) break;
+        plan = null;
+    }
+    if (!plan) return false;
+    const img = await _drawCanvasFromChain(plan);
+    sendMessage('them', '', { image: img, session: s, drawing: true });
+    return true;
 };
 
     const currentView = ref('home');
@@ -15865,10 +16087,11 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
 
 // ===== 回复玩法（手法）独立开关（B96）=====
 // 老板拍板：取消旧的「方法0/1/2/4」那组开关，改成按玩法开关；全默认开启
-const PLAY_KEYS = ['main', 'concat', 'compose', 'retract', 'pinyin', 'card', 'ja', 'dict', 'tease'];
+const PLAY_KEYS = ['main', 'concat', 'compose', 'retract', 'pinyin', 'card', 'ja', 'dict', 'tease', 'draw'];
 const PLAY_LABELS = {
     main: '翻页选字卡', concat: '拼接回复', compose: '梦角自由造句', retract: '撤回',
     pinyin: '拼音自由打字', card: '拼音选字卡', ja: '日语笔谈', dict: '词典拼字', tease: '吐槽',
+    draw: '涂鸦',
 };
 // 玩法开关：按会话独立（B125：以前存在全局 settings 里，改一个会话会连累所有会话）
 // 读取顺序：当前会话自己的设置 → 全局默认 → 默认开
@@ -16013,13 +16236,14 @@ if (cur.type !== 'group' && playOn('ja') && triggerJaBrushed(cur)) {
             }
         }
 
-        // ===== 私聊涂鸦：6% 概率发送涂鸦 =====
-        if (cur.type !== 'group' && Math.random() < 0.06) {
-            const modes = ['letters', 'shapes', 'freehand'];
-            const mode = modes[Math.floor(Math.random() * modes.length)];
-            _pushAct(() => sendSystemDrawing(cur, mode), RTH.drawMs());
-            _runReplyPlan(cur, plan, 0);
-            return;
+        // ===== 私聊涂鸦（B130）：走玩法列表「涂鸦」+ 骰子链（受能量影响）=====
+        if (cur.type !== 'group' && playOn('draw')) {
+            const _drawCfg = getDrawSettings(cur.id);
+            if (_rollEntry(_drawCfg.prob)) {
+                _pushAct(() => triggerDrawingPlay(cur), RTH.drawMs());
+                _runReplyPlan(cur, plan, 0);
+                return;
+            }
         }
 
 // ===== 吐槽触发 =====
@@ -16391,6 +16615,24 @@ const opts = { marked, session: cur };
 
     const _captureAreaEl = () => document.getElementById('capture-area');
 
+    // html2canvas 按需加载（B131）：只有第一次点截图才去拉这 199KB
+    let _h2cLoading = null;
+    const _ensureH2C = () => {
+        if (window.html2canvas) return Promise.resolve();
+        if (_h2cLoading) return _h2cLoading;
+        _h2cLoading = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = './lib/html2canvas.min.js';
+            s.onload = () => resolve();
+            s.onerror = () => {
+                _h2cLoading = null;
+                reject(new Error('html2canvas 加载失败'));
+            };
+            document.head.appendChild(s);
+        });
+        return _h2cLoading;
+    };
+
     // iOS Safari 的 canvas 单边上限约 4096，超出直接出白图/失败
     // 所以按内容高度反推缩放：短内容保持清晰，长内容自动降清（B124）
     const SHOT_MAX_SIDE = 4000;
@@ -16399,9 +16641,11 @@ const opts = { marked, session: cur };
       return Math.max(0.35, Math.min(1.2, SHOT_MAX_SIDE / longest));
     };
 
-    const _renderCapture = (extra = {}) => {
+    const _renderCapture = async (extra = {}) => {
       const el = _captureAreaEl();
       if (!el) return Promise.reject(new Error('no capture area'));
+      // 首次截图时再加载 html2canvas（B131）
+      await _ensureH2C();
       // 没显式给 scale 时，按裁剪高度自动算，避免超出 canvas 上限
       const merged = Object.assign({}, extra);
       if (merged.scale === undefined) {
@@ -18562,6 +18806,23 @@ const _rollJudgment = (lo = 30, hi = 50) => {
     const fall = Math.random() * 100;
     _energy.E *= 0.9;
     return fall < T;
+};
+
+// ===== 入口骰（B130）：决定「这次要不要走某条系统通道」 =====
+// user 设的概率 = 基准值 p
+//   能量 = 0      → 实际就是 p（默认不折扣 user 的配置）
+//   能量到最大   → 最多 2p（封顶 100%）
+//   能量到最小   → 最少 0
+const _rollEntry = (prob) => {
+    const p = Math.max(0, Math.min(1, Number(prob) || 0));
+    if (p <= 0) return false;
+    if (p >= 1) return true;
+    const bias = _energy.E >= 0
+        ? Math.min(1, _energy.E / ENERGY.MAX)                    //  0 ~ +1
+        : Math.max(-1, _energy.E / Math.abs(ENERGY.MIN));        // -1 ~  0
+    const T = Math.max(0, Math.min(1, p * (1 + bias)));
+    _energy.E *= 0.95;                                            // 用一次衰减
+    return Math.random() < T;
 };
 // 声母按发音部位分组（组内微调 / 跨组跳跃）
 const INITIAL_GROUPS = {
@@ -26422,6 +26683,9 @@ getPublicCards,
 getPublicTexts,
 dictSpellSettingsMap,
 playOn,
+getDrawSettings,
+drawSettingsMap,
+triggerDrawingPlay,
 togglePlay,
 applyPlayTogglesToAll,
 perfModeOn,
