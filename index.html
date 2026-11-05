@@ -48,7 +48,7 @@
     <script src="./lib/lucide.min.js"></script>
     <script src="./lib/localforage.min.js"></script>
     <script src="./lib/Sortable.min.js"></script>
-    <script src="./lib/html2canvas.min.js"></script>
+    <!-- html2canvas 改为点截图时才动态加载（B138：首屏省 199KB） -->
 
     <script>
         tailwind.config = {
@@ -708,9 +708,17 @@ body { color: var(--color-text); }
     }
     body.perf-mode .scanline { display: none !important; }
 
+    /* ===== 卡片放大弹窗（B139）：弹性放大进入 ===== */
+    @keyframes cardModalPop {
+        0% { transform: scale(0.86); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .card-modal-pop {
+        animation: cardModalPop 0.36s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
      </style>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.css">
     <style id="custom-css-injection"></style>
 </head>
 <body class="flex justify-center items-center h-screen w-screen transition-colors duration-300">
@@ -1036,11 +1044,6 @@ body { color: var(--color-text); }
                     </div>
                 </div>
 </div>
-                                    <!-- 音乐卡 -->
-            <div class="rounded-2xl p-3 bg-white/40 border border-border/30">
-                <div class="text-[11px] tracking-widest text-muted/70 mb-2 px-1">OUR LITTLE SOUNDTRACK</div>
-                <div class="netease-mini-player" data-id="14273792576" data-server="netease" data-type="playlist"></div>
-            </div>
 <!-- ===== 大div不要删 ===== -->
 </div>
                 <!-- ===== 第 3 页：软件 ===== -->
@@ -1443,7 +1446,17 @@ body { color: var(--color-text); }
         <div class="w-72 rounded-2xl overflow-hidden shadow-md border border-border/60 bg-surface p-4">
             <div class="text-[11px] tracking-widest text-muted/60 mb-3 text-center">🔮 占卜 · {{ msg.diviDeckLabel || '' }}</div>
             <div class="flex flex-wrap justify-center gap-2 mb-3">
-<div v-for="(c, ci) in (msg.diviCards || [])" :key="ci" class="divi-msg-card">
+<div v-for="(c, ci) in (msg.diviCards || [])" :key="ci" class="divi-msg-card cursor-zoom-in"
+     @click.stop="openCardModal({
+        kind: 'taro',
+        image: '',
+        title: (c.reversed ? '逆位 · ' : '正位 · ') + (c.name || ''),
+        text: (msg.diviReading || msg.diviQuestion || ''),
+        deckLabel: (msg.diviDeckLabel || '塔罗') + (c.reversed ? ' · 逆位' : ' · 正位'),
+        tag: msg.tag ? (msg.tag.type + ' | ' + msg.tag.text) : '',
+        session: { name: currentSession ? currentSession.name : '' },
+        time: msg.timestamp
+     })">
     <div>{{ c.name }}</div>
     <div v-if="c.reversed" class="text-[10px] opacity-60 mt-0.5">逆</div>
 </div>            </div>
@@ -1458,6 +1471,13 @@ body { color: var(--color-text); }
         </div>
     </div>
 
+<!-- 系统记录（B137）：居中、淡色、高透明度，像一条系统提示 -->
+<div v-else-if="msg.type === 'systemNote'" class="flex justify-center mb-4">
+    <div class="px-3 py-1.5 rounded-full text-[12px] text-muted/70 tracking-widest text-center"
+         style="background: var(--color-bg); opacity: 0.85; border: 1px solid var(--color-border);">
+        {{ msg.systemNote }}
+    </div>
+</div>
 <!-- 吐槽卡片 -->
 <div v-else-if="msg.type === 'tease'" class="flex justify-center mb-4 relative"
      @contextmenu.prevent="openMsgMenu(msg, $event)"
@@ -1546,7 +1566,16 @@ body { color: var(--color-text); }
                
                 <!-- 图片消息 -->
                 <div v-if="msg.image" class="relative">
-                    <img :src="msg.image" @load="scrollToBottom" class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain">
+                    <img :src="msg.image" @load="scrollToBottom" @click="openCardModal({
+                            kind: msg.drawing ? 'drawing' : 'image',
+                            image: msg.image,
+                            title: msg.drawing ? '涂鸦' : '',
+                            text: '',
+                            tag: msg.tag ? (msg.tag.type + ' | ' + msg.tag.text) : '',
+                            session: { name: currentSession ? currentSession.name : '' },
+                            time: msg.timestamp
+                        })"
+                         class="max-w-[220px] max-h-[220px] rounded-xl border border-border/40 object-contain cursor-zoom-in">
                     <span v-if="msg.marked" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:1px solid #b45309;box-shadow:0 0 4px rgba(245,158,11,0.6);"></span>
                 </div>
 
@@ -2415,7 +2444,7 @@ body { color: var(--color-text); }
                                                 <span>拼单词 最少字数</span>
                                                 <span>{{ getDrawSettings(currentSession.id).wordMin || 2 }}</span>
                                             </div>
-                                            <input type="range" min="1" max="8"
+                                            <input type="range" min="1" max="20"
                                                    :value="getDrawSettings(currentSession.id).wordMin || 2"
                                                    @input="e => { getDrawSettings(currentSession.id).wordMin = Number(e.target.value); debouncedSave(); }"
                                                    class="w-full" style="accent-color: var(--nav-icon-color);">
@@ -2425,7 +2454,7 @@ body { color: var(--color-text); }
                                                 <span>拼单词 最多字数</span>
                                                 <span>{{ getDrawSettings(currentSession.id).wordMax || 5 }}</span>
                                             </div>
-                                            <input type="range" min="1" max="12"
+                                            <input type="range" min="1" max="20"
                                                    :value="getDrawSettings(currentSession.id).wordMax || 5"
                                                    @input="e => { getDrawSettings(currentSession.id).wordMax = Number(e.target.value); debouncedSave(); }"
                                                    class="w-full" style="accent-color: var(--nav-icon-color);">
@@ -2439,6 +2468,12 @@ body { color: var(--color-text); }
                                                    :value="getDrawSettings(currentSession.id).retry ?? 2"
                                                    @input="e => { getDrawSettings(currentSession.id).retry = Number(e.target.value); debouncedSave(); }"
                                                    class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button @click="triggerDrawingPlay(currentSession, { skipEntry: true })"
+                                                    class="flex-1 py-2 rounded-lg border border-border text-[12px] hover:bg-surface transition-colors">
+                                                试画一张
+                                            </button>
                                         </div>
                                         <div class="text-[11px] text-muted/60 leading-relaxed px-1">
                                             所有内部决策（画单词/自由画、敲错字母、退格、继续、工具/粗细/空心）都走「阈值骰 + 落入骰」，会受能量偏置影响。
@@ -4341,6 +4376,83 @@ body { color: var(--color-text); }
                         </template>
                         <!-- ===== Tab: 互动设置 ===== -->
                         <template v-if="settingsTab === '互动设置'">
+                            <!-- ===== 已读与沉默（B145）：两个 base 可调 ===== -->
+                            <section class="mb-3">
+                                <h3 @click="toggleSection('已读与沉默')" class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>已读与沉默</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('已读与沉默') ? 'rotate-180' : ''"></i>
+                            </h3>
+                                <div v-if="isSectionOpen('已读与沉默')" class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div class="p-3.5 space-y-3">
+                                        <div>
+                                            <div class="text-[13px] text-text mb-0.5">已读的快慢</div>
+                                            <div class="text-[11px] text-muted/70 leading-relaxed mb-1.5">
+                                                越高越容易已读。每 1.5 秒骰一次，没中就继续等。
+                                            </div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>base</span>
+                                                <span>{{ settings.readBase ?? 100 }}（约 {{ Math.round((settings.readBase ?? 100) / 2) }}%/次）</span>
+                                            </div>
+                                            <input type="range" min="10" max="100" step="5"
+                                                   :value="settings.readBase ?? 100"
+                                                   @input="e => { settings.readBase = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div style="border-top: 1px solid var(--color-border); padding-top: 10px;">
+                                            <div class="text-[13px] text-text mb-0.5">已读不回的多少</div>
+                                            <div class="text-[11px] text-muted/70 leading-relaxed mb-1.5">
+                                                越高越容易「看了但不回」。
+                                            </div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>base</span>
+                                                <span>{{ settings.silentBase ?? 30 }}（约 {{ Math.round((settings.silentBase ?? 30) / 2) }}% 不回）</span>
+                                            </div>
+                                            <input type="range" min="0" max="100" step="5"
+                                                   :value="settings.silentBase ?? 30"
+                                                   @input="e => { settings.silentBase = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div style="border-top: 1px solid var(--color-border); padding-top: 10px;">
+                                            <div class="text-[13px] text-text mb-0.5">发完就反悔的概率</div>
+                                            <div class="text-[11px] text-muted/70 leading-relaxed mb-1.5">
+                                                发出后 1.5~2.5 秒骰一次，中了会撤回，并留一句「反悔了一条消息」（点开能看原文）。
+                                            </div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>base</span>
+                                                <span>{{ settings.regretRollBase ?? 20 }}（约 {{ Math.round((settings.regretRollBase ?? 20) / 2) }}% 反悔）</span>
+                                            </div>
+                                            <input type="range" min="0" max="100" step="5"
+                                                   :value="settings.regretRollBase ?? 20"
+                                                   @input="e => { settings.regretRollBase = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                            <!-- ===== 系统记录（B138）：没选出玩法时发什么 ===== -->
+                            <section class="mb-3">
+                                <h3 @click="toggleSection('系统记录')" class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
+                                <span>系统记录</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 stroke-[1.5] shrink-0 transition-transform" :class="isSectionOpen('系统记录') ? 'rotate-180' : ''"></i>
+                            </h3>
+                                <div v-if="isSectionOpen('系统记录')" class="bg-surface border border-border rounded-xl overflow-hidden">
+                                    <div class="p-3.5 space-y-2">
+                                        <div class="text-[13px] text-text">TA 一时没选出怎么回时，发什么</div>
+                                        <div class="text-[11px] text-muted/70 leading-relaxed">
+                                            默认发一句「名字 没有想好怎么回复」。也可以挑一个书册，从里面随机抽一句代替。
+                                        </div>
+                                        <select v-model="settings.noReplyBox" @change="debouncedSave()"
+                                                class="w-full px-3 py-2 rounded-lg bg-bg border border-border text-[13px] outline-none"
+                                                style="color: var(--color-text);">
+                                            <option value="">默认文案（没有想好怎么回复）</option>
+                                            <option v-for="bn in noReplyBoxOptions" :key="bn" :value="bn">{{ bn }}</option>
+                                        </select>
+                                        <div class="text-[11px] text-muted/60">
+                                            当前：{{ settings.noReplyBox ? '从「' + settings.noReplyBox + '」随机抽' : '默认文案' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                             <section class="mb-3">
                                 <h3 @click="toggleSection('红包')" class="text-[12px] font-semibold text-muted tracking-widest px-2 mb-2 flex items-center justify-between cursor-pointer select-none">
                                 <span>红包</span>
@@ -6005,6 +6117,65 @@ body { color: var(--color-text); }
             </div>
         </div>
 
+        <!-- ===== 卡片放大弹窗（B139，参考 cardmodle）：塔罗/雷诺曼=纯字形态，涂鸦=带图形态 ===== -->
+        <div v-if="cardModal.show" class="fixed inset-0 z-[320] flex items-center justify-center"
+             style="background: rgba(0,0,0,0.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);"
+             @click.self="closeCardModal()">
+            <button @click="closeCardModal()"
+                    class="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center"
+                    style="background: rgba(255,255,255,0.14); color: #fff;" title="关闭">
+                <i data-lucide="x" class="w-4 h-4 stroke-[1.6]"></i>
+            </button>
+            <div class="w-[280px] flex flex-col overflow-hidden card-modal-pop"
+                 style="background: var(--color-surface); border-radius: 20px; border: 1px solid var(--color-border); box-shadow: 0 20px 50px rgba(0,0,0,0.45);">
+                <!-- 带图形态（涂鸦 / 图片） -->
+                <template v-if="cardModal.kind === 'drawing' || cardModal.kind === 'image'">
+                    <div class="w-full h-[160px] relative overflow-hidden" style="background: var(--color-bg);">
+                        <img :src="cardModal.image" class="w-full h-full object-contain"
+                             style="mask-image: linear-gradient(to bottom, #000 72%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);">
+                    </div>
+                    <div class="flex flex-col" style="padding: 0 22px 22px 22px; margin-top: -18px; position: relative; z-index: 2;">
+                        <div class="flex items-center gap-1.5 mb-2 text-[13px]" style="color: var(--nav-icon-color);">
+                            <i :data-lucide="cardModal.kind === 'drawing' ? 'pen-tool' : 'image'" class="w-3.5 h-3.5 stroke-[1.6]"></i>
+                            {{ cardModal.kind === 'drawing' ? '涂鸦' : '图片' }}
+                        </div>
+                        <div class="text-[11px] text-muted/70 flex justify-between" style="border-top: 1px solid var(--color-border); padding-top: 10px;">
+                            <span>{{ cardModal.tag || (cardModal.session && cardModal.session.name ? cardModal.session.name : '') }}</span>
+                            <span>{{ formatSessionTime(cardModal.time || 0) }}</span>
+                        </div>
+                    </div>
+                </template>
+                <!-- 纯字形态（塔罗 / 雷诺曼） -->
+                <template v-else>
+                    <div class="w-full h-[100px] flex items-center justify-center text-[40px]"
+                         style="background: linear-gradient(180deg, rgba(166,124,255,0.10) 0%, transparent 100%);">🔮</div>
+                    <div class="flex flex-col" style="padding: 0 22px 22px 22px; margin-top: -12px; position: relative; z-index: 2;">
+                        <div class="text-[13px] mb-2 flex items-center gap-1.5" style="color: var(--nav-icon-color);">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 stroke-[1.6]"></i>
+                            {{ cardModal.title || '占卜' }}
+                        </div>
+                        <div v-if="cardModal.text" class="text-[15px] leading-relaxed mb-4 whitespace-pre-wrap" style="color: var(--color-text);">
+                            {{ cardModal.text }}
+                        </div>
+                        <div class="flex flex-col gap-1.5" style="border-top: 1px solid var(--color-border); padding-top: 10px;">
+                            <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                <span v-if="cardModal.deckLabel" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+                                      style="background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-muted);">
+                                    {{ cardModal.deckLabel }}
+                                </span>
+                                <span v-if="cardModal.tag" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+                                      style="background: rgba(166,124,255,0.1); border: 1px solid rgba(166,124,255,0.25); color: var(--nav-icon-color);">
+                                    ✨ {{ cardModal.tag }}
+                                </span>
+                            </div>
+                            <div class="text-[10px] text-muted/60 text-center">
+                                {{ cardModal.session && cardModal.session.name ? cardModal.session.name : '' }} · {{ formatSessionTime(cardModal.time || 0) }}
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
         <!-- 图片查看大图（点击字笺图片放大查看原图） -->
         <div v-if="lightboxImage" class="redpacket-overlay" style="z-index:300; background:rgba(0,0,0,0.88);" @click.self="lightboxImage=''">
             <button @click="lightboxImage=''" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors" title="返回">
@@ -8238,7 +8409,6 @@ body { color: var(--color-text); }
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/netease-mini-player-v3@latest/dist/nmpv3.min.js"></script>
     <script>
 if (typeof Vue === 'undefined') {
   document.body.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;color:#333;line-height:1.8;text-align:center">'
@@ -9756,12 +9926,24 @@ const _rollStroke = () => {
 
 // 把「骰出来的方案」画成图
 const _drawCanvasFromChain = (plan) => new Promise((resolve) => {
+    const W = 400, H = 400;
     const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 400;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 400);
+    ctx.fillRect(0, 0, W, H);
+
+    // B137：记录实际画到的范围，最后按内容裁剪——不再固定输出 400×400 大白框
+    let minX = W, minY = H, maxX = 0, maxY = 0;
+    const track = (x, y, r) => {
+        const rr = r || 0;
+        if (x - rr < minX) minX = x - rr;
+        if (y - rr < minY) minY = y - rr;
+        if (x + rr > maxX) maxX = x + rr;
+        if (y + rr > maxY) maxY = y + rr;
+    };
+
     if (plan.kind === 'word') {
         ctx.textBaseline = 'middle';
         let x = 40 + Math.random() * 40;
@@ -9773,8 +9955,10 @@ const _drawCanvasFromChain = (plan) => new Promise((resolve) => {
             ctx.rotate((Math.random() - 0.5) * 0.35);
             ctx.font = (L.bold ? 'bold ' : '') + size + 'px "Comic Sans MS", cursive, sans-serif';
             ctx.fillStyle = L.color;
+            const tw = Math.max(size * 0.5, ctx.measureText(L.ch).width);
             ctx.fillText(L.ch, 0, 0);
             ctx.restore();
+            track(x + tw / 2, y, Math.max(size, tw) * 0.7);
             x += size * 0.85 + Math.random() * 6;
         });
     } else {
@@ -9789,36 +9973,62 @@ const _drawCanvasFromChain = (plan) => new Promise((resolve) => {
                 ctx.moveTo(st.x1, st.y1);
                 ctx.lineTo(st.x2, st.y2);
                 ctx.stroke();
+                track(st.x1, st.y1, st.width);
+                track(st.x2, st.y2, st.width);
             } else if (st.tool === 'circle') {
                 ctx.arc(st.x1, st.y1, st.r, 0, Math.PI * 2);
                 if (st.fill) ctx.fill(); else ctx.stroke();
+                track(st.x1, st.y1, st.r + st.width);
             } else if (st.tool === 'rect') {
                 ctx.rect(st.x1, st.y1, st.w, st.h);
                 if (st.fill) ctx.fill(); else ctx.stroke();
+                track(st.x1, st.y1, st.width);
+                track(st.x1 + st.w, st.y1 + st.h, st.width);
             } else {
                 ctx.moveTo(st.x1, st.y1);
                 st.pts.forEach((p) => ctx.lineTo(p[0], p[1]));
                 ctx.stroke();
+                st.pts.forEach((p) => track(p[0], p[1], st.width));
             }
             ctx.restore();
         });
     }
-    resolve(canvas.toDataURL('image/png'));
+
+    // 按内容范围裁剪（留一点边）
+    if (maxX <= minX || maxY <= minY) {
+        resolve(canvas.toDataURL('image/png'));
+        return;
+    }
+    const pad = 14;
+    const cw = Math.min(W * 2, Math.ceil(maxX - minX + pad * 2));
+    const chh = Math.min(H * 2, Math.ceil(maxY - minY + pad * 2));
+    const out = document.createElement('canvas');
+    out.width = Math.max(48, cw);
+    out.height = Math.max(48, chh);
+    const octx = out.getContext('2d');
+    octx.fillStyle = '#ffffff';
+    octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, Math.round(-minX + pad), Math.round(-minY + pad));
+    resolve(out.toDataURL('image/png'));
 });
 
 // 涂鸦主入口：骰子链 → 出图 → 发送
-const triggerDrawingPlay = async (sess) => {
+const triggerDrawingPlay = async (sess, opts = {}) => {
     const s = sess || currentSession.value;
     if (!s || s.type === 'group') return false;
     if (!playOn('draw')) return false;
     const cfg = getDrawSettings(s.id);
-    if (!_rollEntry(cfg.prob)) return false;
+    // B132：外层已经骰过入口概率时传 skipEntry，避免概率被平方（0.4×0.4=0.16）
+    if (!opts.skipEntry && !_rollEntry(cfg.prob)) return false;
 
     const retry = Math.max(0, Number(cfg.retry) || 0);
+    // B136：骰子之间加一点节奏，像真的在一笔一笔画 / 一个一个字母敲
+    const _pause = (ms) => new Promise((r) => setTimeout(r, ms));
     let plan = null;
     for (let attempt = 0; attempt <= retry; attempt++) {
         // ① 骰：画单词（不通过）还是自由画（通过）
         const wantFree = _rollJudgment(28, 46);
+        await _pause(180 + Math.random() * 220);
         if (!wantFree) {
             // ---- 拼单词：逐字母敲 ----
             const wMin = Math.max(1, Number(cfg.wordMin) || 2);
@@ -9826,6 +10036,8 @@ const triggerDrawingPlay = async (sess) => {
             const total = wMin + Math.floor(Math.random() * (wMax - wMin + 1));
             const letters = [];
             for (let i = 0; i < total; i++) {
+                // 每敲一个字母的节奏（80~260ms，快慢有点随机）
+                await _pause(80 + Math.random() * 180);
                 let ch = _drawLetter();
                 // ② 骰：这个键敲对了吗？不通过 → 手滑打到邻居键
                 if (!_rollJudgment(24, 44)) ch = _drawSlip(ch);
@@ -9833,6 +10045,7 @@ const triggerDrawingPlay = async (sess) => {
                 if (letters.length && _rollJudgment(18, 34)) {
                     letters.pop();
                     i--;
+                    await _pause(120 + Math.random() * 160);   // 退格也要停一下
                     continue;
                 }
                 // ④ 骰：继续敲吗？不通过 → 就此打住
@@ -9849,14 +10062,19 @@ const triggerDrawingPlay = async (sess) => {
             const maxS = Math.max(1, Number(cfg.maxStrokes) || 6);
             const n = 1 + Math.floor(Math.random() * maxS);
             const strokes = [];
-            for (let i = 0; i < n; i++) strokes.push(_rollStroke());
+            for (let i = 0; i < n; i++) {
+                await _pause(150 + Math.random() * 250);       // 一笔一笔来
+                strokes.push(_rollStroke());
+            }
             plan = { kind: 'free', strokes };
         }
         // ⑤ 骰：满意吗？通过就发，不通过就整套重来
+        await _pause(200 + Math.random() * 200);
         if (plan && _rollJudgment(40, 62)) break;
         plan = null;
     }
     if (!plan) return false;
+    await _pause(220 + Math.random() * 260);                   // 画完了看一眼再发
     const img = await _drawCanvasFromChain(plan);
     sendMessage('them', '', { image: img, session: s, drawing: true });
     return true;
@@ -10915,6 +11133,33 @@ const startMailTimer = () => {
     // 字笺图片点击放大查看原图
     const lightboxImage = ref('');
     const openLightbox = (src) => { if (src) lightboxImage.value = src; };
+
+    // ===== 卡片放大弹窗（B139）：塔罗/雷诺曼=纯字形态，涂鸦/图片=带图形态 =====
+    const cardModal = reactive({
+        show: false,
+        kind: 'taro',      // 'taro' | 'drawing' | 'image'
+        image: '',
+        title: '',
+        text: '',
+        deckLabel: '',     // 牌组名（塔罗/雷诺曼 + 正逆位）
+        tag: '',           // 意图标签（情绪 / 心意 / 交流意图）
+        session: null,
+        time: 0,
+    });
+    const openCardModal = (data) => {
+        if (!data) return;
+        cardModal.kind = data.kind || 'taro';
+        cardModal.image = data.image || '';
+        cardModal.title = data.title || '';
+        cardModal.text = data.text || '';
+        cardModal.deckLabel = data.deckLabel || '';
+        cardModal.tag = data.tag || '';
+        cardModal.session = data.session || null;
+        cardModal.time = data.time || 0;
+        cardModal.show = true;
+        nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    };
+    const closeCardModal = () => { cardModal.show = false; };
 
     // ===== 应用内颜色选择弹窗 + 历史颜色合集 =====
     // 三套独立历史：主题色(theme) / 纪念日每角色(anniv-<会话id>) / 用户重要日子(personal)
@@ -12509,6 +12754,8 @@ const retractContents = (msg) => {    if (!msg) return [];
 };
 const retractLabel = (msg) => {
     const isMe = msg.sender === 'me';
+    // B146：门6 的「反悔」用另一种措辞
+    if (msg.regretRetract) return isMe ? '我反悔了一条消息' : '对方反悔了一条消息';
     const arr = retractContents(msg);
     if (arr.length <= 1) return isMe ? '我撤回了一条消息' : '对方撤回了一条消息';
     return isMe ? `我撤回了 ${arr.length} 条字卡` : `对方撤回了 ${arr.length} 条字卡`;
@@ -13729,12 +13976,12 @@ const saveFreeComposedSentence = (sentence, session) => {
 };
 
 // ===== 撤回玩法（独立判定，不依赖造句成功） =====
-const triggerRetractPlay = (session) => {
+const triggerRetractPlay = (session, opts = {}) => {
     if (!session) return false;
     const rs = getRetractSettings(session.id);
     // B102：开关只认「玩法列表」里名字那一个（playOn），这里不再有自己的启用项
     if (!playOn('retract')) return false;
-    if (Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
+    if (!opts.skipEntry && Math.random() >= (rs.retractTriggerProb || 0.5)) return false;
 
     // 抽 2~3 条字卡（默认多条）
     const _pickCards = () => {
@@ -13939,11 +14186,12 @@ const _applyReplyAffix = (text) => {
 // 「拼音自由组合」——分段+标点 → 词级/字级审核纠错 → 拼音注音渲染 → 角标。
 // 直接复用 chatty 现成的 _makeFreeComposeText + _pushFreeComposeToChat，保证观感一致。
 // 不在这里做打字动画；发送时机由 triggerReply 的「最短~最长回复时间」自然约束。
-const triggerTypingPlay = (session, opts) => {
+const triggerTypingPlay = (session, opts = {}) => {
     if (!session) return false;
     const prob = Number(settings.mainTypingProb ?? 0.2);
     if (prob <= 0) return false;
-    if (Math.random() >= prob) return false;
+    // B133：调度器抽中时传 skipEntry
+    if (!opts.skipEntry && Math.random() >= prob) return false;
 
     const free = _makeFreeComposeText(session);
     if (!free) return false;
@@ -14121,12 +14369,13 @@ const _dictAllItems = (session) => {
     return out;
 };
 
-const triggerDictSpell = (session) => {
+const triggerDictSpell = (session, opts = {}) => {
     if (!session) return false;
     const ds = getDictSpellSettings(session.id);
     if (!playOn('dict')) return false;   // B102：开关只认玩法列表
     if (ds.prob <= 0) return false;
-    if (Math.random() >= ds.prob) return false;
+    // B133：调度器按权重抽中时传 skipEntry，这里不再自己骰概率
+    if (!opts.skipEntry && Math.random() >= ds.prob) return false;
 
     // ① 骰：走哪条途径
     const route = _dictPickRoute();
@@ -15211,9 +15460,46 @@ const newMsg = {
       } catch (e) {}
       // 打字机逐字动画已移除（移动端易卡）：消息直接完整显示
       newMsg.content = content;
+      // B137：发送后必须落盘（以前这里没保存，退出再进消息就丢了）
+      try { debouncedSave(); } catch (e) {}
+      // B146：门6 —— 发送后 1.5~2.5 秒骰一次「反悔」
+      // 撤回玩法自己标记了 retracted 的，跳过（避免重复）
+      try {
+        if (sender === 'them' && !opts.retracted && !opts.noRetractRoll) {
+          _scheduleRegretRoll(target, newMsg);
+        }
+      } catch (e) {}
       // 消息 DOM 新增后重绘 lucide 图标
       nextTick(() => { if (window.lucide) lucide.createIcons(); });
     };
+    // ===== 门6：撤回骰（B146）=====
+    // 梦角发完消息后 1.5~2.5 秒骰一次，中了就「反悔」，撤回并留一句可点开的提示
+    const _scheduleRegretRoll = (sess, msg) => {
+        if (!sess || !msg) return;
+        if (settings.regretRollEnabled === false) return;
+        const delay = 1500 + Math.random() * 1000;
+        setTimeout(() => {
+            try {
+                const alive = Array.isArray(sessions.value) && sessions.value.some((s) => s && s.id === sess.id);
+                if (!alive) return;
+                const idx = (sess.messages || []).findIndex((m) => m && m.id === msg.id);
+                if (idx < 0) return;                       // 消息被删了
+                const cur = sess.messages[idx];
+                if (!cur || cur.retracted) return;         // 已经撤回过
+                if (!_rollYes(Number(settings.regretRollBase ?? 20))) return;
+                // 撤回：保留原文，标记成「反悔」
+                const orig = String(cur.content || '').trim();
+                cur.retracted = true;
+                cur.regretRetract = true;
+                cur.originalContents = orig ? [orig] : (cur.image ? ['（一张图）'] : []);
+                cur.removedPart = orig;
+                cur.content = '';
+                if (cur.image) cur.image = null;   // 图片也一起撤掉
+                debouncedSave();
+            } catch (e) {}
+        }, delay);
+    };
+
     // ===== 群聊 @ 提及 =====
     const mentionTarget = ref(null);      // 当前 @ 的成员 id（null=未@）
     const mentionPickerOpen = ref(false);
@@ -16185,18 +16471,377 @@ const applyPlayTogglesToAll = () => {
 };
 
 //private conversation logic
-  const triggerReply = (delay, sessArg) => {
+    // B135：主回复抽成独立步骤，供调度器（按权重抽玩法）调用
+    // 返回 { ok, preDelay }；动作统一 push 进传入的 plan
+    const _runMainReplyOnce = (cur, plan) => {
+        if (!cur || !playOn('main')) return { ok: false, preDelay: 0 };
+        let preDelay = 0;
+        const _pushAct = (fn2, delay) => plan.push({ fn: fn2, delay: Math.max(0, Math.round(delay || 0)) });
+            // ---- 普通回复 ----
+            if (!playOn('main')) {           // B96：主回复关掉 → 这一轮不发字卡
+                delete typingSessions[cur.id];
+                return;
+            }
+            if (settings.blankReplyEnabled && Math.random() < 0.1) {
+                _pushAct(() => sendMessage('them', ' ', { blank: true, session: cur }), RTH.typingMs(' '));
+            } else {
+                                                                        // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
+                // B96：主回复 / 拼接回复 各自独立开关
+                const _rawCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
+                const _concatCfg = playOn('concat') ? _rawCfg : { ..._rawCfg, concatEnabled: false };
+                            const pool = _concatCfg.concatEnabled
+                    ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '主动写信', '信封回复', '梦角自由造句', '公共', '公共梦角自由造句'] })
+                    : drawWeightedCards(cur, '私聊', 30);
+                if (pool.length) {
+                    const marked = settings.markEnabled && Math.random() < 0.15;
+                    const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
+                    // ---- 获取拼接设置 ----
+                    const concatSettings = cur ? getSessionSettings(cur.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
+    
+    // ---- 生成随机标签（30% 概率） ----
+    let tag = null;
+    if (Math.random() < 0.3) {
+        const types = ['情绪', '心意', '交流意图'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const tags = getTagsForType(type, cur);
+        if (tags.length) {
+            tag = { type, text: tags[Math.floor(Math.random() * tags.length)] };
+        }
+    }                
+    
+    const opts = { marked, session: cur };
+                    if (quote) opts.quote = quote;
+                    if (tag) opts.tag = tag;
+                    // ===== 骰子状态机：选卡 → 反悔 → 继续挑 → 发送确认 =====
+                    // 最近刚说过的几句先避开（防连续两轮撞同一张卡）
+                    const _recentThem = new Set(
+                        (cur.messages || []).filter(m => m && m.sender === 'them' && m.content)
+                            .slice(-6).map(m => String(m.content).trim()).filter(Boolean)
+                    );
+                    const dice = _rollCardSelection(pool, concatSettings, _recentThem);
+                    // 换手法：能走到这里说明前面几个玩法都没产出 → 沮丧、退格重来（只加时间）
+                    // TODO(换手法·外部变体)：将来可再加低概率「发完再补一条不同玩法」
+                    let _frustration = 0;
+                    if (Math.random() < RTH.SWITCH_METHOD_PROB) _frustration = RTH.hesitateMs() * 2;
+                    preDelay = dice.costMs + _frustration;
+    
+                    // B87：卡级去重挡不住"不同轮抽到同样几张卡 → 拼出同一句话"，
+                    // 所以对**最终整句**再判一次；撞了就重骰（老板定：最多 1 次），还撞就照发（总比不发好）
+                    const _buildMainText = (d) => (d.items || [])
+                        .filter(it => it && it.text)
+                        .map(it => String(it.text).trim())
+                        .filter(Boolean)
+                        .join('  ');
+                    let _mainDice = dice;
+                    let _mainText = _buildMainText(_mainDice);
+                    for (let _t = 0; _t < 1; _t++) {
+                        const _hasImg = (_mainDice.items || []).some(it => it && it.image);
+                        if (_hasImg || !_mainText) break;
+                        if (!_recentThem.has(_mainText.trim())) break;
+                        _mainDice = _rollCardSelection(pool, concatSettings, _recentThem);
+                        _mainText = _buildMainText(_mainDice);
+                    }
+                    if (_mainDice !== dice) dice.items = _mainDice.items;
+    
+                    if (dice.items.length) {
+                        const finalImage = dice.items.find(it => it && it.image);
+                        if (finalImage) {
+                            _pushAct(() => sendMessage('them', '', { ...opts, image: finalImage.image }), RTH.imageMs());
+                        } else {
+                            // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
+                            _mainText = _applyReplyAffix(_mainText);
+                            _pushAct(() => sendMessage('them', _mainText || '', opts), RTH.typingMs(_mainText));
+                        }
+                    } else {
+                        _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
+                    }
+    
+                    // ===== 额外多条消息（独立于主回复） =====
+                    // 每条都重新骰，并且不重复本轮已说过的卡（主回复的内容也算"已说"）
+                    const _usedTexts = new Set(
+                        (dice.items || []).map(it => String((it && it.text) || '').trim()).filter(Boolean)
+                    );
+                    const extraRand = Math.random();
+                    // 概率可在界面里调（B110）：先骰「补 2 条」，没中再骰「补 1 条」
+                    const _p2 = Number(settings.extraBubble2Prob ?? 0.05);
+                    const _p1 = Number(settings.extraBubble1Prob ?? 0.25);
+                    let extraCount = 0;
+                    if (extraRand < _p2) extraCount = 2;
+                    else if (extraRand < _p2 + Math.max(0, _p1 - _p2)) extraCount = 1;
+                    for (let i = 0; i < extraCount; i++) {
+                        const extraCombined = getCombinedReply(pool, _usedTexts);
+                        if (extraCombined) {
+                            (extraCombined.pieces || []).forEach(p => _usedTexts.add(p));
+                            // B87：补充气泡也要避开"最近说过的整句"和"本轮主回复"
+                            const _extraTx = String(extraCombined.text || '').trim();
+                            if (_extraTx && (_recentThem.has(_extraTx) || _extraTx === String(_mainText || '').trim())) continue;
+                            const extraOpts = { marked: false, session: cur };
+                            if (Math.random() < 0.1) {
+                                const q2 = pickQuote(cur);
+                                if (q2) extraOpts.quote = q2;
+                            }
+                            if (extraCombined.image) {
+                                extraOpts.image = extraCombined.image;
+                                _pushAct(() => sendMessage('them', '', extraOpts), RTH.imageMs() + 300);
+                            } else if (extraCombined.text) {
+                                _pushAct(() => sendMessage('them', extraCombined.text, extraOpts), RTH.typingMs(extraCombined.text) + 300);
+                            }
+                        }
+                    }
+                } else {
+                    // 池子空：发个省略号，也按打字耗时算
+                    _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
+                }
+            }
+        return { ok: true, preDelay };
+    };
+
+    // ===== 玩法调度器（B136）：按权重抽玩法，替代"固定优先级排队" =====
+    // 老板定的流程：抽玩法 → 骰满意 → 执行 → 骰继续 → 最多 5 轮
+    // 权重 = 老板在各玩法里设的触发概率（×200 拉到同一量级）；主回复固定最高
+    const PLAY_MAX_ROUNDS = 5;
+
+    const _playWeight = (key, s) => {
+        if (!s) return 0;
+        try {
+            switch (key) {
+                case 'main': return 100;
+                case 'dict': return (getDictSpellSettings(s.id).prob || 0) * 200;
+                case 'ja': return (getJaBrushedSettings(s.id).prob || 0) * 200;
+                case 'retract': return (getRetractSettings(s.id).retractTriggerProb || 0.5) * 200;
+                case 'compose': return (getFreeComposeSettings(s.id).prob || 0) * 200;
+                case 'pinyin': return Number(settings.mainTypingProb ?? 0.2) * 200;
+                case 'draw': return (getDrawSettings(s.id).prob || 0) * 200;
+                case 'tease': return (getTeaseSettings(s.id).prob || 0) * 200;
+                // concat 是主回复的参数、card 是附加玩法，都不占轮次
+                default: return 0;
+            }
+        } catch (e) { return 0; }
+    };
+
+    const _pickWeightedPlay = (s) => {
+        const cands = [];
+        PLAY_KEYS.forEach((k) => {
+            if (!playOn(k)) return;
+            const w = _playWeight(k, s);
+            if (w > 0) cands.push({ key: k, w });
+        });
+        if (!cands.length) return null;
+        const total = cands.reduce((a, c) => a + c.w, 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < cands.length; i++) {
+            r -= cands[i].w;
+            if (r <= 0) return cands[i].key;
+        }
+        return cands[cands.length - 1].key;
+    };
+
+    // 执行单个玩法；返回是否真的产出了内容
+    const _runPlayOnce = async (key, s, plan) => {
+        switch (key) {
+            case 'main': {
+                const r = _runMainReplyOnce(s, plan);
+                return !!(r && r.ok);
+            }
+            case 'dict': return !!triggerDictSpell(s, { skipEntry: true });
+            case 'ja': return !!triggerJaBrushed(s, { skipEntry: true });
+            case 'retract': return !!triggerRetractPlay(s, { skipEntry: true });
+            case 'compose': return !!triggerFreeCompose(s);
+            case 'pinyin': return !!triggerTypingPlay(s, { skipEntry: true });
+            case 'draw': return !!(await triggerDrawingPlay(s, { skipEntry: true }));
+            case 'tease': return !!_runTeaseOnce(s, plan);
+            default: return false;
+        }
+    };
+
+    // 吐槽：从吐槽书册抽一条发出去（原来内联在 triggerReply 里）
+    const _runTeaseOnce = (s, plan) => {
+        if (!s || !playOn('tease')) return false;
+        const ts = getTeaseSettings(s.id);
+        const teasePool = [];
+        const teaseBox = s.corpus?.boxes?.['吐槽'];
+        if (teaseBox) {
+            (teaseBox.groups || []).forEach((g) => {
+                (g.replies || []).forEach((r) => {
+                    if (r.enabled !== false && r.text && r.text.trim()) {
+                        teasePool.push({ text: r.text.trim(), category: g.name || '吐槽' });
+                    }
+                });
+            });
+        }
+        if (!teasePool.length) return false;
+        const picked = teasePool[Math.floor(Math.random() * teasePool.length)];
+        plan.push({
+            fn: () => sendMessage('them', '', {
+                type: 'tease',
+                teaseContent: picked.text,
+                teaseCategory: picked.category,
+                teaseStatus: 'pending',
+                userReply: '',
+                systemReply: '',
+                session: s,
+            }),
+            delay: RTH.typingMs(picked.text),
+        });
+        if (Math.random() < (ts.popupProb || 0)) {
+            setTimeout(() => {
+                const lastMsg = s.messages[s.messages.length - 1];
+                if (lastMsg && lastMsg.type === 'tease' && lastMsg.teaseStatus === 'pending') {
+                    openTeaseReply(lastMsg);
+                }
+            }, 800);
+        }
+        return true;
+    };
+
+    // ===== 门1：已读状态机（B142）=====
+    // 老板要的：阈值骰 + 数值骰，**没有重选上限**（可能一直未读）
+    // 老板再发一条新消息时，旧的未读会自然结束（不回复，也不影响新的）
+    const _replyLocks = {};   // 防重锁（门1期间用，不点亮「输入中」）
+
+    const _waitRead = (sess) => new Promise((resolve) => {
+        if (!sess) return resolve(false);
+        let tries = 0;
+        const tick = () => {
+            const alive = Array.isArray(sessions.value) && sessions.value.some((s) => s && s.id === sess.id);
+            if (!alive) return resolve(false);
+            // ① 阈值骰 + ② 数值骰（_rollYes 内部就是这两步）
+            if (_rollYes(Number(settings.readBase ?? 100))) {
+                try {
+                    // 把该会话里最后一条「我发的」消息标成已读
+                    const mine = (sess.messages || []).filter((m) => m && m.sender === 'me');
+                    const last = mine[mine.length - 1];
+                    if (last) last.status = 'read';
+                    debouncedSave();
+                } catch (e) {}
+                return resolve(true);
+            }
+            tries++;
+            // 保险：约 10 分钟还没读到就放弃，避免永久挂着
+            if (tries > 400) return resolve(false);
+            setTimeout(tick, 1500);
+        };
+        setTimeout(tick, 800);
+    });
+
+    // 5 轮循环
+    const _runPlayLoop = async (cur) => {
+        if (!cur) return;
+        const plan = [];
+        let preDelay = 0;
+        let produced = false;
+        let lastKey = '';
+        for (let round = 0; round < PLAY_MAX_ROUNDS; round++) {
+            let key = _pickWeightedPlay(cur);
+            if (!key) break;
+            // 骰：这次满意吗？不满意 → 重抽（最多在同一轮里再试一次）
+            if (!_rollJudgment(32, 52)) continue;
+            const ok = await _runPlayOnce(key, cur, plan);
+            if (!ok) continue;
+            produced = true;
+            lastKey = key;
+            // 附加玩法：回应字卡（照它自己的概率骰，不占轮次）
+            if (playOn('card')) {
+                try { triggerReplyCardBranch(cur); } catch (e) {}
+            }
+            // 骰：还继续发吗？
+            if (!_rollJudgment(30, 48)) break;
+            await new Promise((r) => setTimeout(r, 500 + Math.random() * 900));
+        }
+        if (plan.length) {
+            // 打乱顺序（保持原来的观感）
+            for (let i = plan.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const tmp = plan[i]; plan[i] = plan[j]; plan[j] = tmp;
+            }
+            const _pace = settings.typewriter ? 1 : 0.4;
+            if (_pace !== 1) {
+                plan.forEach((it) => { it.delay = Math.round(it.delay * _pace); });
+                preDelay = Math.round(preDelay * _pace);
+            }
+            _runReplyPlan(cur, plan, preDelay);
+        } else if (!produced) {
+            // 5 轮都没产出 → 系统记录（B4 会做成居中淡色气泡，这里先用最小实现）
+            _showNoReplyNote(cur);
+        } else {
+            delete typingSessions[cur.id];
+        }
+    };
+
+    // 「系统记录」可选的文案来源（共享书册 + 当前会话自己的书册）
+    const noReplyBoxOptions = computed(() => {
+        const names = new Set();
+        Object.keys(sharedBoxes || {}).forEach((k) => names.add(k));
+        const cur = currentSession.value;
+        if (cur && cur.corpus && cur.corpus.boxes) {
+            Object.keys(cur.corpus.boxes).forEach((k) => names.add(k));
+        }
+        return [...names].filter(Boolean);
+    });
+
+    // 系统记录：「XX 没有想好怎么回复」
+    const _showNoReplyNote = (s) => {
+        if (!s) return;
+        let text = '没有想好怎么回复';
+        try {
+            const boxName = settings.noReplyBox;
+            if (boxName) {
+                const box = isSharedBox(boxName) ? sharedBoxes[boxName] : s.corpus?.boxes?.[boxName];
+                const pool = [];
+                (box?.groups || []).forEach((g) => {
+                    (g.replies || []).forEach((r) => {
+                        if (r.enabled !== false && r.text && r.text.trim()) pool.push(r.text.trim());
+                    });
+                });
+                if (pool.length) text = pool[Math.floor(Math.random() * pool.length)];
+            }
+        } catch (e) {}
+        sendMessage('them', '', { type: 'systemNote', systemNote: (s.name || 'TA') + ' ' + text, session: s });
+        delete typingSessions[s.id];
+    };
+
+  const triggerReply = (delay, sessArg, opts = {}) => {
     const sess = sessArg || currentSession.value;
-    if (!sess || typingSessions[sess.id]) return;
-    typingSessions[sess.id] = true;
+    if (!sess || _replyLocks[sess.id] || typingSessions[sess.id]) return;
+    // B142：门1 期间先只上锁，不点亮「输入中」——「输入中」只跟"要发送"绑定
+    _replyLocks[sess.id] = true;
     const minS = Math.max(1, settings.replyDelayMin || 2);
     const maxS = Math.max(minS, settings.replyDelayMax || 5);
      // 前置延迟：保留 [最短, 最长]，区间内两段分布（70% 偏快 / 30% 拖到后段），不越界
     // TODO(走开一下·长尾)：老板还没拍板，先留空。将来开启时在下面按 RTH.AWAY_ENABLED
     //   以 3% 概率把 d 乘 1.3~2（封顶 10 分钟）。
     const d = RTH.preDelayMs(minS, maxS);
-    setTimeout(() => {
+    setTimeout(async () => {
         const cur = sess;
+        // B132：每轮回复开始时保底蓄能 1~2 次，保证能量不是一个死 0
+        if (Math.random() < 0.7) _systemPulse(1 + Math.floor(Math.random() * 2));
+        // ===== 门1：已读状态（B142）=====
+        // 没读到 → 这一条不触发后续（主动搭话走自己的定时器，不受影响）
+        // B147：主动线发起时传 skipGate，跳过门1/门2（那是"回复"才有的环节）
+        if (!opts.skipGate && settings.readStateEnabled !== false) {
+            const read = await _waitRead(cur);
+            if (!read) { delete _replyLocks[cur.id]; return; }
+            // ===== 门2：回复意向（沉默 = 已读不回）=====
+            // 阈值骰 + 数值骰；base=30 → 约 15% 沉默（7 条里约 1 条不回）
+            const silentBase = Number(settings.silentBase ?? 30);
+            if (_rollYes(silentBase)) {
+                delete _replyLocks[cur.id];
+                delete typingSessions[cur.id];
+                return;
+            }
+        }
+        // 决定了要发 → 这时才点亮「输入中」
+        typingSessions[cur.id] = true;
+        // ===== B136：新调度器（按权重抽玩法，替代下面的固定优先级链）=====
+        // settings.usePlayScheduler === false 时可以一键退回旧排队逻辑
+        if (settings.usePlayScheduler !== false) {
+            _runPlayLoop(cur).then(() => { delete _replyLocks[cur.id]; }).catch((e) => {
+                console.warn('[调度器出错，回退旧逻辑]', e);
+                delete typingSessions[cur.id];
+                delete _replyLocks[cur.id];
+            });
+            return;
+        }
 // ===== 词典拼字：优先判断 =====
 if (cur.type !== 'group' && playOn('dict') && triggerDictSpell(cur)) {
     // B89：词典拼字现在自己延迟发送（_runReplyPlan 收尾），
@@ -16243,11 +16888,11 @@ if (cur.type !== 'group' && playOn('ja') && triggerJaBrushed(cur)) {
             }
         }
 
-        // ===== 私聊涂鸦（B130）：走玩法列表「涂鸦」+ 骰子链（受能量影响）=====
+        // ===== 私聊涂鸦（B130/B132）：入口骰在这里判，内部不再重复判 =====
         if (cur.type !== 'group' && playOn('draw')) {
             const _drawCfg = getDrawSettings(cur.id);
             if (_rollEntry(_drawCfg.prob)) {
-                _pushAct(() => triggerDrawingPlay(cur), RTH.drawMs());
+                _pushAct(() => triggerDrawingPlay(cur, { skipEntry: true }), RTH.drawMs());
                 _runReplyPlan(cur, plan, 0);
                 return;
             }
@@ -16297,122 +16942,14 @@ if (cur.type !== 'group' && Math.random() < getTeaseSettings(cur.id).prob) {
     }
 }
 
-        // ---- 普通回复 ----
-        if (!playOn('main')) {           // B96：主回复关掉 → 这一轮不发字卡
+        // ---- 普通回复（B135：逻辑已抽到 _runMainReplyOnce）----
+        const _mainRes = _runMainReplyOnce(cur, plan);
+        if (!_mainRes || !_mainRes.ok) {
             delete typingSessions[cur.id];
             return;
         }
-        if (settings.blankReplyEnabled && Math.random() < 0.1) {
-            _pushAct(() => sendMessage('them', ' ', { blank: true, session: cur }), RTH.typingMs(' '));
-        } else {
-                                                                    // ===== 拼接模式固定「私聊+公共」；非拼接走权重 =====
-            // B96：主回复 / 拼接回复 各自独立开关
-            const _rawCfg = cur ? getSessionSettings(cur.id) : { concatEnabled: true };
-            const _concatCfg = playOn('concat') ? _rawCfg : { ..._rawCfg, concatEnabled: false };
-                        const pool = _concatCfg.concatEnabled
-                ? drawWeightedCards(cur, null, 30, { boxNames: ['私聊', '主动写信', '信封回复', '梦角自由造句', '公共', '公共梦角自由造句'] })
-                : drawWeightedCards(cur, '私聊', 30);
-            if (pool.length) {
-                const marked = settings.markEnabled && Math.random() < 0.15;
-                const quote = Math.random() < 0.1 ? pickQuote(cur) : null;
-                // ---- 获取拼接设置 ----
-                const concatSettings = cur ? getSessionSettings(cur.id) : { concatEnabled: true, concatCount: 2, concatEmoji: true };
+        _preDelay = _mainRes.preDelay;
 
-// ---- 生成随机标签（30% 概率） ----
-let tag = null;
-if (Math.random() < 0.3) {
-    const types = ['情绪', '心意', '交流意图'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const tags = getTagsForType(type, cur);
-    if (tags.length) {
-        tag = { type, text: tags[Math.floor(Math.random() * tags.length)] };
-    }
-}                
-
-const opts = { marked, session: cur };
-                if (quote) opts.quote = quote;
-                if (tag) opts.tag = tag;
-                // ===== 骰子状态机：选卡 → 反悔 → 继续挑 → 发送确认 =====
-                // 最近刚说过的几句先避开（防连续两轮撞同一张卡）
-                const _recentThem = new Set(
-                    (cur.messages || []).filter(m => m && m.sender === 'them' && m.content)
-                        .slice(-6).map(m => String(m.content).trim()).filter(Boolean)
-                );
-                const dice = _rollCardSelection(pool, concatSettings, _recentThem);
-                // 换手法：能走到这里说明前面几个玩法都没产出 → 沮丧、退格重来（只加时间）
-                // TODO(换手法·外部变体)：将来可再加低概率「发完再补一条不同玩法」
-                let _frustration = 0;
-                if (Math.random() < RTH.SWITCH_METHOD_PROB) _frustration = RTH.hesitateMs() * 2;
-                _preDelay = dice.costMs + _frustration;
-
-                // B87：卡级去重挡不住"不同轮抽到同样几张卡 → 拼出同一句话"，
-                // 所以对**最终整句**再判一次；撞了就重骰（老板定：最多 1 次），还撞就照发（总比不发好）
-                const _buildMainText = (d) => (d.items || [])
-                    .filter(it => it && it.text)
-                    .map(it => String(it.text).trim())
-                    .filter(Boolean)
-                    .join('  ');
-                let _mainDice = dice;
-                let _mainText = _buildMainText(_mainDice);
-                for (let _t = 0; _t < 1; _t++) {
-                    const _hasImg = (_mainDice.items || []).some(it => it && it.image);
-                    if (_hasImg || !_mainText) break;
-                    if (!_recentThem.has(_mainText.trim())) break;
-                    _mainDice = _rollCardSelection(pool, concatSettings, _recentThem);
-                    _mainText = _buildMainText(_mainDice);
-                }
-                if (_mainDice !== dice) dice.items = _mainDice.items;
-
-                if (dice.items.length) {
-                    const finalImage = dice.items.find(it => it && it.image);
-                    if (finalImage) {
-                        _pushAct(() => sendMessage('them', '', { ...opts, image: finalImage.image }), RTH.imageMs());
-                    } else {
-                        // 需求 B：把命中的前/后缀拼到正文上（一条气泡）
-                        _mainText = _applyReplyAffix(_mainText);
-                        _pushAct(() => sendMessage('them', _mainText || '', opts), RTH.typingMs(_mainText));
-                    }
-                } else {
-                    _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
-                }
-
-                // ===== 额外多条消息（独立于主回复） =====
-                // 每条都重新骰，并且不重复本轮已说过的卡（主回复的内容也算"已说"）
-                const _usedTexts = new Set(
-                    (dice.items || []).map(it => String((it && it.text) || '').trim()).filter(Boolean)
-                );
-                const extraRand = Math.random();
-                // 概率可在界面里调（B110）：先骰「补 2 条」，没中再骰「补 1 条」
-                const _p2 = Number(settings.extraBubble2Prob ?? 0.05);
-                const _p1 = Number(settings.extraBubble1Prob ?? 0.25);
-                let extraCount = 0;
-                if (extraRand < _p2) extraCount = 2;
-                else if (extraRand < _p2 + Math.max(0, _p1 - _p2)) extraCount = 1;
-                for (let i = 0; i < extraCount; i++) {
-                    const extraCombined = getCombinedReply(pool, _usedTexts);
-                    if (extraCombined) {
-                        (extraCombined.pieces || []).forEach(p => _usedTexts.add(p));
-                        // B87：补充气泡也要避开"最近说过的整句"和"本轮主回复"
-                        const _extraTx = String(extraCombined.text || '').trim();
-                        if (_extraTx && (_recentThem.has(_extraTx) || _extraTx === String(_mainText || '').trim())) continue;
-                        const extraOpts = { marked: false, session: cur };
-                        if (Math.random() < 0.1) {
-                            const q2 = pickQuote(cur);
-                            if (q2) extraOpts.quote = q2;
-                        }
-                        if (extraCombined.image) {
-                            extraOpts.image = extraCombined.image;
-                            _pushAct(() => sendMessage('them', '', extraOpts), RTH.imageMs() + 300);
-                        } else if (extraCombined.text) {
-                            _pushAct(() => sendMessage('them', extraCombined.text, extraOpts), RTH.typingMs(extraCombined.text) + 300);
-                        }
-                    }
-                }
-            } else {
-                // 池子空：发个省略号，也按打字耗时算
-                _pushAct(() => sendMessage('them', '……', { session: cur }), RTH.typingMs('……'));
-            }
-        }
 
         // 顺序随机（保持原来的观感：拍一拍 / 问号 / 主回复 / 补充会被打散）
         for (let i = plan.length - 1; i > 0; i--) {
@@ -16451,6 +16988,130 @@ const opts = { marked, session: cur };
     };
     // ===== 主动搭话：每分钟扫一遍「所有会话」，每个会话独立计时 =====
     // 旧版只对 currentSession 触发 → 导致只有最近常聊的那一两个会冒泡（已修复）
+    // ===== 主动线（B147）：阶段1 大闸门 → 阶段2 动作池 → 阶段3 满意骰 → 阶段4 执行 =====
+    // 注意：这里是「动作」（主动发起的行为），不是回复那边的「玩法」
+    const ACTIVE_ACTIONS = ['pat', 'card', 'both', 'status', 'letter'];
+
+    const _activeWeights = () => ({
+      pat: Math.max(0, Number(settings.activeW_pat ?? 20)),
+      card: Math.max(0, Number(settings.activeW_card ?? 35)),
+      both: Math.max(0, Number(settings.activeW_both ?? 15)),
+      status: Math.max(0, Number(settings.activeW_status ?? 15)),
+      letter: Math.max(0, Number(settings.activeW_letter ?? 15)),
+    });
+
+    const _pickActiveAction = () => {
+      const w = _activeWeights();
+      const total = ACTIVE_ACTIONS.reduce((a, k) => a + w[k], 0);
+      if (total <= 0) return null;
+      let r = Math.random() * total;
+      for (let i = 0; i < ACTIVE_ACTIONS.length; i++) {
+        const k = ACTIVE_ACTIONS[i];
+        r -= w[k];
+        if (r <= 0) return k;
+      }
+      return ACTIVE_ACTIONS[ACTIVE_ACTIONS.length - 1];
+    };
+
+    // A：单独互动（拍一拍）
+    const _activePat = (s) => {
+      const pat = drawFromSpecialBox(s, '拍一拍');
+      if (!pat) return false;
+      pushPat(s, pat);
+      return true;
+    };
+
+    // D：改状态（头部名字下面那行）
+    const _activeStatus = (s) => {
+      const pool = [];
+      const grab = (bn) => {
+        const box = isSharedBox(bn) ? sharedBoxes[bn] : s.corpus?.boxes?.[bn];
+        (box?.groups || []).forEach((g) => {
+          (g.replies || []).forEach((r) => {
+            if (r.enabled !== false && r.text && String(r.text).trim()) pool.push(String(r.text).trim());
+          });
+        });
+      };
+      const first = settings.activeStatusBox || '情绪';
+      grab(first);
+      if (!pool.length) {
+        Object.keys(s.corpus?.boxes || {}).forEach((bn) => grab(bn));
+      }
+      if (!pool.length) return false;
+      const text = pool[Math.floor(Math.random() * pool.length)];
+      s.statusText = text;
+      sendMessage('system', '', {
+        type: 'systemNote',
+        systemNote: (s.name || 'TA') + ' 的状态变成了「' + text + '」',
+        session: s,
+      });
+      debouncedSave();
+      return true;
+    };
+
+    // E：写信（抽几张字卡拼成一段）
+    const _activeLetter = (s) => {
+      const pool = [];
+      ['主动写信', '私聊', '公共'].forEach((bn) => {
+        const box = isSharedBox(bn) ? sharedBoxes[bn] : s.corpus?.boxes?.[bn];
+        (box?.groups || []).forEach((g) => {
+          (g.replies || []).forEach((r) => {
+            if (r.enabled !== false && r.text && String(r.text).trim()) pool.push(String(r.text).trim());
+          });
+        });
+      });
+      if (!pool.length) return false;
+      const n = 3 + Math.floor(Math.random() * 3);
+      const picked = [];
+      const copy = [...pool];
+      for (let i = 0; i < n && copy.length; i++) {
+        const k = Math.floor(Math.random() * copy.length);
+        picked.push(copy.splice(k, 1)[0]);
+      }
+      if (!picked.length) return false;
+      sendMessage('them', picked.join('\n'), { session: s });
+      return true;
+    };
+
+    // 阶段4：执行动作
+    const _execActiveAction = (key, s) => {
+      switch (key) {
+        case 'pat': return _activePat(s);
+        case 'card': return _activeCardAction(s);
+        case 'both': return _activeBothAction(s);
+        case 'status': return _activeStatus(s);
+        case 'letter': return _activeLetter(s);
+        default: return false;
+      }
+    };
+
+    const _activeCardAction = (s) => {
+      // 走正常回复流程（抽玩法），但跳过门1/门2（主动发起不涉及已读）
+      triggerReply(400, s, { skipGate: true });
+      return true;
+    };
+
+    const _activeBothAction = (s) => {
+      _activePat(s);
+      setTimeout(() => triggerReply(400, s, { skipGate: true }), 900);
+      return true;
+    };
+
+    // 主动线主入口
+    const _runActiveAction = (s) => {
+      if (!s) return false;
+      // 阶段1：大闸门（阈值骰 + 数值骰）
+      if (!_rollYes(Number(settings.activeGateBase ?? 100))) return false;
+      // 阶段2 + 3：选动作 → 满意骰 → 不满意重选（最多 3 次）
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const key = _pickActiveAction();
+        if (!key) return false;
+        if (!_rollYes(Number(settings.activeSatisfyBase ?? 100))) continue;
+        if (_execActiveAction(key, s)) return true;
+      }
+      return false;
+    };
+
     const manageActiveTimer = () => {
       if (activeTimer) clearInterval(activeTimer);
       if (!settings.activeMessage) return;
@@ -16488,7 +17149,8 @@ const opts = { marked, session: cur };
         due.slice(0, 2).forEach(s => {               // 每分钟最多 2 个，避免一口气冒一串
           s._nextActiveAt = now + randomMs(minMs, maxMs);
           s._lastActiveMsgAt = now;
-          triggerReply(500, s);
+          // B147：走主动线（大闸门 → 动作池），不再是直接回一条
+          try { _runActiveAction(s); } catch (e) { console.warn('[主动线]', e); }
         });
         debouncedSave();
       }, 60 * 1000);                                  // 每分钟检查一次
@@ -16622,6 +17284,24 @@ const opts = { marked, session: cur };
 
     const _captureAreaEl = () => document.getElementById('capture-area');
 
+    // html2canvas 按需加载（B138）：只有第一次点截图才去拉这 199KB
+    let _h2cLoading = null;
+    const _ensureH2C = () => {
+        if (window.html2canvas) return Promise.resolve();
+        if (_h2cLoading) return _h2cLoading;
+        _h2cLoading = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = './lib/html2canvas.min.js';
+            s.onload = () => resolve();
+            s.onerror = () => {
+                _h2cLoading = null;
+                reject(new Error('html2canvas 加载失败'));
+            };
+            document.head.appendChild(s);
+        });
+        return _h2cLoading;
+    };
+
     // iOS Safari 的 canvas 单边上限约 4096，超出直接出白图/失败
     // 所以按内容高度反推缩放：短内容保持清晰，长内容自动降清（B124）
     const SHOT_MAX_SIDE = 4000;
@@ -16630,9 +17310,11 @@ const opts = { marked, session: cur };
       return Math.max(0.35, Math.min(1.2, SHOT_MAX_SIDE / longest));
     };
 
-    const _renderCapture = (extra = {}) => {
+    const _renderCapture = async (extra = {}) => {
       const el = _captureAreaEl();
       if (!el) return Promise.reject(new Error('no capture area'));
+      // 首次点截图时才动态加载 html2canvas（B138）
+      await _ensureH2C();
       // 没显式给 scale 时，按裁剪高度自动算，避免超出 canvas 上限
       const merged = Object.assign({}, extra);
       if (merged.scale === undefined) {
@@ -18786,12 +19468,15 @@ const _energyPulse = () => {
     _energy.pulses++;
     return _energy.E;
 };
-// 判定骰：基础段 30–50，叠加 E 与 ±2 噪声，clamp 到 1–99；每次判定 E×0.9
-const _rollJudgment = (lo = 30, hi = 50) => {
+// 判定骰（B141 统一标准）：阈值骰 = 随机 0~100 取一个数 X，阈值就是 0~X 这段，再叠加能量 E；
+// 数值骰 0~100 落进阈值就算通过。各玩法可以自己传更窄的区间做微调。
+// B132：去掉乘法衰减（原来 E×0.9 会把能量按死到 0）；改成交给 _energyPulse 的均值回归，
+//       判定成功时小概率补一点能量，让 E 能自然浮动
+const _rollJudgment = (lo = 0, hi = 100) => {
     let T = lo + Math.random() * (hi - lo) + _energy.E + (Math.random() * 4 - 2);
     T = Math.max(1, Math.min(99, T));
     const fall = Math.random() * 100;
-    _energy.E *= 0.9;
+    if (Math.random() < 0.25) _systemPulse(1);   // 余韵：偶尔补一点
     return fall < T;
 };
 
@@ -18808,7 +19493,7 @@ const _rollEntry = (prob) => {
         ? Math.min(1, _energy.E / ENERGY.MAX)                    //  0 ~ +1
         : Math.max(-1, _energy.E / Math.abs(ENERGY.MIN));        // -1 ~  0
     const T = Math.max(0, Math.min(1, p * (1 + bias)));
-    _energy.E *= 0.95;                                            // 用一次衰减
+    // B132：同样的，不再乘法衰减
     return Math.random() < T;
 };
 // 声母按发音部位分组（组内微调 / 跨组跳跃）
@@ -19565,11 +20250,11 @@ const _onyomiLanding = (pool) => {
 };
 // 日语笔谈：骰出音读 → 转假名 → 落点骰选字 → 满意骰不过就换 → 卷轴逐字追加
 // 时间上不做额外耗时（老板："骰子消耗多少就多少"）
-const triggerJaBrushed = (session) => {
+const triggerJaBrushed = (session, opts = {}) => {
     if (!session) return false;
     const cfg = getJaBrushedSettings(session.id);
     if (!playOn('ja') || cfg.prob <= 0) return false;   // B102：开关只认玩法列表
-    if (Math.random() >= cfg.prob) return false;
+    if (!opts.skipEntry && Math.random() >= cfg.prob) return false;
 
     const readings = _onyomiReadings().filter((r) => _onyomiList(r).length);
     if (!readings.length) return false;
@@ -19593,7 +20278,7 @@ const triggerJaBrushed = (session) => {
         }
         chars.push(picked.char);
         readingsUsed.push(romajiToKana(reading));
-        _energy.E *= 0.3;   // 切换读音衰减
+        // B132：不再乘法衰减（原来 E×0.3 太狠）
     }
     if (!chars.length) return false;
 
@@ -19739,11 +20424,16 @@ const YES_NO_BASE = {
     RETRACT_SEND: 100,  // 撤回：这一轮发不发出
     CHAR_CONFIRM: 100,  // 拼音：选中的这个字确认吗（B87）
 };
+// 统一的「阈值骰 + 数值骰」（B144，按老板要求改回 B141 的两层随机）：
+//   ① 阈值骰：随机出 0~base 之间的一个数当阈值（骰出 1 就 0~1，骰出 90 就 0~90）
+//   ② 数值骰：掷 0~100，落进 0~阈值 就算通过
+// base=100 时期望通过率 50%
+// （三层骰方案「连 base 也随机」记在待办里，如果觉得两层太松再换回来）
 const _rollYes = (base) => {
     const b = Math.max(0, Math.min(100, Number(base == null ? 100 : base))) / 100;
     if (b <= 0) return false;
-    const th = b * Math.random();      // ① 这次的概率
-    return Math.random() < th;         // ② 是否落入
+    const th = b * Math.random();        // ① 阈值骰
+    return Math.random() < th;           // ② 数值骰：看是否落入
 };
 
 const _makeFreeComposeText = (s) => {
@@ -19794,7 +20484,7 @@ const _makeFreeComposeText = (s) => {
                     _freeComposeBackspaces++;
                 }
                 if (u) units.push(u);
-                _energy.E *= 0.5;                                        // 每完成一个字衰减
+                // B132：不再乘法衰减（原来每字 E×0.5）
             }
             if (!units.length) break;
 
@@ -26399,6 +27089,8 @@ moneySubTab,
       boardMoodLevel,
       moodLevelOf,
       lightboxImage,
+cardModal, openCardModal, closeCardModal,
+noReplyBoxOptions,
       openLightbox,
       boardCalOpen,
       calYear,
