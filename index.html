@@ -822,6 +822,65 @@ body { color: var(--color-text); }
     </svg>
 
 <div id="app" v-cloak :style="{ '--accent-color': settings.accentColor, '--accent-text-color': accentTextColor }">
+<!-- ===== B207：日语读音表弹窗（全局共享） ===== -->
+<div v-if="onyomiTableOpen" class="fixed inset-0 z-[400] flex flex-col" style="background: var(--color-bg);">
+    <div class="shrink-0 px-4 py-3 flex items-center justify-between border-b border-border/40">
+        <div class="flex items-center gap-2">
+            <span class="text-[16px] font-medium tracking-widest">日语读音表</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-border/60 text-muted">全局共享</span>
+        </div>
+        <button @click="onyomiTableOpen = false" class="p-1 text-muted hover:text-text">
+            <i data-lucide="x" class="w-5 h-5 stroke-[1.5]"></i>
+        </button>
+    </div>
+    <div class="shrink-0 px-4 py-2">
+        <div class="relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 stroke-[1.5] text-muted absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+            <input v-model="onyomiSearch" placeholder="搜读音或汉字…"
+                   class="w-full bg-surface rounded-lg py-1.5 pl-8 pr-2 text-[13px] font-light border border-border/40 focus:border-border">
+        </div>
+    </div>
+    <div class="shrink-0 px-4 pb-2 text-[11px] text-muted">
+        {{ onyomiStats.readings }} 个读音 · {{ onyomiStats.chars }} 个汉字 · {{ onyomiStats.tagged }} 个带语义标签
+    </div>
+    <div class="flex-1 overflow-y-auto px-3 pb-8">
+        <div v-for="g in onyomiGroups" :key="g.key" class="mb-1.5">
+            <button @click="toggleOnyomiRow(g.key)"
+                    class="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface/60 transition-colors">
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 stroke-[1.5] transition-transform"
+                   :class="onyomiRowOpen[g.key] ? 'rotate-90' : ''"></i>
+                <span class="text-[14px] text-text">{{ g.label }}</span>
+                <span class="text-[11px] text-muted">{{ g.count }} 个读音</span>
+            </button>
+            <div v-if="onyomiRowOpen[g.key]" class="pl-4 pr-1 space-y-0.5">
+                <div v-for="r in g.readings" :key="r">
+                    <button @click="toggleOnyomiChar(r)"
+                            class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface/60 transition-colors text-left">
+                        <span class="text-[13px] font-mono text-text w-24 shrink-0">{{ r }}</span>
+                        <span class="text-[11px] text-muted shrink-0">{{ (onyomiList(r) || []).length }} 字</span>
+                        <span class="text-[12px] text-muted/80 truncate">
+                            {{ (onyomiList(r) || []).slice(0, 12).map(x => x.char).join(' ') }}
+                        </span>
+                    </button>
+                    <div v-if="onyomiCharOpen === r" class="ml-4 mb-2 p-2 rounded-lg bg-surface/60 border border-border/30">
+                        <div v-for="(c, ci) in (onyomiList(r) || [])" :key="ci"
+                             class="flex items-start gap-2 py-1 border-b border-border/20 last:border-0">
+                            <span class="text-[16px] w-8 shrink-0">{{ c.char }}</span>
+                            <div class="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+                                <span v-for="tg in (c.tags || [])" :key="tg"
+                                      class="text-[10px] px-1.5 py-0.5 rounded-full"
+                                      style="background: rgba(120,120,180,0.12); color: #6b7280;">{{ tg }}</span>
+                                <span v-if="c.meaning" class="text-[11px] text-text/80">{{ c.meaning }}</span>
+                                <span class="text-[10px] text-muted/70 ml-auto shrink-0">可猜 {{ c.readability ?? '-' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="!onyomiGroups.length" class="text-center text-[12px] text-muted py-8">没有匹配的读音</div>
+    </div>
+</div>
     <transition name="fade">
         <div v-if="showIntro" class="intro-overlay text-text">
             <div class="intro-text">见字如面</div>
@@ -2069,6 +2128,12 @@ body { color: var(--color-text); }
             <div class="text-[11px] text-muted/60 leading-relaxed px-1 mt-1.5">
                 感应没中 → 走读音分支；读音分支里再按「槽位」比例决定拼句还是随机拼字。
             </div>
+        <!-- B207：读音表入口（全局共享） -->
+        <button @click="onyomiTableOpen = true"
+                class="w-full py-2 rounded-lg border border-border text-[13px] text-text hover:bg-bg/60 transition-colors flex items-center justify-center gap-1.5">
+            <i data-lucide="layers" class="w-3.5 h-3.5 stroke-[1.5]"></i>
+            查看读音表（全局共享）
+        </button>
         </div>
         <div class="text-[11px] text-muted/60 leading-relaxed px-1">
             用法读骰出同音汉字，拼成一串纯汉字（日本汉字字形）。音读表在下面维护。
@@ -4357,6 +4422,20 @@ body { color: var(--color-text); }
                                             <input type="range" min="0" max="100" step="5"
                                                    :value="settings.quoteBase ?? 20"
                                                    @input="e => { settings.quoteBase = Number(e.target.value); debouncedSave(); }"
+                                                   class="w-full" style="accent-color: var(--nav-icon-color);">
+                                        </div>
+                                        <div style="border-top: 1px solid var(--color-border); padding-top: 10px;">
+                                            <div class="text-[13px] text-text mb-0.5">一次最多连发几条</div>
+                                            <div class="text-[11px] text-muted/70 leading-relaxed mb-1.5">
+                                                每发完一条会骰「还继续说吗」，过了就再发一条，最多到这里的上限。
+                                            </div>
+                                            <div class="flex justify-between text-[12px] text-muted mb-1">
+                                                <span>上限</span>
+                                                <span>{{ settings.maxReplyRounds ?? 5 }} 条</span>
+                                            </div>
+                                            <input type="range" min="1" max="10" step="1"
+                                                   :value="settings.maxReplyRounds ?? 5"
+                                                   @input="e => { settings.maxReplyRounds = Number(e.target.value); debouncedSave(); }"
                                                    class="w-full" style="accent-color: var(--nav-icon-color);">
                                         </div>
                                     </div>
@@ -9850,7 +9929,8 @@ const runAutoLetterCheck = () => {
         // 还没到「下次可发信时间」
         if (s._nextAutoLetterAt && now < s._nextAutoLetterAt) return;
         // 掷骰子
-        if (Math.random() * 100 >= (settings.autoLetterProb || 0)) {
+        // B198：改成标准骰（阈值骰 + 数值骰），base = 设置值 × 2
+        if (!_rollYes((settings.autoLetterProb || 0) * 2)) {
             // 没命中：给一个"小间隔"再试（避免每 15 分钟都狂掷）
             s._nextAutoLetterAt = now + 60 * 1000;
             return;
@@ -9860,8 +9940,23 @@ const runAutoLetterCheck = () => {
         if (!s.envelopes) s.envelopes = [];
         const minCards = Math.max(1, settings.letterMinCards || 20);
         const maxCards = Math.max(minCards, settings.letterMaxCards || 50);
-        const count = minCards + Math.floor(Math.random() * (maxCards - minCards + 1));
-        const cards = drawEnvelopeCards(count, s, '主动来信');
+        // B198：一张一张挑，每张走「满意骰 → 继续骰」，不满意＝退格重抽
+        const cards = [];
+        const minCards2 = Math.max(1, settings.letterMinCards || 20);
+        const maxCards2 = Math.max(minCards2, settings.letterMaxCards || 50);
+        // 一次抽一批，再按骰子挑（避免几百次单抽）
+        const _pool = drawEnvelopeCards(maxCards2 * 2, s, "主动来信");
+        let _pi = 0;
+        while (cards.length < maxCards2 && _pi < _pool.length) {
+            const card = _pool[_pi++];
+            if (!card) continue;
+            if (!_rollJudgment(45, 65)) continue;
+            cards.push(card);
+            if (cards.length >= minCards2) {
+                if (!_rollJudgment(35, 55)) break;
+            }
+        }
+        if (!cards.length) return;
         const arriveAt = now;
         const _env = {
             id: 'd_' + now + '_' + s.id,
@@ -9897,6 +9992,20 @@ const runAutoLetterCheck = () => {
 
     if (anySent) {
         showToast('📩 收到新信件！');
+        // B198：信件也进「系统通知」——在聊天里留一条可跳转的系统记录
+        try {
+            sessions.value.forEach((s) => {
+                if (!s || s.type === "group") return;
+                const _just = (s.envelopes || []).filter((e) => e && e.createdAt === now && e.from === "dream");
+                if (!_just.length) return;
+                sendMessage("them", (s.name || "TA") + " 寄来了一封信", {
+                    session: s,
+                    type: "systemNote",
+                    systemNote: (s.name || "TA") + " 寄来了一封信",
+                    mailRef: _just[_just.length - 1].id,
+                });
+            });
+        } catch (e) { console.warn("[信件通知]", e); }
         debouncedSave();
     }
 };
@@ -11128,6 +11237,7 @@ const thinkingSessions = reactive({}); // B152：正在「选手法/抽玩法」
     };
     const _cloneGrammarTplDefault = (k) => (GRAMMAR_TPL_DEFAULT[k] || []).slice();
     const settings = reactive({
+      maxReplyRounds: 5,      // B206：一次最多连发几条（回复设置里可调）
       darkMode: false,
       uiLayout: 'default',    // 排版引擎（B120）：'default' 原有 / 'varia' 瓦利亚机能风 / 'vongola' 彭格列信笺风
       visualStyle: '',        // 视觉方案：''=默认 / frosted=磨砂玻璃 / glass=毛玻璃 / clear=透明 / wechat=仿微信
@@ -14006,9 +14116,19 @@ const checkMailArrival = () => {
             boardMoodMarks: JSON.parse(JSON.stringify(boardMoodMarks.value)),
             boardPeriodNotes: JSON.parse(JSON.stringify(boardPeriodNotes.value)),
             boardPeriodDeleted: JSON.parse(JSON.stringify(boardPeriodDeleted.value)),
-sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),
-    mutedMembers: JSON.parse(JSON.stringify(mutedMembers)),
-mailReadStatus: JSON.parse(JSON.stringify(mailReadStatus)),
+        // B197：共享书册（公共/词典/日语/意大利语等）—— 原来漏了，导致字卡没导出
+        sharedBoxes: JSON.parse(JSON.stringify(sharedBoxes || {})),
+        // B199：会话级设置对象（原来全漏了，导入后全变默认）
+        sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),   // 拼接字卡设置（每个会话）
+        dictSpellSettingsMap: JSON.parse(JSON.stringify(dictSpellSettingsMap)),   // 词典拼字设置
+        freeComposeSettingsMap: JSON.parse(JSON.stringify(freeComposeSettingsMap)),   // 梦角自由造句设置
+        freeComposeGroupSettingsMap: JSON.parse(JSON.stringify(freeComposeGroupSettingsMap)),   // 自由造句分组设置
+        drawSettingsMap: JSON.parse(JSON.stringify(drawSettingsMap)),   // 涂鸦设置
+        teaseSettingsMap: JSON.parse(JSON.stringify(teaseSettingsMap)),   // 吐槽设置
+        tagCardSettingsMap: JSON.parse(JSON.stringify(tagCardSettingsMap)),   // 标签选卡设置
+        jaBrushedMap: JSON.parse(JSON.stringify(jaBrushedMap)),   // 日语笔谈设置
+        mutedMembers: JSON.parse(JSON.stringify(mutedMembers)),   // 免打扰成员
+        mailReadStatus: JSON.parse(JSON.stringify(mailReadStatus)),   // 邮件已读状态
 sharedBoxes: JSON.parse(JSON.stringify(sharedBoxes)),
 dictSpellSettingsMap: JSON.parse(JSON.stringify(dictSpellSettingsMap)),
 jaBrushedMap: JSON.parse(JSON.stringify(jaBrushedMap)),
@@ -14062,6 +14182,18 @@ divination: JSON.parse(JSON.stringify(divination)),
         boardMoodMarks: JSON.parse(JSON.stringify(boardMoodMarks.value)),
         boardPeriodNotes: JSON.parse(JSON.stringify(boardPeriodNotes.value)),
         boardPeriodDeleted: JSON.parse(JSON.stringify(boardPeriodDeleted.value)),
+        // B197/B199：共享书册 + 会话级设置对象（原来全漏了，导入后全变默认）
+        sharedBoxes: JSON.parse(JSON.stringify(sharedBoxes || {})),
+        sessionSettings: JSON.parse(JSON.stringify(sessionSettings)),
+        dictSpellSettingsMap: JSON.parse(JSON.stringify(dictSpellSettingsMap)),
+        freeComposeSettingsMap: JSON.parse(JSON.stringify(freeComposeSettingsMap)),
+        freeComposeGroupSettingsMap: JSON.parse(JSON.stringify(freeComposeGroupSettingsMap)),
+        drawSettingsMap: JSON.parse(JSON.stringify(drawSettingsMap)),
+        teaseSettingsMap: JSON.parse(JSON.stringify(teaseSettingsMap)),
+        tagCardSettingsMap: JSON.parse(JSON.stringify(tagCardSettingsMap)),
+        jaBrushedMap: JSON.parse(JSON.stringify(jaBrushedMap)),
+        mutedMembers: JSON.parse(JSON.stringify(mutedMembers)),
+        mailReadStatus: JSON.parse(JSON.stringify(mailReadStatus)),
       };
  daa = collectAllData();
       const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
@@ -14149,6 +14281,18 @@ watch(() => JSON.stringify(settings.replyWeightMap), () => {
       settings.darkMode = !settings.darkMode;
       document.documentElement.classList.toggle('dark', settings.darkMode);
     };
+    // B201：首次用户交互时恢复音频上下文（否则浏览器会拦）
+    let _audioResumed = false;
+    const _resumeAudioOnce = () => {
+      if (_audioResumed) return;
+      _audioResumed = true;
+      try { if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {}); } catch (e) {}
+    };
+    try {
+      document.addEventListener("pointerdown", _resumeAudioOnce, { once: true, passive: true });
+      document.addEventListener("touchstart", _resumeAudioOnce, { once: true, passive: true });
+    } catch (e) {}
+
     const toggleSound = () => {
       settings.soundEnabled = !settings.soundEnabled;
       if (settings.soundEnabled && !audioCtx) {
@@ -14176,6 +14320,8 @@ watch(() => JSON.stringify(settings.replyWeightMap), () => {
     };
     const playTone = (type) => {
       if (!settings.soundEnabled || !audioCtx) return;
+      // B201：浏览器要求用户手势后才能播声音；未 resume 时静默跳过，避免控制台刷警告
+      if (audioCtx.state === "suspended") { audioCtx.resume().catch(() => {}); return; }
       try {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -15165,9 +15311,14 @@ const _rollCardSelection = (pool, cfg, avoidTexts) => {
 // 全程保持"输入中"，每一步都检查会话还在不在；任何分支结束都会收尾（不会卡死输入中）
 const _runReplyPlan = (cur, plan, preDelayMs) => {
     const alive = () => Array.isArray(sessions.value) && sessions.value.some(s => s && s.id === cur.id);
+    let _sentCount = 0;   // B197：实际发出去几条
     const done = () => {
         try { delete typingSessions[cur.id]; } catch (e) {}
         try { delete thinkingSessions[cur.id]; } catch (e) {}
+        // B197：一条都没发出去 → 补一条系统记录，避免「思考中」消失后什么都没有
+        if (_sentCount === 0) {
+            try { _showNoReplyNote(cur); } catch (e) {}
+        }
     };
     const items = (Array.isArray(plan) ? plan : []).filter(x => x && typeof x.fn === 'function');
     if (!items.length) { done(); return; }
@@ -15178,7 +15329,7 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
         const it = items[i];
         setTimeout(() => {
             if (!alive()) { done(); return; }
-            try { it.fn(); } catch (e) { try { console.warn('[reply] act failed', e); } catch (e2) {} }
+            try { it.fn(); _sentCount++; } catch (e) { try { console.warn('[reply] act failed', e); } catch (e2) {} }
             step(i + 1);
         }, Math.max(0, Math.round(it.delay || 0)));
     };
@@ -15435,10 +15586,11 @@ const applyPlayTogglesToAll = () => {
         } catch (e) { return 0; }
     };
 
-    const _pickWeightedPlay = (s) => {
+    const _pickWeightedPlay = (s, exclude) => {
         const cands = [];
         PLAY_KEYS.forEach((k) => {
             if (!playOn(k)) return;
+            if (exclude && exclude.has && exclude.has(k)) return;   // B205：排除已试过的
             const w = _playWeight(k, s);
             if (w > 0) cands.push({ key: k, w });
         });
@@ -15450,6 +15602,20 @@ const applyPlayTogglesToAll = () => {
             if (r <= 0) return cands[i].key;
         }
         return cands[cands.length - 1].key;
+    };
+
+    // B205：抽到一个「满意」的玩法（试遍所有玩法都不满意 → null）
+    const _pickSatisfiedPlay = (s) => {
+        const tried = new Set();
+        const maxTry = PLAY_KEYS.length + 2;
+        for (let t = 0; t < maxTry; t++) {
+            const k = _pickWeightedPlay(s, tried);
+            if (!k) break;
+            tried.add(k);
+            if (_rollJudgment(32, 52)) return k;   // 满意 → 用这个玩法
+            // 不满意 → 换下一个（这个玩法本轮不再抽）
+        }
+        return null;
     };
 
     // 执行单个玩法；返回是否真的产出了内容
@@ -15515,6 +15681,21 @@ const applyPlayTogglesToAll = () => {
     // 老板要的：阈值骰 + 数值骰，**没有重选上限**（可能一直未读）
     // 老板再发一条新消息时，旧的未读会自然结束（不回复，也不影响新的）
     const _replyLocks = {};   // 防重锁（门1期间用，不点亮「输入中」）
+
+    // B203：直发型玩法统一走这个 —— 先亮「输入中」，延迟一会儿再发
+    const _delayedSend = (session, text, opts, minMs, maxMs) => {
+        if (!session) return;
+        const id = session.id;
+        try { delete thinkingSessions[id]; typingSessions[id] = true; } catch (e) {}
+        const lo = Math.max(300, Number(minMs) || 900);
+        const hi = Math.max(lo, Number(maxMs) || 1800);
+        const d = lo + Math.random() * (hi - lo);
+        setTimeout(() => {
+            try { sendMessage("them", text, opts); } catch (e) { console.warn("[延迟发送]", e); }
+            try { delete typingSessions[id]; } catch (e) {}
+        }, d);
+    };
+
     // 引用逻辑（B181）：本轮自动挑中的引用，挂到下一条发出去的消息上
     let _pendingAutoQuote = null;
 
@@ -15729,7 +15910,7 @@ const rollQuoteIntent = () => {
 
         // ④ 逗号拼句 + 发出
         const text = picked.map((p) => String(p.text).trim()).filter(Boolean).join("，");
-        sendMessage("them", text, { session, tagCard: tag });
+        _delayedSend(session, text, { session, tagCard: tag }, 800, 1600);
         return true;
     };
 
@@ -15740,11 +15921,12 @@ const rollQuoteIntent = () => {
         let preDelay = 0;
         let produced = false;
         let lastKey = '';
-        for (let round = 0; round < PLAY_MAX_ROUNDS; round++) {
-            let key = _pickWeightedPlay(cur);
+        // B206：连发上限可调（设置 → 回复设置 → 已读与沉默 → 一次最多连发几条）
+        const _maxRounds = Math.max(1, Math.min(10, Number(settings.maxReplyRounds) || 5));
+        for (let round = 0; round < _maxRounds; round++) {
+            // B205：一直抽到满意为止（试遍所有玩法都不满意才算没想好）
+            const key = _pickSatisfiedPlay(cur);
             if (!key) break;
-            // 骰：这次满意吗？不满意 → 重抽（最多在同一轮里再试一次）
-            if (!_rollJudgment(32, 52)) continue;
             const ok = await _runPlayOnce(key, cur, plan);
             if (!ok) continue;
             produced = true;
@@ -15776,6 +15958,7 @@ const rollQuoteIntent = () => {
         } else {
             delete typingSessions[cur.id];
             delete thinkingSessions[cur.id];
+            // 直发型玩法（词典/日语/涂鸦/标签选卡等）已经自己发了消息，这里不补提示
         }
         // B181：本轮结束，清掉没用掉的引用（避免挂到下一条无关消息）
         _pendingAutoQuote = null;
@@ -15793,9 +15976,9 @@ const rollQuoteIntent = () => {
     });
 
     // 系统记录：「XX 没有想好怎么回复」
-    const _showNoReplyNote = (s) => {
+    const _showNoReplyNote = (s, reason) => {
         if (!s) return;
-        let text = '没有想好怎么回复';
+        let text = (reason === 'swallowed') ? '想说点什么，又咽回去了' : '没有想好怎么回复';
         try {
             const boxName = settings.noReplyBox;
             if (boxName) {
@@ -15819,6 +16002,15 @@ const rollQuoteIntent = () => {
     if (!sess || _replyLocks[sess.id] || typingSessions[sess.id]) return;
     // B142：门1 期间先只上锁，不点亮「输入中」——「输入中」只跟"要发送"绑定
     _replyLocks[sess.id] = true;
+    // B197：兜底 —— 90 秒后若锁还没释放，强制清掉（防某条路径泄漏导致后续永远不回复）
+    setTimeout(() => {
+        if (_replyLocks[sess.id]) {
+            console.warn("[回复] 锁超时，强制清理", sess.id);
+            delete _replyLocks[sess.id];
+            delete typingSessions[sess.id];
+            delete thinkingSessions[sess.id];
+        }
+    }, 90000);
     const minS = Math.max(1, settings.replyDelayMin || 2);
     const maxS = Math.max(minS, settings.replyDelayMax || 5);
      // 前置延迟：保留 [最短, 最长]，区间内两段分布（70% 偏快 / 30% 拖到后段），不越界
@@ -20964,6 +21156,71 @@ const _rollOnyomiReading = () => {
     return null;
 };
 
+// ===== 读音表弹窗（B207）：全局共享，所有会话同一套数据 =====
+const onyomiTableOpen = ref(false);
+const onyomiSearch = ref("");
+const onyomiRowOpen = reactive({});
+const onyomiCharOpen = ref("");
+
+// 行的中文名
+const ONYOMI_ROW_LABEL = {
+    a: "あ行", ka: "か行 (k/g)", sa: "さ行 (s/z/sh/j)", ta: "た行 (t/d/ch/ts)",
+    na: "な行 (n)", ha: "は行 (h/b/p/f)", ma: "ま行 (m)", ya: "や行 (y)",
+    ra: "ら行 (r)", wa: "わ行 (w)",
+};
+
+// 统计
+const onyomiStats = computed(() => {
+    let readings = 0, chars = 0, tagged = 0;
+    Object.keys(ONYOMI_POOL).forEach((r) => {
+        const list = ONYOMI_POOL[r] || [];
+        if (!list.length) return;
+        readings++;
+        list.forEach((x) => {
+            chars++;
+            if (Array.isArray(x.tags) && x.tags.length) tagged++;
+        });
+    });
+    return { readings, chars, tagged };
+});
+
+// 按行分组（带搜索过滤）
+const onyomiGroups = computed(() => {
+    const kw = String(onyomiSearch.value || "").trim().toLowerCase();
+    const byRow = _onyomiByRow();
+    const rows = Object.keys(byRow).filter((k) => byRow[k] && byRow[k].length);
+    const out = [];
+    rows.forEach((rowKey) => {
+        let list = byRow[rowKey].slice();
+        // 搜索：读音或字包含关键词
+        if (kw) {
+            list = list.filter((r) => {
+                if (String(r).toLowerCase().includes(kw)) return true;
+                return (_onyomiList(r) || []).some((x) => String(x.char || "").includes(onyomiSearch.value.trim()));
+            });
+        }
+        if (!list.length) return;
+        list.sort();
+        out.push({
+            key: rowKey,
+            label: ONYOMI_ROW_LABEL[rowKey] || rowKey,
+            readings: list,
+            count: list.length,
+        });
+    });
+    // 行按固定顺序，未知行放最后
+    const ORDER = ["a", "ka", "sa", "ta", "na", "ha", "ma", "ya", "ra", "wa"];
+    out.sort((x, y) => {
+        const ix = ORDER.indexOf(x.key), iy = ORDER.indexOf(y.key);
+        return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
+    });
+    return out;
+});
+
+const toggleOnyomiRow = (k) => { if (k) onyomiRowOpen[k] = !onyomiRowOpen[k]; };
+const toggleOnyomiChar = (r) => { onyomiCharOpen.value = (onyomiCharOpen.value === r) ? "" : r; };
+
+
 // 加 / 删（后面做 UI 时直接用）
 const addOnyomi = (reading, char) => {
     const key = String(reading || '').toLowerCase().trim();
@@ -21191,7 +21448,7 @@ const triggerJaBrushed = (session, opts = {}) => {
             if (!(_last && _last.content === _t)) {
                  // TA 熟练度：把这次说过的字/词记一次
                  [...String(_t)].forEach((c) => bumpTaFamiliar(c));
-                sendMessage("them", _jaAnnotate(_t), { session, jaBrushed: true, dictSpell: false, dictTag: "日语笔谈" });
+                _delayedSend(session, _jaAnnotate(_t), { session, jaBrushed: true, dictSpell: false, dictTag: "日语笔谈" }, 900, 2000);
                 return true;
             }
         }
@@ -21213,7 +21470,7 @@ const triggerJaBrushed = (session, opts = {}) => {
                 }
                  // TA 熟练度：把这次说过的字/词记一次
                  [...String(_final)].forEach((c) => bumpTaFamiliar(c));
-                sendMessage("them", _jaAnnotate(_final), { session, jaBrushed: true, dictSpell: false, dictTag: "日语笔谈" });
+                _delayedSend(session, _jaAnnotate(_final), { session, jaBrushed: true, dictSpell: false, dictTag: "日语笔谈" }, 900, 2000);
                 return true;
             }
         }
@@ -21234,11 +21491,20 @@ const triggerJaBrushed = (session, opts = {}) => {
         if (!pool.length) continue;
         let picked = _onyomiLanding(pool);
         if (!picked) continue;
-        // 骰：这个字满意吗？不中 → 系统脉冲后重落点（最多 3 次）
-        for (let t = 0; t < 3; t++) {
-            if (_rollJudgment()) break;
+        // B204：同一个音里换字 4 次；4 次都不满意 → 骰退格（退回上一个音）
+        let _charOk = false;
+        for (let t = 0; t < 4; t++) {
+            if (_rollJudgment()) { _charOk = true; break; }
             _systemPulse(1);
             picked = _onyomiLanding(pool) || picked;
+        }
+        if (!_charOk && chars.length) {
+            // 4 次都不满意 → 骰：要不要退格（删掉上一个字，重新选音）
+            if (_rollJudgment(40, 60)) {
+                chars.pop();
+                readingsUsed.pop();
+                continue;
+            }
         }
         chars.push(picked.char);
         readingsUsed.push(romajiToKana(reading));
@@ -21250,7 +21516,7 @@ const triggerJaBrushed = (session, opts = {}) => {
     const lastMsg = session.messages[session.messages.length - 1];
     if (lastMsg && lastMsg.content === text) return false;
 
-    sendMessage('them', _jaAnnotate(text), { session, jaBrushed: true, dictSpell: false, dictTag: '日语笔谈' });
+    _delayedSend(session, _jaAnnotate(text), { session, jaBrushed: true, dictSpell: false, dictTag: '日语笔谈' }, 900, 2000);
     return true;
 };
 // ⑤b 模板专用别名（Vue 模板不允许 `_` 开头的标识符，否则直接 ReferenceError）
@@ -26888,11 +27154,23 @@ if (stored.sharedBoxes) {
             if (!sharedBoxes[key].groups.length) sharedBoxes[key].groups = [{ id: genId(), name: key, replies: [] }];
             sharedBoxes[key].groups[0].replies = [...(sharedBoxes[key].groups[0].replies || []), ...merged];
         }
+
     };
     mergeFromSessions('公共');
     mergeFromSessions('词典');
     mergeFromSessions('公共梦角自由造句');
 }
+                    // B199：恢复会话级设置对象
+                    if (stored.sessionSettings && typeof stored.sessionSettings === "object") Object.assign(sessionSettings, stored.sessionSettings);
+                    if (stored.dictSpellSettingsMap && typeof stored.dictSpellSettingsMap === "object") Object.assign(dictSpellSettingsMap, stored.dictSpellSettingsMap);
+                    if (stored.freeComposeSettingsMap && typeof stored.freeComposeSettingsMap === "object") Object.assign(freeComposeSettingsMap, stored.freeComposeSettingsMap);
+                    if (stored.freeComposeGroupSettingsMap && typeof stored.freeComposeGroupSettingsMap === "object") Object.assign(freeComposeGroupSettingsMap, stored.freeComposeGroupSettingsMap);
+                    if (stored.drawSettingsMap && typeof stored.drawSettingsMap === "object") Object.assign(drawSettingsMap, stored.drawSettingsMap);
+                    if (stored.teaseSettingsMap && typeof stored.teaseSettingsMap === "object") Object.assign(teaseSettingsMap, stored.teaseSettingsMap);
+                    if (stored.tagCardSettingsMap && typeof stored.tagCardSettingsMap === "object") Object.assign(tagCardSettingsMap, stored.tagCardSettingsMap);
+                    if (stored.jaBrushedMap && typeof stored.jaBrushedMap === "object") Object.assign(jaBrushedMap, stored.jaBrushedMap);
+                    if (stored.mutedMembers && typeof stored.mutedMembers === "object") Object.assign(mutedMembers, stored.mutedMembers);
+                    if (stored.mailReadStatus && typeof stored.mailReadStatus === "object") Object.assign(mailReadStatus, stored.mailReadStatus);
                                if (stored.divination) {
                     Object.assign(divination, stored.divination);
                     // 老存档补全：追加缺失的小牌 + 给没牌意的牌补牌意
@@ -27495,6 +27773,8 @@ isMuted,
 // 长按消息菜单
       msgMenu, pendingQuote, openMsgMenu, closeMsgMenu,
       isCollected, collectMsg, uncollectMsg, toggleCollect, msgMenuCollect, _collectionsOf,
+      onyomiTableOpen, onyomiSearch, onyomiRowOpen, onyomiCharOpen, onyomiStats, onyomiGroups,
+      toggleOnyomiRow, toggleOnyomiChar, onyomiList,
       CARD_CATEGORIES, autoTagText, autoTagCard, autoTagAllCards, runAutoTagAll, getTagCardSettings, triggerTagCardPlay,
       allCollections, removeCollectionById,
       onMsgPressStart, onMsgPressEnd,
