@@ -822,6 +822,43 @@ body { color: var(--color-text); }
     </svg>
 
 <div id="app" v-cloak :style="{ '--accent-color': settings.accentColor, '--accent-text-color': accentTextColor }">
+<!-- ===== B209：批量移动字卡 ===== -->
+<div v-if="batchMove.show" class="fixed inset-0 z-[420] flex items-center justify-center px-6" @click.self="batchMove.show = false">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative w-full max-w-[340px] rounded-2xl bg-surface border border-border shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-border/40">
+            <div class="text-[15px] font-medium tracking-wide">移动 {{ selectedRepliesArr.length }} 张字卡</div>
+            <div class="text-[11px] text-muted mt-0.5">选一个已有分组，或新建一个</div>
+        </div>
+        <div class="px-4 py-3 space-y-3 max-h-[50vh] overflow-y-auto">
+            <div>
+                <div class="text-[12px] text-muted mb-1.5">已有分组</div>
+                <div v-if="!batchMoveGroups.length" class="text-[12px] text-muted/60 py-1">（这个箱子还没有分组）</div>
+                <div v-else class="space-y-1">
+                    <button v-for="g in batchMoveGroups" :key="g.id"
+                            @click="batchMove.targetGroupId = (batchMove.targetGroupId === g.id ? '' : g.id); batchMove.newName = '';"
+                            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-left"
+                            :class="batchMove.targetGroupId === g.id ? 'border-text bg-bg' : 'border-border/40 hover:bg-bg/50'">
+                        <i v-if="batchMove.targetGroupId === g.id" data-lucide="check" class="w-3.5 h-3.5 stroke-[2] shrink-0"></i>
+                        <span class="flex-1 text-[13px] truncate">{{ g.name }}</span>
+                        <span class="text-[11px] text-muted shrink-0">{{ g.count }} 张</span>
+                    </button>
+                </div>
+            </div>
+            <div>
+                <div class="text-[12px] text-muted mb-1.5">或新建分组</div>
+                <input v-model="batchMove.newName" @input="batchMove.targetGroupId = ''"
+                       placeholder="输入新分组名…"
+                       class="w-full bg-bg border border-border/40 rounded-lg px-3 py-2 text-[13px] focus:border-border">
+                <div class="text-[10px] text-muted/60 mt-1">填了名字就会新建，忽略上面的选择</div>
+            </div>
+        </div>
+        <div class="px-4 py-3 border-t border-border/40 flex gap-2">
+            <button @click="batchMove.show = false" class="flex-1 py-2 rounded-lg border border-border text-[13px] text-muted">取消</button>
+            <button @click="doBatchMove" class="flex-1 py-2 rounded-lg bg-text text-white text-[13px]">移动</button>
+        </div>
+    </div>
+</div>
 <!-- ===== B207：日语读音表弹窗（全局共享） ===== -->
 <div v-if="onyomiTableOpen" class="fixed inset-0 z-[400] flex flex-col" style="background: var(--color-bg);">
     <div class="shrink-0 px-4 py-3 flex items-center justify-between border-b border-border/40">
@@ -2897,6 +2934,8 @@ body { color: var(--color-text); }
                     </div>
                     <button v-if="selectedRepliesArr.length" @click="batchDelete" class="text-red-500 hover:underline text-[12px] shrink-0">剔除({{selectedRepliesArr.length}})</button>
                     <button v-if="selectedRepliesArr.length" @click="batchToggle" class="text-text hover:underline text-[12px] shrink-0">启/禁</button>
+                    <!-- B209：批量移动到分组 -->
+                    <button v-if="selectedRepliesArr.length" @click="openBatchMove" class="text-text hover:underline text-[12px] shrink-0">移动</button>
                     <button v-if="activeBox !== '群聊' && activeBox !== '红包备注'" @click="openBulkAdd" class="p-1.5 text-muted hover:text-text transition-colors shrink-0" title="批量加字卡">
                         <i data-lucide="list-plus" class="w-4 h-4 stroke-[1.5]"></i>
                     </button>
@@ -15321,7 +15360,12 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
         }
     };
     const items = (Array.isArray(plan) ? plan : []).filter(x => x && typeof x.fn === 'function');
-    if (!items.length) { done(); return; }
+    // B208：plan 空说明这条路上什么都没产出 → 补系统记录（原来只 done() 静默）
+    if (!items.length) {
+        try { _showNoReplyNote(cur); } catch (e) {}
+        done();
+        return;
+    }
     // B152：真正开始发送 → 从「思考中……」切成「输入中」
     try { delete thinkingSessions[cur.id]; typingSessions[cur.id] = true; } catch (e) {}
     const step = (i) => {
@@ -15335,7 +15379,7 @@ const _runReplyPlan = (cur, plan, preDelayMs) => {
     };
     setTimeout(() => {
         try { step(0); } catch (e) { done(); }
-    }, Math.max(0, Math.round(preDelayMs || 0)));
+    }, Math.max(800, Math.round(preDelayMs || 0)));   // B208：至少 800ms，保证「输入中」看得见
 };
 
 // ===== 回复玩法（手法）独立开关（B96）=====
@@ -22503,6 +22547,58 @@ if (window.lucide) lucide.createIcons();
       selectedRepliesArr.value = [];
       debouncedSave();
     };
+
+// ===== B209：批量移动字卡到分组 =====
+const batchMove = reactive({ show: false, targetGroupId: "", newName: "" });
+const openBatchMove = () => {
+    if (!selectedRepliesArr.value.length) return;
+    batchMove.targetGroupId = "";
+    batchMove.newName = "";
+    batchMove.show = true;
+};
+const batchMoveGroups = computed(() => {
+    const s = currentSession.value;
+    if (!s) return [];
+    const bn = activeBox.value;
+    const box = isSharedBox(bn) ? sharedBoxes[bn] : (s.corpus && s.corpus.boxes ? s.corpus.boxes[bn] : null);
+    if (!box || !Array.isArray(box.groups)) return [];
+    return box.groups.map((g) => ({ id: g.id, name: g.name || "未命名", count: (g.replies || []).length }));
+});
+const doBatchMove = () => {
+    const s = currentSession.value;
+    if (!s) return;
+    const bn = activeBox.value;
+    const box = isSharedBox(bn) ? sharedBoxes[bn] : (s.corpus && s.corpus.boxes ? s.corpus.boxes[bn] : null);
+    if (!box || !Array.isArray(box.groups)) return;
+    const ids = selectedRepliesArr.value.slice();
+    if (!ids.length) { batchMove.show = false; return; }
+    let target = null;
+    if (batchMove.targetGroupId) target = box.groups.find((g) => g.id === batchMove.targetGroupId) || null;
+    const newName = String(batchMove.newName || "").trim();
+    if (newName) {
+        target = { id: genId(), name: newName, replies: [] };
+        box.groups.push(target);
+    }
+    if (!target) { showToast("请选择目标分组，或输入新分组名"); return; }
+    const moved = [];
+    box.groups.forEach((g) => {
+        if (g.id === target.id) return;
+        if (!Array.isArray(g.replies)) return;
+        const keep = [];
+        g.replies.forEach((r) => { if (r && ids.includes(r.id)) moved.push(r); else keep.push(r); });
+        g.replies = keep;
+    });
+    if (!Array.isArray(target.replies)) target.replies = [];
+    moved.forEach((r) => target.replies.push(r));
+    selectedRepliesArr.value = [];
+    batchMove.show = false;
+    batchMove.targetGroupId = "";
+    batchMove.newName = "";
+    debouncedSave();
+    nextTick(() => initSortable());
+    showToast("已移动 " + moved.length + " 张字卡到「" + target.name + "」");
+};
+
     // ===== 表情包上传 + 批量加字卡 =====
     const exprForm = reactive({ show: false, groupId: '' });
     const bulkForm = reactive({ show: false, groupId: '', text: '' });
@@ -27773,6 +27869,7 @@ isMuted,
 // 长按消息菜单
       msgMenu, pendingQuote, openMsgMenu, closeMsgMenu,
       isCollected, collectMsg, uncollectMsg, toggleCollect, msgMenuCollect, _collectionsOf,
+      batchMove, openBatchMove, batchMoveGroups, doBatchMove,
       onyomiTableOpen, onyomiSearch, onyomiRowOpen, onyomiCharOpen, onyomiStats, onyomiGroups,
       toggleOnyomiRow, toggleOnyomiChar, onyomiList,
       CARD_CATEGORIES, autoTagText, autoTagCard, autoTagAllCards, runAutoTagAll, getTagCardSettings, triggerTagCardPlay,
